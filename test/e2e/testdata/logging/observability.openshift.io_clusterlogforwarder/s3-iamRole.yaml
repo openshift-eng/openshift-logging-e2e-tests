@@ -1,0 +1,57 @@
+kind: Template
+apiversion: template.openshift.io/v1
+metadata:
+  name: clusterlogforwarder-template
+objects:
+- apiVersion: "observability.openshift.io/v1"
+  kind: ClusterLogForwarder
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    collector: ${{COLLECTOR}}
+    managementState: Managed
+    outputs:
+    - name: s3-output
+      type: s3
+      s3:
+        authentication:
+          iamRole:
+            roleARN:
+              key: role_arn
+              secretName: ${SECRET_NAME}
+            token:
+              from: serviceAccount
+          type: iamRole
+        keyPrefix: ${KEY_PREFIX}
+        bucket: ${BUCKET_NAME}
+        region: ${REGION}
+        tuning: ${{TUNING}}
+    pipelines:
+    - name: forward-to-s3-bucket
+      inputRefs: ${{INPUT_REFS}}
+      outputRefs:
+      - s3-output
+    serviceAccount:
+      name: ${SERVICE_ACCOUNT_NAME}
+parameters:
+- name: NAME
+  value: "instance"
+- name: NAMESPACE
+  value: "openshift-logging"
+- name: SECRET_NAME
+  value: "s3-secret"
+- name: REGION
+  value: "us-east-2"
+- name: BUCKET_NAME
+  value: ""
+- name: KEY_PREFIX
+  value: "{.log_type||\"none-typed-logs\"}"
+- name: INPUT_REFS
+  value: "[\"infrastructure\", \"audit\", \"application\"]"
+- name: SERVICE_ACCOUNT_NAME
+  value: ""
+- name: TUNING
+  value: "{}"
+- name: COLLECTOR
+  value: "{}"
