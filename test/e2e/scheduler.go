@@ -49,7 +49,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease scheduler", fu
 		oc.SetupProject()
 	})
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Critical-74398-Manage logging collector pods via CLF[Serial]", func() {
+	g.It("Author:qitang-Critical-74398-Manage logging collector pods via CLF[PRGate][CLO][Serial]", func() {
 		compat_otp.By("deploy loki stack")
 		s := getStorageType(oc)
 		sc, err := getStorageClassName(oc)

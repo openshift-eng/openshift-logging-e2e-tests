@@ -888,7 +888,7 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-ConnectedOnly-High-71749-Drop logs based on test of fields and their values[Serial][Slow]", func() {
+		g.It("Author:qitang-ConnectedOnly-High-71749-Drop logs based on test of fields and their values[PRGate][CLO][Serial][Slow]", func() {
 			compat_otp.By("Deploying LokiStack CR for 1x.demo tshirt size")
 			lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
 			ls := lokiStack{
@@ -974,7 +974,7 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Critical-71049-Inputs.receiver.syslog[Serial][Slow]", func() {
+		g.It("Author:anli-Critical-71049-Inputs.receiver.syslog[PRGate][CLO][Serial][Slow]", func() {
 			g.By("deploy loki stack")
 			lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
 			ls := lokiStack{
@@ -1057,7 +1057,7 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-76727-Add stream info to data model viaq[Serial][Slow]", func() {
+		g.It("Author:qitang-High-76727-Add stream info to data model viaq[PRGate][CLO][Serial][Slow]", func() {
 			multilineLogs := []string{
 				javaExc, complexJavaExc, nestedJavaExc,
 				goExc, goOnGaeExc, goSignalExc, goHTTP,
@@ -1163,7 +1163,7 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-78380-Collector should collect logs from all log sources[Serial]", func() {
+		g.It("Author:qitang-High-78380-Collector should collect logs from all log sources[PRGate][CLO][LokiOperator][Serial]", func() {
 			compat_otp.By("Deploying LokiStack")
 			lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
 			ls := lokiStack{
@@ -2242,7 +2242,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-High-52779-High-55393-Validate alert and recording rules in LokiRuler configmap and Rules API(cluster-admin)[Serial]", func() {
+		g.It("Author:kbharti-High-52779-High-55393-Validate alert and recording rules in LokiRuler configmap and Rules API(cluster-admin)[PRGate][LokiOperator][Serial]", func() {
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			oc.SetupProject()
 			appProj := oc.Namespace()
@@ -2997,7 +2997,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Audit Policy T
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Critical-75841-Filter audit logs and forward to log store LokiStack[Serial]", func() {
+	g.It("Author:qitang-Critical-75841-Filter audit logs and forward to log store LokiStack[PRGate][CLO][LokiOperator][Serial]", func() {
 		compat_otp.By("Deploying LokiStack")
 		ls := lokiStack{
 			name:          "loki-75841",
@@ -3387,7 +3387,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-67565-High-55388-Verify that non-admin/regular user can access LokiStack logs and query rules as per rolebindings assigned to the user[Serial][Slow]", func() {
+	g.It("Author:kbharti-Critical-67565-High-55388-Verify that non-admin/regular user can access LokiStack logs and query rules as per rolebindings assigned to the user[PRGate][LokiOperator][Serial][Slow]", func() {
 
 		var (
 			loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -3485,7 +3485,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-67643-Verify logs access for LokiStack adminGroups[Serial][Slow]", func() {
+	g.It("Author:kbharti-Critical-67643-Verify logs access for LokiStack adminGroups[PRGate][LokiOperator][Serial][Slow]", func() {
 
 		g.By("Create Groups with users")
 		oc.SetupProject()
@@ -3918,7 +3918,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-75334-Forward logs via clusterLogForwarder.observability.openshift.io API using per tenant and global labelKeys[Serial]", func() {
+	g.It("Author:kbharti-Critical-75334-Forward logs via clusterLogForwarder.observability.openshift.io API using per tenant and global labelKeys[PRGate][LokiOperator][Serial]", func() {
 
 		var (
 			loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -4292,7 +4292,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-76990-Verify that LokiStack provides a default set of otlp configuration[Serial]", func() {
+	g.It("Author:kbharti-Critical-76990-Verify that LokiStack provides a default set of otlp configuration[PRGate][LokiOperator][Serial]", func() {
 
 		var (
 			loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -5385,7 +5385,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Ne
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-85643-High-85644-Enable and Disable network policies on an existing instance of LokiStack[Serial]", func() {
+	g.It("Author:kbharti-High-85643-High-85644-Enable and Disable network policies on an existing instance of LokiStack[PRGate][LokiOperator][Serial]", func() {
 
 		s := getStorageType(oc)
 		sc, err := getStorageClassName(oc)
