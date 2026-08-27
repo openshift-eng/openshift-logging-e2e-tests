@@ -132,6 +132,20 @@ func registerSuites(ext *e.Extension) {
 			},
 		},
 		{
+			Name:        "openshift-logging-e2e-tests/cluster-logging-operator",
+			Description: "PR-gate regression tests for cluster-logging-operator (non-disruptive)",
+			Qualifiers: []string{
+				`name.contains("[PRGate]") && name.contains("[CLO]") && !name.contains("[Disruptive]")`,
+			},
+		},
+		{
+			Name:        "openshift-logging-e2e-tests/loki-operator",
+			Description: "PR-gate regression tests for loki-operator (non-disruptive)",
+			Qualifiers: []string{
+				`name.contains("[PRGate]") && name.contains("[LokiOperator]") && !name.contains("[Disruptive]")`,
+			},
+		},
+		{
 			Name:        "openshift-logging-e2e-tests/disruptive",
 			Parents:     []string{"openshift/disruptive"},
 			Description: "Disruptive tests (may affect cluster state)",

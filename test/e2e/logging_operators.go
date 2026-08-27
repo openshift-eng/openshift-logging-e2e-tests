@@ -677,7 +677,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-65408-ClusterLogForwarder validation when roles don't match.", func() {
+	g.It("Author:qitang-Medium-65408-ClusterLogForwarder validation when roles don't match.[PRGate][CLO]", func() {
 		clfNS := oc.Namespace()
 		loki := externalLoki{"loki-server", clfNS}
 		defer loki.remove(oc)
@@ -757,7 +757,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-65685-Deploy CLO to all namespaces and verify prometheusrule/collector and cm/grafana-dashboard-cluster-logging are created along with the CLO.", func() {
+	g.It("Author:qitang-High-65685-Deploy CLO to all namespaces and verify prometheusrule/collector and cm/grafana-dashboard-cluster-logging are created along with the CLO.[PRGate][CLO]", func() {
 		csvs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "default", "-oname").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(strings.Contains(csvs, "cluster-logging")).Should(o.BeTrue())
@@ -1031,7 +1031,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-84892-High-84897-NetworkPolicy for LFME and ClusterLogForwarder LokiStack output.[Serial]", func() {
+	g.It("Author:qitang-High-84892-High-84897-NetworkPolicy for LFME and ClusterLogForwarder LokiStack output.[PRGate][CLO][Serial]", func() {
 		sc, _ := getStorageClassName(oc)
 		if len(sc) == 0 {
 			g.Skip("The cluster doesn't have a storage class for this test!")
@@ -1158,7 +1158,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85402-NetworkPolicy for ClusterLogForwarder OTLP output.", func() {
+	g.It("Author:qitang-High-85402-NetworkPolicy for ClusterLogForwarder OTLP output.[PRGate][CLO]", func() {
 		var (
 			expectedCSV       string
 			operatorInstalled bool

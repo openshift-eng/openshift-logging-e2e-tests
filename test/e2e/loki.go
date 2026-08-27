@@ -184,7 +184,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		//Author: kbharti@redhat.com (GitHub: kabirbhartiRH)
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-ConnectedOnly-High-48608-Loki Operator-Reconcile and re-create objects on accidental user deletes[Serial]", func() {
+		g.It("Author:kbharti-ConnectedOnly-High-48608-Loki Operator-Reconcile and re-create objects on accidental user deletes[PRGate][LokiOperator][Serial]", func() {
 			objectStorage := getStorageType(oc)
 			if len(objectStorage) == 0 {
 				g.Skip("Current cluster doesn't have a proper object storage for this test!")
@@ -250,7 +250,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		})
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-ConnectedOnly-High-48679-High-48616-Define limits and overrides per tenant for Loki and restart loki components on config change[Serial]", func() {
+		g.It("Author:kbharti-ConnectedOnly-High-48679-High-48616-Define limits and overrides per tenant for Loki and restart loki components on config change[PRGate][LokiOperator][Serial]", func() {
 
 			objectStorage := getStorageType(oc)
 			if len(objectStorage) == 0 {

@@ -60,12 +60,14 @@ make clean
 
 ## Test suites
 
-The extension registers five named suites:
+The extension registers seven named suites:
 
 | Suite | What it runs |
 |-------|-------------|
 | `openshift-logging-e2e-tests/conformance/parallel` | `[Level0]` tests that are not `[Serial]` or `[Disruptive]` |
 | `openshift-logging-e2e-tests/conformance/serial` | `[Level0]` + `[Serial]` tests |
+| `openshift-logging-e2e-tests/cluster-logging-operator` | `[PRGate]` + `[CLO]` tests that are not `[Disruptive]` |
+| `openshift-logging-e2e-tests/loki-operator` | `[PRGate]` + `[LokiOperator]` tests that are not `[Disruptive]` |
 | `openshift-logging-e2e-tests/disruptive` | `[Disruptive]` tests |
 | `openshift-logging-e2e-tests/non-disruptive` | All tests that are not `[Disruptive]` |
 | `openshift-logging-e2e-tests/all` | Every test in the extension |
@@ -130,6 +132,9 @@ All tests follow the OTE annotation conventions:
 
 - `[sig-openshift-logging]` — SIG ownership label
 - `[Level0]` — smoke / must-pass tests included in conformance suites
+- `[PRGate]` — candidate regression test selected for operator PR CI
+- `[CLO]` — test exercises cluster-logging-operator behavior
+- `[LokiOperator]` — test exercises loki-operator behavior
 - `[Serial]` — test must not run concurrently with other tests
 - `[Disruptive]` — test may affect cluster state
 
