@@ -5,7 +5,7 @@ build:
 	@echo "Building extension binary..."
 	@cd test/e2e && $(MAKE) -f bindata.mk update-bindata
 	@mkdir -p bin
-	GOTOOLCHAIN=auto GONOSUMDB="*" go build -o $(BINARY) ./cmd
+	GOTOOLCHAIN=auto GONOSUMDB="*" GOFLAGS="" go build -mod=mod -o $(BINARY) ./cmd
 	@echo "✅ Binary built: $(BINARY)"
 
 .PHONY: clean
