@@ -37,7 +37,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author anli@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-WRS-Medium-61253-V-ICA.03-vector forward logs to fluentdserver over http - mtls", func() {
+		g.It("Author:anli-WRS-Medium-61253-V-ICA.03-vector forward logs to fluentdserver over http - mtls[CLO]", func() {
 			oc.SetupProject()
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -86,7 +86,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-High-60933-vector Forward logs to fluentd over http - https", func() {
+		g.It("Author:anli-High-60933-vector Forward logs to fluentd over http - https[CLO]", func() {
 			oc.SetupProject()
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -130,7 +130,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Medium-60926-vector Forward logs to fluentd over http - http", func() {
+		g.It("Author:anli-Medium-60926-vector Forward logs to fluentd over http - http[CLO]", func() {
 			oc.SetupProject()
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -172,7 +172,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Medium-60936-vector Forward logs to fluentd over http - TLSSkipVerify", func() {
+		g.It("Author:anli-Medium-60936-vector Forward logs to fluentd over http - TLSSkipVerify[CLO]", func() {
 			oc.SetupProject()
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -228,7 +228,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-High-61567-Collector-External HTTP output sink Fluentd complies with the tlsSecurityProfile configuration.[Slow][Disruptive]", func() {
+		g.It("Author:ikanse-High-61567-Collector-External HTTP output sink Fluentd complies with the tlsSecurityProfile configuration.[Slow][Disruptive][CLO]", func() {
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			if !compareExpectedTLSConfigWithCurrent(oc, `{"old":{},"type":"Old"}`) {
 				g.Skip("Current tlsSecurityProfile is not the expected one, skipping the test...")
@@ -314,7 +314,7 @@ ca_file = "/var/run/ocp-collector/secrets/to-fluentd-60933/ca-bundle.crt"`
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-WRS-Critical-65131-V-ICA.02 mCLF Inputs.receiver.http over http with default values", func() {
+		g.It("Author:anli-WRS-Critical-65131-V-ICA.02 mCLF Inputs.receiver.http over http with default values[CLO]", func() {
 			oc.SetupProject()
 			clfNS := oc.Namespace()
 			fluentdNS := clfNS

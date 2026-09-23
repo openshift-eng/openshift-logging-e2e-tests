@@ -133,7 +133,7 @@ type = "opentelemetry"`,
 
 	//author: qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-ConnectedOnly-High-76728-Add stream info to data model OTEL LokiStack[Serial][Slow]", func() {
+	g.It("Author:qitang-ConnectedOnly-High-76728-Add stream info to data model OTEL LokiStack[Serial][Slow][LokiOperator]", func() {
 		s := getStorageType(oc)
 		if len(s) == 0 {
 			g.Skip("Current cluster doesn't have a proper object storage for this test!")
@@ -264,7 +264,7 @@ type = "opentelemetry"`,
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-75351-Tech preview annotation should be enabled when forwarding logs via Otlp", func() {
+	g.It("Author:qitang-Medium-75351-Tech preview annotation should be enabled when forwarding logs via Otlp[CLO]", func() {
 		g.Skip("Skip this test because it is no longer supported")
 		compat_otp.By("Deploy collector pods")
 		clf := clusterlogforwarder{

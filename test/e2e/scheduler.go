@@ -146,7 +146,7 @@ use_apiserver_cache = true
 		lc.waitForLogsAppearByProject("application", appProj)
 	})
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:anli-High-81398-set collector deamoset affinity/anti-affinity", func() {
+	g.It("Author:anli-High-81398-set collector deamoset affinity/anti-affinity[CLO]", func() {
 		g.By("Create log producer")
 		appProj := oc.Namespace()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -198,7 +198,7 @@ use_apiserver_cache = true
 		o.Expect(strings.Contains(collectorRunNodeIPs, loggenNodeIP)).Should(o.BeTrue())
 	})
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:anli-High-81397-set collector deployment affinity/anti-affinity", func() {
+	g.It("Author:anli-High-81397-set collector deployment affinity/anti-affinity[CLO]", func() {
 		g.By("Create log producer")
 		appProj := oc.Namespace()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")

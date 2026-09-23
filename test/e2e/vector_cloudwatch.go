@@ -41,7 +41,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-76074-Forward logs to Cloudwatch group by namespaceName and groupPrefix", func() {
+		g.It("Author:qitang-Medium-76074-Forward logs to Cloudwatch group by namespaceName and groupPrefix[CLO]", func() {
 			platform := compat_otp.CheckPlatform(oc)
 			if platform != "aws" {
 				g.Skip("Skip for the platform is not AWS.")
@@ -103,7 +103,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-76075-Forward logs to Cloudwatch using namespaceUUID and groupPrefix", func() {
+		g.It("Author:qitang-High-76075-Forward logs to Cloudwatch using namespaceUUID and groupPrefix[CLO]", func() {
 			platform := compat_otp.CheckPlatform(oc)
 			if platform != "aws" {
 				g.Skip("Skip for the platform is not AWS.")
@@ -169,7 +169,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-High-61600-Collector External Cloudwatch output complies with the tlsSecurityProfile configuration.[Slow][Disruptive]", func() {
+		g.It("Author:ikanse-High-61600-Collector External Cloudwatch output complies with the tlsSecurityProfile configuration[CLO][Slow][Disruptive]", func() {
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			if !compareExpectedTLSConfigWithCurrent(oc, `{"custom":{"ciphers":["ECDHE-ECDSA-CHACHA20-POLY1305","ECDHE-RSA-CHACHA20-POLY1305","ECDHE-RSA-AES128-GCM-SHA256","ECDHE-ECDSA-AES128-GCM-SHA256"],"minTLSVersion":"VersionTLS12"},"type":"Custom"}`) {
 				g.Skip("Current tlsSecurityProfile is not the expected one, skipping the test...")
@@ -276,7 +276,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-71778-Collect or exclude logs by matching pod labels and namespaces.[Slow]", func() {
+		g.It("Author:qitang-Medium-71778-Collect or exclude logs by matching pod labels and namespaces[CLO][Slow]", func() {
 			platform := compat_otp.CheckPlatform(oc)
 			if platform != "aws" {
 				g.Skip("Skip for the platform is not AWS.")
@@ -361,7 +361,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-71488-Collect container logs from infrastructure projects in an application input.", func() {
+		g.It("Author:qitang-High-71488-Collect container logs from infrastructure projects in an application input[CLO]", func() {
 			g.By("init Cloudwatch test spec")
 			clfNS := oc.Namespace()
 			cw := cloudwatchSpec{
@@ -419,7 +419,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-75417-Validation for multiple CloudWatch outputs in awsAccessKey mode.", func() {
+		g.It("Author:qitang-Medium-75417-Validation for multiple CloudWatch outputs in awsAccessKey mode[CLO]", func() {
 			platform := compat_otp.CheckPlatform(oc)
 			if platform != "aws" {
 				g.Skip("Skip for the platform is not AWS.")
@@ -496,7 +496,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-81604-Support Multiple CloudWatch Outputs with unique STS Role", func() {
+		g.It("Author:qitang-High-81604-Support Multiple CloudWatch Outputs with unique STS Role[CLO]", func() {
 			platform := compat_otp.CheckPlatform(oc)
 			if platform != "aws" {
 				g.Skip("Skip for the platform is not AWS.")

@@ -41,7 +41,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author gkarager@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:gkarager-High-60699-Vector forward logs to syslog(RFCThirtyOneSixtyFour)", func() {
+		g.It("Author:gkarager-High-60699-Vector forward logs to syslog(RFCThirtyOneSixtyFour)[CLO]", func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -129,7 +129,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 		// author anli@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-High-75431-forward logs to Syslog using KubernetesMinimal", func() {
+		g.It("Author:anli-High-75431-forward logs to Syslog using KubernetesMinimal[CLO]", func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -196,7 +196,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author anli@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Medium-75317-forward logs to Syslog customized fields and debug mode", func() {
+		g.It("Author:anli-Medium-75317-forward logs to Syslog customized fields and debug mode[CLO]", func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -272,7 +272,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:gkarager-WRS-Critical-61479-V-ICA.02-V-ICA.03-Vector forward logs to syslog(tls)", func() {
+		g.It("Author:gkarager-WRS-Critical-61479-V-ICA.02-V-ICA.03-Vector forward logs to syslog(tls)[CLO]", func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -314,7 +314,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:gkarager-High-61477-Vector-Forward logs to syslog - mtls with private key passphrase", func() {
+		g.It("Author:gkarager-High-61477-Vector-Forward logs to syslog - mtls with private key passphrase[CLO]", func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -367,7 +367,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-mtls/ca-bundle.crt"`
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-High-62527-Collector External syslog output complies with the tlsSecurityProfile configuration.[Slow][Disruptive]", func() {
+		g.It("Author:ikanse-High-62527-Collector External syslog output complies with the tlsSecurityProfile configuration.[Slow][Disruptive][CLO]", func() {
 
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			if !compareExpectedTLSConfigWithCurrent(oc, `{"custom":{"ciphers":["ECDHE-ECDSA-CHACHA20-POLY1305","ECDHE-RSA-CHACHA20-POLY1305","ECDHE-RSA-AES128-GCM-SHA256","ECDHE-ECDSA-AES128-GCM-SHA256"],"minTLSVersion":"VersionTLS12"},"type":"Custom"}`) {
@@ -459,7 +459,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-71143-Collect or exclude audit logs.", func() {
+		g.It("Author:qitang-Medium-71143-Collect or exclude audit logs.[CLO]", func() {
 			compat_otp.By("Deploy rsyslog server")
 			syslogProj := oc.Namespace()
 			rsyslog := rsyslog{
@@ -587,7 +587,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 		})
 		// author anli@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Medium-81512-Syslog output payloadKey customized", func() {
+		g.It("Author:anli-Medium-81512-Syslog output payloadKey customized[CLO]", func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")

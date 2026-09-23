@@ -56,7 +56,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 
 	// author qitang@redhat.com
 	// port=no - 64.8% pass rate (253 runs last 60 days)
-	g.It("Author:qitang-Critical-74397-[InterOps] Forward logs to LokiStack.[Slow][Serial]", func() {
+	g.It("Author:qitang-Critical-74397-[InterOps] Forward logs to LokiStack.[Slow][Serial][CLO][LokiOperator]", func() {
 		g.By("deploy LO")
 		LO.SubscribeOperator(oc)
 		s := getStorageType(oc)
@@ -199,7 +199,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 	})
 
 	// port=no - 69.1% pass rate (687 runs last 60 days)
-	g.It("Author:qitang-ConnectedOnly-Critical-74926-[InterOps] Forward logs to Cloudwatch.", func() {
+	g.It("Author:qitang-ConnectedOnly-Critical-74926-[InterOps] Forward logs to Cloudwatch.[CLO]", func() {
 		clfNS := oc.Namespace()
 		cw := cloudwatchSpec{
 			collectorSAName: "cloudwatch-" + getRandomString(),
@@ -271,7 +271,7 @@ retry_max_duration_secs = 20`,
 
 	//author qitang@redhat.com
 	// port=yes - 99.1% pass rate (687 runs last 60 days)
-	g.It("Author:qitang-ConnectedOnly-Critical-74924-Forward logs to GCL", func() {
+	g.It("Author:qitang-ConnectedOnly-Critical-74924-Forward logs to GCL[CLO]", func() {
 		projectID, err := getGCPProjectID(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		gcl := googleCloudLogging{
@@ -329,7 +329,7 @@ retry_max_duration_secs = 20`,
 
 	//author anli@redhat.com
 	// port=maybe - 88.2% pass rate (687 runs last 60 days)
-	g.It("Author:anli-ConnectedOnly-Critical-71772-Forward logs to AZMonitor -- full options", func() {
+	g.It("Author:anli-ConnectedOnly-Critical-71772-Forward logs to AZMonitor -- full options[CLO]", func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform == "azure" && compat_otp.IsWorkloadIdentityCluster(oc) {
 			g.Skip("Skip on the workload identity enabled cluster!")
@@ -401,7 +401,7 @@ retry_max_duration_secs = 20`,
 	})
 
 	// port=no - 67.6% pass rate (253 runs last 60 days)
-	g.It("Author:kbharti-Critical-85642-Deploy LokiOperator with network policies enabled[Slow][Serial]", func() {
+	g.It("Author:kbharti-Critical-85642-Deploy LokiOperator with network policies enabled[Slow][Serial][CLO][LokiOperator]", func() {
 
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "aws" && platform != "azure" && platform != "gcp" {

@@ -37,7 +37,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 
 	//author anli@redhat.com
 	// port=no - insufficient data: 5 runs last 60 days
-	g.It("Author:anli-ConnectedOnly-High-71770-Forward logs to AZMonitor -- Minimal Options", func() {
+	g.It("Author:anli-ConnectedOnly-High-71770-Forward logs to AZMonitor -- Minimal Options[CLO]", func() {
 		if compat_otp.IsWorkloadIdentityCluster(oc) {
 			g.Skip("Skip on the workload identity enabled cluster!")
 		}
