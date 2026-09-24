@@ -146,6 +146,20 @@ func registerSuites(ext *e.Extension) {
 			},
 		},
 		{
+			Name:        "openshift-logging-e2e-tests/cluster-logging-operator/all",
+			Description: "All non-disruptive cluster-logging-operator tests",
+			Qualifiers: []string{
+				`name.contains("[CLO]") && !name.contains("[Disruptive]") && !name.contains("Longduration")`,
+			},
+		},
+		{
+			Name:        "openshift-logging-e2e-tests/loki-operator/all",
+			Description: "All non-disruptive loki-operator tests",
+			Qualifiers: []string{
+				`name.contains("[LokiOperator]") && !name.contains("[Disruptive]") && !name.contains("Longduration")`,
+			},
+		},
+		{
 			Name:        "openshift-logging-e2e-tests/disruptive",
 			Parents:     []string{"openshift/disruptive"},
 			Description: "Disruptive tests (may affect cluster state)",

@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"context"
 	"fmt"
 	"os"
@@ -12,10 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
+
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	exutil "github.com/openshift/origin/test/extended/util"
+	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -26,7 +27,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("vector-loki")
+		oc             = exutil.NewCLIWithoutNamespace("vector-loki")
 		loggingBaseDir string
 	)
 
@@ -46,7 +47,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-High-47760-Vector Forward logs using default value via HTTP", func() {
+		g.It("Author:ikanse-High-47760-Vector Forward logs using default value via HTTP[CLO]", func() {
 			var (
 				loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			)
@@ -113,7 +114,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Medium-48922-Vector Forward logs using correct loki.tenantKey.kubernetes.namespace_name via HTTP", func() {
+		g.It("Author:ikanse-Medium-48922-Vector Forward logs using correct loki.tenantKey.kubernetes.namespace_name via HTTP[CLO]", func() {
 			var (
 				loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			)
@@ -164,7 +165,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Medium-48060-Medium-47801-Vector Forward logs using loki.labelKeys", func() {
+		g.It("Author:ikanse-Medium-48060-Medium-47801-Vector Forward logs using loki.labelKeys[CLO]", func() {
 			var (
 				loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			)
@@ -234,7 +235,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Medium-48925-Vector Forward logs using correct loki.tenantKey.kubernetes.container_name via HTTP", func() {
+		g.It("Author:ikanse-Medium-48925-Vector Forward logs using correct loki.tenantKey.kubernetes.container_name via HTTP[CLO]", func() {
 			var (
 				loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			)
@@ -273,7 +274,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-71001-Collect or exclude logs by container[Slow]", func() {
+		g.It("Author:qitang-High-71001-Collect or exclude logs by container[Slow][CLO]", func() {
 			compat_otp.By("Create Loki project and deploy Loki Server")
 			lokiNS := oc.Namespace()
 			loki := externalLoki{
@@ -384,7 +385,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("vector-lokistack")
+		oc                    = exutil.NewCLIWithoutNamespace("vector-lokistack")
 		loggingBaseDir, s, sc string
 	)
 
@@ -425,7 +426,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-ConnectedOnly-Medium-48646-Medium-49486-Deploy LokiStack under different namespace and Vector Forward logs to LokiStack using CLF with gateway[Serial]", func() {
+		g.It("Author:qitang-ConnectedOnly-Medium-48646-Medium-49486-Deploy LokiStack under different namespace and Vector Forward logs to LokiStack using CLF with gateway[Serial][CLO][LokiOperator]", func() {
 			var (
 				jsonLogFile = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			)
@@ -492,7 +493,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-ConnectedOnly-Medium-54663-Medium-48628-unique cluster identifier in all type of the log record and Expose LokiStack metrics to Prometheus[Serial]", func() {
+		g.It("Author:kbharti-ConnectedOnly-Medium-54663-Medium-48628-unique cluster identifier in all type of the log record and Expose LokiStack metrics to Prometheus[Serial][CLO][LokiOperator]", func() {
 			var (
 				jsonLogFile = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			)
@@ -585,7 +586,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-ConnectedOnly-High-57063-Forward app logs to LokiStack with namespace selectors (vector)[Serial]", func() {
+		g.It("Author:kbharti-ConnectedOnly-High-57063-Forward app logs to LokiStack with namespace selectors (vector)[Serial][CLO]", func() {
 			g.By("Creating 2 applications..")
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 
@@ -664,7 +665,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		//author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-74945-New filter detectMultilineException test[Serial][Slow]", func() {
+		g.It("Author:qitang-High-74945-New filter detectMultilineException test[Serial][Slow][CLO]", func() {
 			multilineLogTypes := map[string][]string{
 				"java":   {javaExc, complexJavaExc, nestedJavaExc},
 				"go":     {goExc, goOnGaeExc, goSignalExc, goHTTP},
@@ -799,7 +800,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-ConnectedOnly-Medium-71144-Collect or exclude infrastructure logs[Serial][Slow]", func() {
+		g.It("Author:qitang-ConnectedOnly-Medium-71144-Collect or exclude infrastructure logs[Serial][Slow][CLO]", func() {
 			compat_otp.By("Deploying LokiStack CR for 1x.demo tshirt size")
 
 			lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
@@ -1163,7 +1164,7 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-78380-Collector should collect logs from all log sources[PRGate][CLO][LokiOperator][Serial]", func() {
+		g.It("Author:qitang-High-78380-Collector should collect logs from all log sources[PRGate][CLO][Serial]", func() {
 			compat_otp.By("Deploying LokiStack")
 			lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
 			ls := lokiStack{
@@ -1252,7 +1253,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("vector-loki-ext")
+		oc             = exutil.NewCLIWithoutNamespace("vector-loki-ext")
 		loggingBaseDir string
 	)
 
@@ -1272,7 +1273,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Critical-75298-Forward to Loki with default labelKeys", func() {
+		g.It("Author:qitang-Critical-75298-Forward to Loki with default labelKeys[CLO]", func() {
 
 			var (
 				loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -1333,7 +1334,7 @@ max_size = 268435488`,
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Medium-48490-Vector Forward logs to Grafana Loki using HTTPS and existing loki.tenantKey kubernetes.labels.test", func() {
+		g.It("Author:ikanse-Medium-48490-Vector Forward logs to Grafana Loki using HTTPS and existing loki.tenantKey kubernetes.labels.test[CLO]", func() {
 
 			var (
 				loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -1393,7 +1394,7 @@ max_size = 268435488`,
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Medium-48923-Vector Forward logs to Grafana Loki using HTTPS and existing loki.tenantKey kubernetes.namespace_name", func() {
+		g.It("Author:ikanse-Medium-48923-Vector Forward logs to Grafana Loki using HTTPS and existing loki.tenantKey kubernetes.namespace_name[CLO]", func() {
 
 			var (
 				loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -1453,7 +1454,7 @@ max_size = 268435488`,
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-High-62975-Collector connects to the remote output using the cipher defined in the tlsSecurityProfile [Slow][Disruptive]", func() {
+		g.It("Author:ikanse-High-62975-Collector connects to the remote output using the cipher defined in the tlsSecurityProfile [Slow][Disruptive][CLO]", func() {
 
 			compat_otp.By("Make sure that all the Cluster Operators are in healthy state before progressing.")
 			waitForOperatorsRunning(oc)
@@ -1554,7 +1555,7 @@ ciphersuites = "TLS_CHACHA20_POLY1305_SHA256"`
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Low-61476-Collector-External Loki output complies with the tlsSecurityProfile configuration.[Slow][Disruptive]", func() {
+		g.It("Author:ikanse-Low-61476-Collector-External Loki output complies with the tlsSecurityProfile configuration.[Slow][Disruptive][CLO]", func() {
 
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			if !compareExpectedTLSConfigWithCurrent(oc, `{"intermediate":{},"type":"Intermediate"}`) {
@@ -1674,7 +1675,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("lokistack-tlssecurity")
+		oc                    = exutil.NewCLIWithoutNamespace("lokistack-tlssecurity")
 		loggingBaseDir, s, sc string
 	)
 
@@ -1714,7 +1715,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-ConnectedOnly-High-54523-LokiStack comply with the intermediate TLS security profile when global API Server has no tlsSecurityProfile defined[Slow][Disruptive]", func() {
+		g.It("Author:ikanse-ConnectedOnly-High-54523-LokiStack comply with the intermediate TLS security profile when global API Server has no tlsSecurityProfile defined[Slow][Disruptive][CLO][LokiOperator]", func() {
 
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			if !compareExpectedTLSConfigWithCurrent(oc, "") {
@@ -1819,7 +1820,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-ConnectedOnly-Medium-54525-LokiStack comply with the old tlsSecurityProfile when configured in the global API server configuration[Slow][Disruptive]", func() {
+		g.It("Author:ikanse-ConnectedOnly-Medium-54525-LokiStack comply with the old tlsSecurityProfile when configured in the global API server configuration[Slow][Disruptive][CLO][LokiOperator]", func() {
 			if isFipsEnabled(oc) {
 				g.Skip("skip old tlsSecurityProfile on FIPS enabled cluster")
 			}
@@ -1926,7 +1927,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-ConnectedOnly-Medium-54526-Forwarding to lokistack comply with the custom tlsSecurityProfile when configured in the global API server configuration[Slow][Disruptive]", func() {
+		g.It("Author:ikanse-ConnectedOnly-Medium-54526-Forwarding to lokistack comply with the custom tlsSecurityProfile when configured in the global API server configuration[Slow][Disruptive][CLO][LokiOperator]", func() {
 
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			if !compareExpectedTLSConfigWithCurrent(oc, `{"custom":{"ciphers":["ECDHE-ECDSA-CHACHA20-POLY1305","ECDHE-RSA-CHACHA20-POLY1305","ECDHE-RSA-AES128-GCM-SHA256","ECDHE-ECDSA-AES128-GCM-SHA256"],"minTLSVersion":"VersionTLS12"},"type":"Custom"}`) {
@@ -2031,7 +2032,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-ConnectedOnly-Medium-54527-LokiStack comply with the global tlsSecurityProfile - old to intermediate[Slow][Disruptive]", func() {
+		g.It("Author:ikanse-ConnectedOnly-Medium-54527-LokiStack comply with the global tlsSecurityProfile - old to intermediate[Slow][Disruptive][CLO][LokiOperator]", func() {
 			g.Skip("Skipping this test for now")
 			if isFipsEnabled(oc) {
 				g.Skip("skip old tlsSecurityProfile on FIPS enabled cluster")
@@ -2209,7 +2210,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("loki-log-alerts-vector")
+		oc                = exutil.NewCLIWithoutNamespace("loki-log-alerts-vector")
 		loggingBaseDir, s string
 	)
 
@@ -2364,7 +2365,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-Critical-55415-Validate AlertManager support for cluster-monitoring is decoupled from User-workload monitoring[Serial]", func() {
+		g.It("Author:kbharti-Critical-55415-Validate AlertManager support for cluster-monitoring is decoupled from User-workload monitoring[Serial][LokiOperator]", func() {
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			oc.SetupProject()
 			appProj := oc.Namespace()
@@ -2465,7 +2466,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-Medium-61435-Validate AlertManager support for User-workload monitoring[Serial]", func() {
+		g.It("Author:kbharti-Medium-61435-Validate AlertManager support for User-workload monitoring[Serial][LokiOperator]", func() {
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			oc.SetupProject()
 			appProj := oc.Namespace()
@@ -2582,7 +2583,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("logging-flow-control")
+		oc                                 = exutil.NewCLIWithoutNamespace("logging-flow-control")
 		loggingBaseDir, s, sc, jsonLogFile string
 	)
 
@@ -2619,7 +2620,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-76114-Controlling log flow rates per container from selected containers by containerLimit LokiStack[Serial][Slow]", func() {
+	g.It("Author:qitang-Medium-76114-Controlling log flow rates per container from selected containers by containerLimit LokiStack[Serial][Slow][CLO][LokiOperator]", func() {
 		if !validateInfraForLoki(oc) {
 			g.Skip("Current platform not supported!")
 		}
@@ -2750,7 +2751,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-76115-Controlling the flow rate per destination to selected outputs LokiStack [Serial][Slow]", func() {
+	g.It("Author:qitang-Medium-76115-Controlling the flow rate per destination to selected outputs LokiStack [Serial][Slow][CLO][LokiOperator]", func() {
 		if !validateInfraForLoki(oc) {
 			g.Skip("Current platform not supported!")
 		}
@@ -2854,7 +2855,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-65195-Controlling log flow rates - different output with different rate Loki Elasticsearch Syslog", func() {
+	g.It("Author:qitang-Medium-65195-Controlling log flow rates - different output with different rate Loki Elasticsearch Syslog[CLO]", func() {
 		compat_otp.By("Create pod to generate some logs")
 		oc.SetupProject()
 		appProj := oc.Namespace()
@@ -2961,7 +2962,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Audit Policy T
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("logging-audit-policy")
+		oc                    = exutil.NewCLIWithoutNamespace("logging-audit-policy")
 		loggingBaseDir, s, sc string
 	)
 
@@ -3160,7 +3161,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Audit Policy T
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-67421-Separate policies can be applied on separate pipelines LokiStack.[Serial]", func() {
+	g.It("Author:qitang-High-67421-Separate policies can be applied on separate pipelines LokiStack.[Serial][CLO]", func() {
 		compat_otp.By("Deploying an external log store")
 		es := externalES{
 			namespace:  oc.Namespace(),
@@ -3256,7 +3257,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Audit Policy T
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-68318-Multiple policies can be applied to one pipeline LokiStack.[Serial]", func() {
+	g.It("Author:qitang-Medium-68318-Multiple policies can be applied to one pipeline LokiStack.[Serial][CLO]", func() {
 		compat_otp.By("Deploying LokiStack")
 		ls := lokiStack{
 			name:          "loki-68318",
@@ -3351,7 +3352,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("loki-logs-access")
+		oc                    = exutil.NewCLIWithoutNamespace("loki-logs-access")
 		loggingBaseDir, s, sc string
 	)
 
@@ -3488,7 +3489,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-67643-Verify logs access for LokiStack adminGroups[Serial][Slow]", func() {
+	g.It("Author:kbharti-Critical-67643-Verify logs access for LokiStack adminGroups[Serial][Slow][LokiOperator]", func() {
 
 		g.By("Create Groups with users")
 		oc.SetupProject()
@@ -3579,7 +3580,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease LokiStack - Ef
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("loki-otel-support")
+		oc                    = exutil.NewCLIWithoutNamespace("loki-otel-support")
 		loggingBaseDir, s, sc string
 	)
 
@@ -3618,7 +3619,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease LokiStack - Ef
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-70683-Medium-70684-Validate new Loki installations support TSDBv3 and v13 storage schema and automatic stream sharding[Serial]", func() {
+	g.It("Author:kbharti-High-70683-Medium-70684-Validate new Loki installations support TSDBv3 and v13 storage schema and automatic stream sharding[Serial][LokiOperator]", func() {
 
 		g.By("Deploy Loki stack with v13 schema and tsdb store")
 		lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
@@ -3743,7 +3744,7 @@ spec:
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-70714-Show warning to user for upgrading to LokStack TSDBv3 store and v13 schema[Serial]", func() {
+	g.It("Author:kbharti-High-70714-Show warning to user for upgrading to LokStack TSDBv3 store and v13 schema[Serial][LokiOperator]", func() {
 
 		// The Alert will be only be shown on a tshirt size of 1x.extra-small and greater
 		if !validateInfraAndResourcesForLoki(oc, "35Gi", "16") {
@@ -3782,7 +3783,7 @@ spec:
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Medium-70685-Validate support for blocking queries on LokiStack[Serial]", func() {
+	g.It("Author:kbharti-Medium-70685-Validate support for blocking queries on LokiStack[Serial][LokiOperator]", func() {
 
 		g.By("Create 3 application generator projects")
 		oc.SetupProject()
@@ -3885,7 +3886,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("lokistack-labelkeys")
+		oc                    = exutil.NewCLIWithoutNamespace("lokistack-labelkeys")
 		loggingBaseDir, s, sc string
 	)
 
@@ -3921,7 +3922,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-75334-Forward logs via clusterLogForwarder.observability.openshift.io API using per tenant and global labelKeys[Serial]", func() {
+	g.It("Author:kbharti-Critical-75334-Forward logs via clusterLogForwarder.observability.openshift.io API using per tenant and global labelKeys[CLO][LokiOperator][Serial]]", func() {
 
 		var (
 			loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -4087,7 +4088,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-75369-Forward logs via ClusterLogForwarder.observability.openshift.io API using per tenant keys and no global overrides[Serial]", func() {
+	g.It("Author:kbharti-High-75369-Forward logs via ClusterLogForwarder.observability.openshift.io API using per tenant keys and no global overrides[CLO][LokiOperator][Serial]", func() {
 
 		var (
 			loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -4259,7 +4260,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("lokistack-otlp-flow")
+		oc                    = exutil.NewCLIWithoutNamespace("lokistack-otlp-flow")
 		loggingBaseDir, s, sc string
 	)
 
@@ -4433,7 +4434,7 @@ resource_attributes:
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-80162-Verify that LokiStack provides a custom set of otlp configuration on global and per tenant with dropping of attributes[Serial]", func() {
+	g.It("Author:kbharti-Critical-80162-Verify that LokiStack provides a custom set of otlp configuration on global and per tenant with dropping of attributes[Serial][LokiOperator]", func() {
 
 		var (
 			loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -4798,7 +4799,7 @@ resource_attributes:
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-81978-Verify non-admin users can query with Otel semantic conventions for ViaQ dataModel[Serial]", func() {
+	g.It("Author:kbharti-High-81978-Verify non-admin users can query with Otel semantic conventions for ViaQ dataModel[Serial][LokiOperator]", func() {
 
 		var (
 			loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -4872,7 +4873,7 @@ resource_attributes:
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-82009-Verify non-admin users can query with Otel semantic conventions for Otel dataModel[Serial]", func() {
+	g.It("Author:kbharti-High-82009-Verify non-admin users can query with Otel semantic conventions for Otel dataModel[Serial][LokiOperator]", func() {
 
 		var (
 			loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -4946,7 +4947,7 @@ resource_attributes:
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-82010-Verify Loki AlertingRule creation with Otel attribute k8s_namespace_name for namespace matcher[Serial]", func() {
+	g.It("Author:kbharti-High-82010-Verify Loki AlertingRule creation with Otel attribute k8s_namespace_name for namespace matcher[Serial][LokiOperator]", func() {
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		oc.SetupProject()
 		appProj := oc.Namespace()
@@ -5012,7 +5013,7 @@ resource_attributes:
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-83593-Verify Loki AlertingRules can fire when dataModel is Otel[Serial]", func() {
+	g.It("Author:kbharti-High-83593-Verify Loki AlertingRules can fire when dataModel is Otel[Serial][LokiOperator]", func() {
 
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		oc.SetupProject()
@@ -5101,7 +5102,7 @@ resource_attributes:
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85395-Validate the default maximum request size is set to 3Mi when forwarding to LokiStack with Otel dataModule.[Serial]", func() {
+	g.It("Author:qitang-High-85395-Validate the default maximum request size is set to 3Mi when forwarding to LokiStack with Otel dataModule.[Serial][CLO]", func() {
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		oc.SetupProject()
 		appProj := oc.Namespace()
@@ -5219,7 +5220,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Vi
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("lokistack-vhs-flow")
+		oc                 = exutil.NewCLIWithoutNamespace("lokistack-vhs-flow")
 		loggingBaseDir, sc string
 	)
 
@@ -5251,7 +5252,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Vi
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Medium-82043-Configure virtual-host-style of S3 URL for minio buckets used on LokiStack object storage[Serial]", func() {
+	g.It("Author:kbharti-Medium-82043-Configure virtual-host-style of S3 URL for minio buckets used on LokiStack object storage[Serial][LokiOperator]", func() {
 		if compat_otp.IsWorkloadIdentityCluster(oc) {
 			g.Skip("The cluster is a STS/WIF cluster. Skipping case..")
 		}
@@ -5355,7 +5356,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Ne
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("lokistack-vhs-flow")
+		oc             = exutil.NewCLIWithoutNamespace("lokistack-vhs-flow")
 		loggingBaseDir string
 	)
 
@@ -5439,7 +5440,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Ne
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-85645-Verify Loki Operator reconciles if network policies are deleted manually[Serial]", func() {
+	g.It("Author:kbharti-High-85645-Verify Loki Operator reconciles if network policies are deleted manually[Serial][LokiOperator]", func() {
 
 		s := getStorageType(oc)
 		sc, err := getStorageClassName(oc)

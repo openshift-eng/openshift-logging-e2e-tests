@@ -1,18 +1,18 @@
 package logging
 
 import (
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 	"strings"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	exutil "github.com/openshift/origin/test/extended/util"
+	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -21,7 +21,7 @@ import (
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc = exutil.NewCLIWithoutNamespace("vector-kafka")
+		oc             = exutil.NewCLIWithoutNamespace("vector-kafka")
 		loggingBaseDir string
 	)
 
@@ -41,7 +41,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Medium-49369-Vector Forward logs to kafka topic via Mutual Chained certificates", func() {
+		g.It("Author:ikanse-Medium-49369-Vector Forward logs to kafka topic via Mutual Chained certificates[CLO]", func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -96,7 +96,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Medium-52420-Vector Forward logs to kafka using SASL plaintext", func() {
+		g.It("Author:ikanse-Medium-52420-Vector Forward logs to kafka using SASL plaintext[CLO]", func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -156,7 +156,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-WRS-Critical-68312-V-ICA.02-V-ICA.03-Forward to Kafka using SSL-SASL_SCRAM auth", func() {
+		g.It("Author:anli-WRS-Critical-68312-V-ICA.02-V-ICA.03-Forward to Kafka using SSL-SASL_SCRAM auth[CLO]", func() {
 			amqNS := oc.Namespace()
 
 			g.By("crete kafka instance")
@@ -205,7 +205,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-47036-Vector Forward logs to different AMQ Kafka topics[Slow]", func() {
+		g.It("Author:qitang-Medium-47036-Vector Forward logs to different AMQ Kafka topics[Slow][CLO]", func() {
 			nodes, err := oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: "kubernetes.io/os=linux,kubernetes.io/arch=amd64"})
 			if err != nil || len(nodes.Items) == 0 {
 				g.Skip("Skip for the cluster doesn't have amd64 node")
@@ -272,7 +272,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-48141-Medium-85766-Vector Forward logs to different Kafka brokers and test NetworkPolicy for Kafka multi-brokers.[Slow]", func() {
+		g.It("Author:qitang-Medium-48141-Medium-85766-Vector Forward logs to different Kafka brokers and test NetworkPolicy for Kafka multi-brokers.[Slow][CLO]", func() {
 			nodes, err := oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: "kubernetes.io/os=linux,kubernetes.io/arch=amd64"})
 			if err != nil || len(nodes.Items) == 0 {
 				g.Skip("Skip for the cluster doesn't have amd64 node")
@@ -357,7 +357,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-High-61549-Collector-External Kafka output complies with the tlsSecurityProfile configuration.[Slow][Disruptive]", func() {
+		g.It("Author:ikanse-High-61549-Collector-External Kafka output complies with the tlsSecurityProfile configuration.[Slow][Disruptive][CLO]", func() {
 
 			compat_otp.By("Check if the cluster has amd64 nodes")
 			nodes, err := oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: "kubernetes.io/os=linux,kubernetes.io/arch=amd64"})

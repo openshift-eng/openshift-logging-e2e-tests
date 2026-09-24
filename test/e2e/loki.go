@@ -1,17 +1,17 @@
 package logging
 
 import (
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"context"
 	"fmt"
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"os"
 	"path/filepath"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	exutil "github.com/openshift/origin/test/extended/util"
+	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,7 +22,7 @@ import (
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc = exutil.NewCLIWithoutNamespace("loki-stack")
+		oc             = exutil.NewCLIWithoutNamespace("loki-stack")
 		loggingBaseDir string
 	)
 
@@ -51,7 +51,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-ConnectedOnly-Critical-48607-High-66088-High-64961-Loki Operator - Verify replica support and PodDisruptionBudget 1x.extra-small, 1x.small and 1x.medium t-shirt size[Serial]", func() {
+		g.It("Author:kbharti-ConnectedOnly-Critical-48607-High-66088-High-64961-Loki Operator - Verify replica support and PodDisruptionBudget 1x.extra-small, 1x.small and 1x.medium t-shirt size[Serial][LokiOperator]", func() {
 			// This test needs m5.8xlarge (AWS) instance type and similar instance requirement for other public clouds
 			objectStorage := getStorageType(oc)
 			if len(objectStorage) == 0 {
@@ -370,7 +370,7 @@ spec:
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-ConnectedOnly-High-76729-LokiStack 1x.pico Support[Serial]", func() {
+		g.It("Author:qitang-ConnectedOnly-High-76729-LokiStack 1x.pico Support[Serial][LokiOperator]", func() {
 			if !validateInfraAndResourcesForLoki(oc, "18Gi", "8") {
 				g.Skip("Skip this case for the cluster does't have enough resources")
 			}

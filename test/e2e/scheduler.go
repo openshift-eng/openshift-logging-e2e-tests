@@ -1,16 +1,16 @@
 package logging
 
 import (
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"context"
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 	"strings"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	exutil "github.com/openshift/origin/test/extended/util"
+	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -20,7 +20,7 @@ import (
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease scheduler", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc = exutil.NewCLIWithoutNamespace("log-scheduler")
+		oc             = exutil.NewCLIWithoutNamespace("log-scheduler")
 		loggingBaseDir string
 	)
 
@@ -146,7 +146,7 @@ use_apiserver_cache = true
 		lc.waitForLogsAppearByProject("application", appProj)
 	})
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:anli-High-81398-set collector deamoset affinity/anti-affinity", func() {
+	g.It("Author:anli-High-81398-set collector deamoset affinity/anti-affinity[CLO]", func() {
 		g.By("Create log producer")
 		appProj := oc.Namespace()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -198,7 +198,7 @@ use_apiserver_cache = true
 		o.Expect(strings.Contains(collectorRunNodeIPs, loggenNodeIP)).Should(o.BeTrue())
 	})
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:anli-High-81397-set collector deployment affinity/anti-affinity", func() {
+	g.It("Author:anli-High-81397-set collector deployment affinity/anti-affinity[CLO]", func() {
 		g.By("Create log producer")
 		appProj := oc.Namespace()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
