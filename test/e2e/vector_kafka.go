@@ -1,18 +1,18 @@
 package logging
 
 import (
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 	"strings"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	exutil "github.com/openshift/origin/test/extended/util"
+	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -21,7 +21,7 @@ import (
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc = exutil.NewCLIWithoutNamespace("vector-kafka")
+		oc             = exutil.NewCLIWithoutNamespace("vector-kafka")
 		loggingBaseDir string
 	)
 

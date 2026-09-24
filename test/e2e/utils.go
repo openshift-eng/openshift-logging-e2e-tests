@@ -1,12 +1,12 @@
 package logging
 
 import (
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"context"
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"io"
 	"math/rand"
 	"net/http"

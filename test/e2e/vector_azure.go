@@ -2,20 +2,20 @@
 package logging
 
 import (
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"fmt"
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	exutil "github.com/openshift/origin/test/extended/util"
+	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 )
 
 var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc = exutil.NewCLIWithoutNamespace("log-to-azure")
+		oc             = exutil.NewCLIWithoutNamespace("log-to-azure")
 		loggingBaseDir string
 		CLO            SubscriptionObjects
 	)

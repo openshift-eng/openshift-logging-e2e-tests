@@ -1,16 +1,16 @@
 package logging
 
 import (
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"context"
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 	"strings"
 	"time"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	exutil "github.com/openshift/origin/test/extended/util"
+	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -20,7 +20,7 @@ import (
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease scheduler", func() {
 	defer g.GinkgoRecover()
 	var (
-		oc = exutil.NewCLIWithoutNamespace("log-scheduler")
+		oc             = exutil.NewCLIWithoutNamespace("log-scheduler")
 		loggingBaseDir string
 	)
 

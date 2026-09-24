@@ -3001,7 +3001,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Audit Policy T
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Critical-75841-Filter audit logs and forward to log store LokiStack[PRGate][CLO][Serial][LokiOperator]", func() {
+	g.It("Author:qitang-Critical-75841-Filter audit logs and forward to log store LokiStack[PRGate][CLO][Serial]", func() {
 		compat_otp.By("Deploying LokiStack")
 		ls := lokiStack{
 			name:          "loki-75841",
@@ -3922,7 +3922,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-75334-Forward logs via clusterLogForwarder.observability.openshift.io API using per tenant and global labelKeys[Serial][LokiOperator]", func() {
+	g.It("Author:kbharti-Critical-75334-Forward logs via clusterLogForwarder.observability.openshift.io API using per tenant and global labelKeys[CLO][LokiOperator][Serial]]", func() {
 
 		var (
 			loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -4088,7 +4088,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-75369-Forward logs via ClusterLogForwarder.observability.openshift.io API using per tenant keys and no global overrides[Serial][LokiOperator]", func() {
+	g.It("Author:kbharti-High-75369-Forward logs via ClusterLogForwarder.observability.openshift.io API using per tenant keys and no global overrides[CLO][LokiOperator][Serial]", func() {
 
 		var (
 			loglabeltemplate = filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")

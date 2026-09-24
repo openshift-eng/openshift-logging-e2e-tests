@@ -7,15 +7,15 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	exutil "github.com/openshift/origin/test/extended/util"
+	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease loki-operator - Managed auth/STS mode", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc = exutil.NewCLIWithoutNamespace("loki-sts-wif-support")
+		oc                    = exutil.NewCLIWithoutNamespace("loki-sts-wif-support")
 		loggingBaseDir, s, sc string
 	)
 
