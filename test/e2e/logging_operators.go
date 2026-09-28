@@ -1255,7 +1255,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85456-NetworkPolicy for ClusterLogForwarder CloudWatch output.[CLO]", func() {
+	g.It("Author:qitang-High-85456-NetworkPolicy for ClusterLogForwarder CloudWatch output.[PreMerge][CLO]", func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "aws" {
 			g.Skip("Skip for the platform is not AWS.")
@@ -1344,7 +1344,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85744-NetworkPolicy for ClusterLogForwarder s3 output.[CLO]", func() {
+	g.It("Author:qitang-High-85744-NetworkPolicy for ClusterLogForwarder s3 output.[PreMerge][CLO]", func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "aws" {
 			g.Skip("Skip for the platform is not AWS.")
