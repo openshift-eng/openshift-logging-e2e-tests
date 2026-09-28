@@ -37,7 +37,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Otlp output te
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Critical-68961-Medium-85651-Forward logs to OTEL collector and use opentelemetry sink when forwarding to OTLP output[PRGate][CLO]", func() {
+	g.It("Author:qitang-Critical-68961-Medium-85651-Forward logs to OTEL collector and use opentelemetry sink when forwarding to OTLP output[PreMerge][CLO]", func() {
 		var (
 			expectedCSV       string
 			operatorInstalled bool
