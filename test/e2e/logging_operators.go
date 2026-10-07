@@ -1108,7 +1108,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		}
 
 		g.By("check network policy, no network policy should be created")
-		np, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", loggingNS, "-oname").Output()
+		// The operator's own OLM-managed policy (clo-permissive-network-policy) is shipped in the bundle; only policies reconciled by CLO are checked here.
+		np, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", loggingNS, "-l", "!olm.managed", "-oname").Output()
 		o.Expect(np).Should(o.BeEmpty())
 
 		g.By("update LFME and CLF to enable network policy")
