@@ -6,9 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"io"
 	"math/rand"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +19,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 
 	"cloud.google.com/go/logging"
 	"cloud.google.com/go/logging/logadmin"
@@ -2737,27 +2739,60 @@ func convertInterfaceToArray(t interface{}) []string {
 
 // send logs over http
 func postDataToHttpserver(oc *exutil.CLI, httpURL string, postJsonString string) bool {
-	cloPods, err := oc.AdminKubeClient().CoreV1().Pods(cloNS).List(context.Background(), metav1.ListOptions{LabelSelector: "name=cluster-logging-operator"})
-	if err != nil || len(cloPods.Items) < 1 {
-		e2e.Logf("failed to get pods by label name=cluster-logging-operator")
-		return false
-	}
-	//ToDo, send logs to httpserver using service ca, oc get cm/openshift-service-ca.crt -o json |jq '.data."service-ca.crt"'
-	cmd := `curl -s -k -w "%{http_code}" ` + httpURL + " -d '" + postJsonString + "'"
-	result, err := e2eoutput.RunHostCmdWithRetries(cloNS, cloPods.Items[0].Name, cmd, 3*time.Second, 30*time.Second)
+	u, err := url.Parse(httpURL)
 	if err != nil {
-		e2e.Logf("Show more status as data can not be sent to httpserver")
-		oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", cloNS, "endpoints").Output()
-		oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", cloNS, "pods").Output()
+		e2e.Logf("failed to parse URL %s: %v", httpURL, err)
 		return false
 	}
-	if result == "200" {
+	hostParts := strings.SplitN(u.Hostname(), ".", 3)
+	if len(hostParts) < 2 {
+		e2e.Logf("unexpected URL format: %s", httpURL)
+		return false
+	}
+	svcName, svcNS, remotePort := hostParts[0], hostParts[1], u.Port()
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		e2e.Logf("failed to find free local port: %v", err)
+		return false
+	}
+	localPort := listener.Addr().(*net.TCPAddr).Port
+	listener.Close()
+
+	pfCmd := exec.Command("oc", "port-forward", "-n", svcNS,
+		"svc/"+svcName, fmt.Sprintf("%d:%s", localPort, remotePort))
+	if err := pfCmd.Start(); err != nil {
+		e2e.Logf("failed to start port-forward: %v", err)
+		return false
+	}
+	defer pfCmd.Process.Kill() //nolint:errcheck
+
+	client := &http.Client{
+		Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}, //nolint:gosec
+		Timeout:   10 * time.Second,
+	}
+	localURL := fmt.Sprintf("https://127.0.0.1:%d", localPort)
+
+	var statusCode int
+	err = wait.PollUntilContextTimeout(context.Background(), 3*time.Second, 90*time.Second, true, func(ctx context.Context) (bool, error) {
+		resp, httpErr := client.Post(localURL, "application/json", strings.NewReader(postJsonString))
+		if httpErr != nil {
+			e2e.Logf("POST failed (retrying): %v", httpErr)
+			return false, nil
+		}
+		resp.Body.Close()
+		statusCode = resp.StatusCode
+		return true, nil
+	})
+	if err != nil {
+		e2e.Logf("data cannot be sent to httpserver %s: %v", httpURL, err)
+		return false
+	}
+	if statusCode == http.StatusOK {
 		return true
-	} else {
-		e2e.Logf("Show result as return code is not 200")
-		e2e.Logf("result=%v", result)
-		return false
 	}
+	e2e.Logf("unexpected status %d for %s", statusCode, httpURL)
+	return false
 }
 
 // create job for rapiddast test
