@@ -1,0 +1,68 @@
+kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: vector-http-receiver-deployment-template
+objects:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+    labels:
+      provider: aosqe
+      component: ${NAME}
+  spec:
+    replicas: 1
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        provider: aosqe
+        component: ${NAME}
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          provider: aosqe
+          component: ${NAME}
+          # keep the receiver's own logs out of collection to avoid a feedback loop
+          vector.dev/exclude: "true"
+      spec:
+        securityContext:
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+        containers:
+        - name: vector-receiver
+          image: ${IMAGE}
+          imagePullPolicy: IfNotPresent
+          command:
+          - /usr/bin/vector
+          - --config-toml=/etc/vector/vector.toml
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop:
+              - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          ports:
+          - containerPort: 8090
+            name: http
+          volumeMounts:
+          - mountPath: /etc/vector
+            name: config
+            readOnly: true
+        volumes:
+        - configMap:
+            defaultMode: 420
+            name: ${NAME}
+          name: config
+parameters:
+- name: NAME
+  value: vector-http-receiver
+- name: NAMESPACE
+  value: openshift-logging
+- name: IMAGE
+  value: quay.io/openshift-logging/vector:v0.54.0-devel
