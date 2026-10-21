@@ -1,0 +1,50 @@
+kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: clusterlogforwarder-template
+objects:
+- apiVersion: observability.openshift.io/v1
+  kind: ClusterLogForwarder
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+  spec:
+    collector: ${{COLLECTOR}}
+    managementState: Managed
+    filters:
+    - name: drop-older-than
+      type: drop
+      drop:
+      - test:
+        - olderThan: "${OLDER_THAN}"
+    outputs:
+    - name: vector-http-receiver
+      type: http
+      http:
+        method: POST
+        url: ${URL}
+    pipelines:
+    - name: all-logs
+      filterRefs:
+      - drop-older-than
+      inputRefs:
+      - application
+      - infrastructure
+      - audit
+      outputRefs:
+      - vector-http-receiver
+    serviceAccount:
+      name: ${SERVICE_ACCOUNT_NAME}
+parameters:
+- name: NAME
+  value: instance
+- name: NAMESPACE
+  value: openshift-logging
+- name: URL
+  value: http://vector-http-receiver.openshift-logging.svc:8090
+- name: OLDER_THAN
+  value: "2026-01-01T00:00:00Z"
+- name: SERVICE_ACCOUNT_NAME
+  value: ""
+- name: COLLECTOR
+  value: "{}"

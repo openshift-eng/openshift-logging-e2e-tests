@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -37,6 +36,14 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	e2eoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/env"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/metrics"
+	librandom "github.com/openshift/openshift-logging-e2e-tests/internal/lib/random"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/apps/daemonset"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/apps/deployment"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/core/serviceaccount"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/observability"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/openshift"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -75,15 +82,7 @@ type CatalogSourceObjects struct {
 	SourceNamespace string `json:",omitempty"`
 }
 
-func getRandomString() string {
-	chars := "abcdefghijklmnopqrstuvwxyz0123456789"
-	seed := rand.New(rand.NewSource(time.Now().UnixNano()))
-	buffer := make([]byte, 8)
-	for index := range buffer {
-		buffer[index] = chars[seed.Intn(len(chars))]
-	}
-	return string(buffer)
-}
+var getRandomString = librandom.String
 
 // contain checks if b is an elememt of a
 func contain(a []string, b string) bool {
@@ -104,33 +103,10 @@ func containSubstring(a any, b string) bool {
 	return false
 }
 
-func processTemplate(oc *exutil.CLI, parameters ...string) (string, error) {
-	var configFile string
-	filename := getRandomString() + ".json"
-	err := wait.PollUntilContextTimeout(context.Background(), 3*time.Second, 15*time.Second, true, func(context.Context) (done bool, err error) {
-		output, err := oc.AsAdmin().Run("process").Args(parameters...).OutputToFile(filename)
-		if err != nil {
-			e2e.Logf("the err:%v, and try next round", err)
-			return false, nil
-		}
-		configFile = output
-		return true, nil
-	})
-	if err != nil {
-		return configFile, fmt.Errorf("failed to process template with the provided parameters")
-	}
-	return configFile, nil
-}
-
-func getProxyFromEnv() string {
-	var proxy string
-	if os.Getenv("http_proxy") != "" {
-		proxy = os.Getenv("http_proxy")
-	} else if os.Getenv("http_proxy") != "" {
-		proxy = os.Getenv("https_proxy")
-	}
-	return proxy
-}
+var (
+	processTemplate = openshift.ProcessTemplate
+	getProxyFromEnv = env.Proxy
+)
 
 func getClusterID(oc *exutil.CLI) (string, error) {
 	return oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion/version", "-ojsonpath={.spec.clusterID}").Output()
@@ -442,39 +418,10 @@ func (so *SubscriptionObjects) getInstalledCSV(oc *exutil.CLI) string {
 	return installedCSV
 }
 
-// WaitForDeploymentPodsToBeReady waits for the specific deployment to be ready
-func WaitForDeploymentPodsToBeReady(oc *exutil.CLI, namespace string, name string) {
-	var selectors map[string]string
-	err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
-		deployment, err := oc.AdminKubeClient().AppsV1().Deployments(namespace).Get(context.Background(), name, metav1.GetOptions{})
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				e2e.Logf("Waiting for deployment/%s to appear\n", name)
-				return false, nil
-			}
-			return false, err
-		}
-		selectors = deployment.Spec.Selector.MatchLabels
-		if deployment.Status.AvailableReplicas == *deployment.Spec.Replicas && deployment.Status.UpdatedReplicas == *deployment.Spec.Replicas {
-			e2e.Logf("Deployment %s available (%d/%d)\n", name, deployment.Status.AvailableReplicas, *deployment.Spec.Replicas)
-			return true, nil
-		}
-		e2e.Logf("Waiting for full availability of %s deployment (%d/%d)\n", name, deployment.Status.AvailableReplicas, *deployment.Spec.Replicas)
-		return false, nil
-	})
-	if err != nil && len(selectors) > 0 {
-		var labels []string
-		for k, v := range selectors {
-			labels = append(labels, k+"="+v)
-		}
-		label := strings.Join(labels, ",")
-		_ = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, "-l", label).Execute()
-		podStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, "-l", label, "-ojsonpath={.items[*].status.conditions}").Output()
-		containerStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", namespace, "-l", label, "-ojsonpath={.items[*].status.containerStatuses}").Output()
-		e2e.Failf("deployment %s is not ready:\nconditions: %s\ncontainer status: %s", name, podStatus, containerStatus)
-	}
-	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("deployment %s is not available", name))
-}
+var (
+	WaitForDeploymentPodsToBeReady = deployment.WaitForPodsToBeReady
+	WaitForDaemonsetPodsToBeReady  = daemonset.WaitForPodsToBeReady
+)
 
 func waitForStatefulsetReady(oc *exutil.CLI, namespace string, name string) {
 	var selectors map[string]string
@@ -508,40 +455,6 @@ func waitForStatefulsetReady(oc *exutil.CLI, namespace string, name string) {
 		e2e.Failf("statefulset %s is not ready:\nconditions: %s\ncontainer status: %s", name, podStatus, containerStatus)
 	}
 	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("statefulset %s is not available", name))
-}
-
-// WaitForDaemonsetPodsToBeReady waits for all the pods controlled by the ds to be ready
-func WaitForDaemonsetPodsToBeReady(oc *exutil.CLI, ns string, name string) {
-	var selectors map[string]string
-	err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
-		daemonset, err := oc.AdminKubeClient().AppsV1().DaemonSets(ns).Get(context.Background(), name, metav1.GetOptions{})
-		if err != nil {
-			if apierrors.IsNotFound(err) {
-				e2e.Logf("Waiting for daemonset/%s to appear\n", name)
-				return false, nil
-			}
-			return false, err
-		}
-		selectors = daemonset.Spec.Selector.MatchLabels
-		if daemonset.Status.DesiredNumberScheduled > 0 && daemonset.Status.NumberReady == daemonset.Status.DesiredNumberScheduled && daemonset.Status.UpdatedNumberScheduled == daemonset.Status.DesiredNumberScheduled {
-			e2e.Logf("Daemonset/%s is available (%d/%d)\n", name, daemonset.Status.NumberReady, daemonset.Status.DesiredNumberScheduled)
-			return true, nil
-		}
-		e2e.Logf("Waiting for full availability of %s daemonset (%d/%d)\n", name, daemonset.Status.NumberReady, daemonset.Status.DesiredNumberScheduled)
-		return false, nil
-	})
-	if err != nil && len(selectors) > 0 {
-		var labels []string
-		for k, v := range selectors {
-			labels = append(labels, k+"="+v)
-		}
-		label := strings.Join(labels, ",")
-		_ = oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", ns, "-l", label).Execute()
-		podStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", ns, "-l", label, "-ojsonpath={.items[*].status.conditions}").Output()
-		containerStatus, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", ns, "-l", label, "-ojsonpath={.items[*].status.containerStatuses}").Output()
-		e2e.Failf("daemonset %s is not ready:\nconditions: %s\ncontainer status: %s", name, podStatus, containerStatus)
-	}
-	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("Daemonset %s is not available", name))
 }
 
 func waitForPodReadyWithLabel(oc *exutil.CLI, ns string, label string) {
@@ -680,81 +593,36 @@ type clusterlogforwarder struct {
 	waitForPodReady           bool   // optional, if true, will check daemonset stats
 }
 
+// toObservability converts the test-local options into the observability type,
+// so behavior matches the pre-refactor implementation of these helpers.
+func (clf *clusterlogforwarder) toObservability(oc *exutil.CLI) *observability.ClusterLogForwarder {
+	return observability.NewClusterLogForwarder(oc, clf.name, clf.namespace, func(o *observability.ClusterLogForwarder) {
+		o.CollectApplicationLogs = clf.collectApplicationLogs
+		o.CollectAuditLogs = clf.collectAuditLogs
+		o.CollectInfrastructureLogs = clf.collectInfrastructureLogs
+		o.EnableMonitoring = clf.enableMonitoring
+		o.ServiceAccountName = clf.serviceAccountName
+		o.TemplateFile = clf.templateFile
+		o.SecretName = clf.secretName
+		o.WaitForPodReady = clf.waitForPodReady
+	})
+}
+
 // create clusterlogforwarder CR from a template
 func (clf *clusterlogforwarder) create(oc *exutil.CLI, optionalParameters ...string) {
-	//parameters := []string{"-f", clf.templateFile, "--ignore-unknown-parameters=true", "-p", "NAME=" + clf.name, "NAMESPACE=" + clf.namespace}
-	if clf.namespace != "openshift-logging" {
-		o.Expect(compat_otp.SetNamespacePrivileged(oc, clf.namespace)).To(o.Succeed())
-	}
-
-	if clf.namespace != cloNS && clf.namespace != loNS && clf.enableMonitoring {
-		enableClusterMonitoring(oc, clf.namespace)
-	}
-
-	parameters := []string{"-n", clf.namespace, "-f", clf.templateFile, "-p", "NAME=" + clf.name, "NAMESPACE=" + clf.namespace}
-	if clf.secretName != "" {
-		parameters = append(parameters, "SECRET_NAME="+clf.secretName)
-	}
-
-	if clf.serviceAccountName != "" {
-		clf.createServiceAccount(oc)
-		parameters = append(parameters, "SERVICE_ACCOUNT_NAME="+clf.serviceAccountName)
-	}
-
-	if len(optionalParameters) > 0 {
-		parameters = append(parameters, optionalParameters...)
-	}
-
-	file, processErr := processTemplate(oc, parameters...)
-	defer os.Remove(file)
-	if processErr != nil {
-		e2e.Failf("error processing file: %v", processErr)
-	}
-	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("-f", file, "-n", clf.namespace).Execute()
-	if err != nil {
-		e2e.Failf("error creating clusterlogforwarder: %v", err)
-	}
-	resource{"clusterlogforwarders.observability.openshift.io", clf.name, clf.namespace}.WaitForResourceToAppear(oc)
-	if clf.waitForPodReady {
-		clf.waitForCollectorPodsReady(oc)
-	}
+	clf.toObservability(oc).Create(optionalParameters...)
 }
 
 // createServiceAccount creates the serviceaccount and add the required clusterroles to the serviceaccount
 func (clf *clusterlogforwarder) createServiceAccount(oc *exutil.CLI) {
-	_, err := oc.AdminKubeClient().CoreV1().ServiceAccounts(clf.namespace).Get(context.Background(), clf.serviceAccountName, metav1.GetOptions{})
-	if apierrors.IsNotFound(err) {
-		err = createServiceAccount(oc, clf.namespace, clf.serviceAccountName)
-		if err != nil {
-			e2e.Failf("can't create the serviceaccount: %v", err)
-		}
-	}
-	if clf.collectApplicationLogs {
-		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-application-logs")
-		o.Expect(err).NotTo(o.HaveOccurred())
-	}
-	if clf.collectInfrastructureLogs {
-		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-infrastructure-logs")
-		o.Expect(err).NotTo(o.HaveOccurred())
-	}
-	if clf.collectAuditLogs {
-		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-audit-logs")
-		o.Expect(err).NotTo(o.HaveOccurred())
-	}
+	clf.toObservability(oc).CreateServiceAccount()
 }
 
-func createServiceAccount(oc *exutil.CLI, namespace, name string) error {
-	err := oc.AsAdmin().WithoutNamespace().Run("create").Args("serviceaccount", name, "-n", namespace).Execute()
-	return err
-}
-
-func addClusterRoleToServiceAccount(oc *exutil.CLI, namespace, serviceAccountName, clusterRole string) error {
-	return oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-cluster-role-to-user", clusterRole, fmt.Sprintf("system:serviceaccount:%s:%s", namespace, serviceAccountName)).Execute()
-}
-
-func removeClusterRoleFromServiceAccount(oc *exutil.CLI, namespace, serviceAccountName, clusterRole string) error {
-	return oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "remove-cluster-role-from-user", clusterRole, fmt.Sprintf("system:serviceaccount:%s:%s", namespace, serviceAccountName)).Execute()
-}
+var (
+	createServiceAccount                = serviceaccount.Create
+	addClusterRoleToServiceAccount      = serviceaccount.AddClusterRole
+	removeClusterRoleFromServiceAccount = serviceaccount.RemoveClusterRole
+)
 
 // update existing clusterlogforwarder CR
 // if template is specified, then run command `oc process -f template -p patches | oc apply -f -`
@@ -799,27 +667,11 @@ func (clf *clusterlogforwarder) patch(oc *exutil.CLI, patch_string string) (stri
 
 // delete the clusterlogforwarder CR
 func (clf *clusterlogforwarder) delete(oc *exutil.CLI) {
-	err := resource{"clusterlogforwarders.observability.openshift.io", clf.name, clf.namespace}.clear(oc)
-	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("clusterlogforwarder/%s in project/%s is not deleted", clf.name, clf.namespace))
-	if len(clf.serviceAccountName) > 0 {
-		if clf.collectApplicationLogs {
-			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-application-logs")
-		}
-		if clf.collectInfrastructureLogs {
-			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-infrastructure-logs")
-		}
-		if clf.collectAuditLogs {
-			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-audit-logs")
-		}
-		resource{"serviceaccount", clf.serviceAccountName, clf.namespace}.clear(oc)
-	}
-
-	err = resource{"daemonset", clf.name, clf.namespace}.WaitUntilResourceIsGone(oc)
-	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("daemonset/%s in project/%s is not deleted", clf.name, clf.namespace))
+	observability.NewClusterLogForwarder(oc, clf.name, clf.namespace).Delete()
 }
 
 func (clf *clusterlogforwarder) waitForCollectorPodsReady(oc *exutil.CLI) {
-	WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
+	daemonset.WaitForPodsToBeReady(oc, clf.namespace, clf.name)
 }
 
 func (clf *clusterlogforwarder) getCollectorNodeNames(oc *exutil.CLI) ([]string, error) {
@@ -988,7 +840,7 @@ func (lfme *logFileMetricExporter) create(oc *exutil.CLI, optionalParameters ...
 	}
 	resource{"logfilemetricexporter", lfme.name, lfme.namespace}.WaitForResourceToAppear(oc)
 	if lfme.waitPodsReady {
-		WaitForDaemonsetPodsToBeReady(oc, lfme.namespace, "logfilesmetricexporter")
+		daemonset.WaitForPodsToBeReady(oc, lfme.namespace, "logfilesmetricexporter")
 	}
 }
 
@@ -1160,65 +1012,12 @@ func getRouteAddress(oc *exutil.CLI, ns, routeName string) string {
 	return route.Spec.Host
 }
 
-func getSAToken(oc *exutil.CLI, name, ns string) string {
-	token, err := oc.AsAdmin().WithoutNamespace().Run("create").Args("token", name, "-n", ns).Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	return token
-}
+var getSAToken = serviceaccount.Token
 
-// enableClusterMonitoring add label `openshift.io/cluster-monitoring: "true"` to the project, and create role/prometheus-k8s rolebinding/prometheus-k8s in the namespace
-func enableClusterMonitoring(oc *exutil.CLI, namespace string) {
-	err := oc.AsAdmin().WithoutNamespace().Run("label").Args("ns", namespace, "openshift.io/cluster-monitoring=true").Execute()
-	o.Expect(err).NotTo(o.HaveOccurred())
-
-	file := testdata.FixturePath("logging", "prometheus-k8s-rbac.yaml")
-	err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-n", namespace, "-f", file).Execute()
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
-
-// queryPrometheus returns the promtheus metrics which match the query string
-// token: the user token used to run the http request, if it's not specified, it will use the token of sa/prometheus-k8s in openshift-monitoring project
-// path: the api path, for example: /api/v1/query?
-// query: the metric/alert you want to search, e.g.: es_index_namespaces_total
-// action: it can be "GET", "get", "Get", "POST", "post", "Post"
-func queryPrometheus(oc *exutil.CLI, token string, path string, query string, action string) (*prometheusQueryResult, error) {
-	var bearerToken string
-	var err error
-	if token == "" {
-		bearerToken = getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
-	} else {
-		bearerToken = token
-	}
-	address := "https://" + getRouteAddress(oc, "openshift-monitoring", "prometheus-k8s")
-
-	h := make(http.Header)
-	h.Add("Content-Type", "application/json")
-	h.Add("Authorization", "Bearer "+bearerToken)
-
-	params := url.Values{}
-	if len(query) > 0 {
-		params.Add("query", query)
-	}
-
-	var p prometheusQueryResult
-	resp, err := doHTTPRequest(h, address, path, params.Encode(), action, true, 5, nil, 200)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(resp, &p)
-	if err != nil {
-		return nil, err
-	}
-	return &p, nil
-}
-
-func getMetric(oc *exutil.CLI, token, query string) ([]metric, error) {
-	res, err := queryPrometheus(oc, token, "/api/v1/query", query, "GET")
-	if err != nil {
-		return []metric{}, err
-	}
-	return res.Data.Result, nil
-}
+var (
+	queryPrometheus = metrics.QueryPrometheus
+	getMetric       = metrics.Get
+)
 
 func checkMetric(oc *exutil.CLI, token, query string, timeInMinutes int) {
 	err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, time.Duration(timeInMinutes)*time.Minute, true, func(context.Context) (done bool, err error) {
@@ -1269,8 +1068,8 @@ func checkCLOMetric(oc *exutil.CLI, token string) {
 	o.Expect(missMetics).Should(o.BeEmpty(), fmt.Sprintf("can't find metrics %v in given time", missMetics))
 }
 
-func getAlert(oc *exutil.CLI, token, alertSelector string) ([]alert, error) {
-	var al []alert
+func getAlert(oc *exutil.CLI, token, alertSelector string) ([]metrics.Alert, error) {
+	var al []metrics.Alert
 	alerts, err := queryPrometheus(oc, token, "/api/v1/alerts", "", "GET")
 	if err != nil {
 		return al, err

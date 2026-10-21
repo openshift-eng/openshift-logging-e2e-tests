@@ -19,6 +19,7 @@ import (
 	// Import test packages from this module
 	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e"
 	// Import testdata package from this module
+	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e/collection/filters"
 	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 

@@ -9,7 +9,9 @@ make build
 # Compiles the extension binary to bin/openshift-logging-e2e-tests-tests-ext (fixtures are embedded via //go:embed)
 ```
 
-Run `make test` after touching `test/e2e/testdata/` or any `FixturePath` / `filepath.Join(loggingBaseDir, ...)` reference. It needs no cluster and fails on references to fixtures that do not exist.
+Run unit tests with `make test` (e.g. `internal/test/helpers`, `internal/receivers`, `test/e2e/testdata`). It needs no 
+cluster. Run it after touching `test/e2e/testdata/` or any `FixturePath` / `filepath.Join(loggingBaseDir, ...)` reference
+— it fails on references to fixtures that do not exist.
 
 Always rebuild after editing any `.go` file or testdata fixtures before running tests.
 
