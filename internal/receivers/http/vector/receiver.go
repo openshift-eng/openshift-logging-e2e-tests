@@ -30,6 +30,7 @@ type HttpReceiver struct {
 	name      string // the name of the receiver, it's also used to name the cm/deployment/svc
 	namespace string // the namespace where the receiver is deployed in
 	Oc        *exutil.CLI
+	podName   string
 }
 
 func New(namespace, name string, oc *exutil.CLI) *HttpReceiver {
@@ -63,6 +64,11 @@ func (v HttpReceiver) Deploy() {
 	o.Expect(err).NotTo(o.HaveOccurred())
 	deployment.WaitForPodsToBeReady(oc, v.namespace, v.name)
 
+	pods, err := v.Oc.AdminKubeClient().CoreV1().Pods(v.namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "component=" + v.name})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	o.Expect(pods.Items).NotTo(o.BeEmpty())
+	v.podName = pods.Items[0].Name
+
 	err = oc.AsAdmin().WithoutNamespace().Run("expose").Args("deployment", v.name, "-n", v.namespace).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
@@ -74,10 +80,7 @@ func (v HttpReceiver) Remove() {
 }
 
 func (v HttpReceiver) PodName() string {
-	pods, err := v.Oc.AdminKubeClient().CoreV1().Pods(v.namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "component=" + v.name})
-	o.Expect(err).NotTo(o.HaveOccurred())
-	o.Expect(pods.Items).NotTo(o.BeEmpty())
-	return pods.Items[0].Name
+	return v.podName
 }
 
 // ExecCmd runs a shell command in the receiver pod and returns its output.

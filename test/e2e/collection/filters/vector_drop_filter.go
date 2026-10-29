@@ -27,7 +27,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-// waitDropFilterDiscardedEvents waits until every collector pod reports the drop filter
+// waitDropFilterDiscardedEvents waits until drop filter from at least one collector reports
 // transform discarded at least one event, proving historical records were actually read
 // and dropped rather than never collected
 func waitDropFilterDiscardedEvents(oc *exutil.CLI, token, clfName, clfNamespace string) {
@@ -77,8 +77,8 @@ var _ = Describe("[sig-openshift-logging] Logging NonPreRelease",
 			})
 
 			// author jcantril@redhat.com
-			// LOG-10200 regression test for the LOG-9876 olderThan drop filter: a ClusterLogForwarder
-			// created with a drop filter whose olderThan cutoff is "now" must discard the historical
+			// Regression test for the LOG-9876 olderThan drop filter: a ClusterLogForwarder
+			// created with a drop filter whose olderThan must discard the historical
 			// backlog a first-time collector reads (container files, journald and audit inputs) while
 			// forwarding every record written after the cutoff. The filter must keep applying after a
 			// collector restart, including to records retained by checkpoints.
