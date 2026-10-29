@@ -1,14 +1,21 @@
 package metrics
 
 import (
+	_ "embed"
 	"encoding/json"
 	"net/http"
 	"net/url"
 
+	o "github.com/onsi/gomega"
 	libnethttp "github.com/openshift/openshift-logging-e2e-tests/internal/lib/net/http"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/core/serviceaccount"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/openshift"
 	exutil "github.com/openshift/origin/test/extended/util"
+)
+
+var (
+	//go:embed role.yaml
+	RbacPrometheus string
 )
 
 // metric the prometheus metric
@@ -105,4 +112,13 @@ func Get(oc *exutil.CLI, token, query string) ([]Metric, error) {
 		return []Metric{}, err
 	}
 	return res.Data.Result, nil
+}
+
+// EnableClusterMonitoring add label `openshift.io/cluster-monitoring: "true"` to the project, and create role/prometheus-k8s rolebinding/prometheus-k8s in the namespace
+func EnableClusterMonitoring(oc *exutil.CLI, namespace string) {
+	err := oc.AsAdmin().WithoutNamespace().Run("label").Args("ns", namespace, "openshift.io/cluster-monitoring=true").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
+
+	err = oc.AsAdmin().WithoutNamespace().InputString(RbacPrometheus).Run("apply").Args("-n", namespace, "-f", "-").Execute()
+	o.Expect(err).NotTo(o.HaveOccurred())
 }

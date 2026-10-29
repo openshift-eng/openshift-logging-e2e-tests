@@ -25,4 +25,10 @@ type Receiver interface {
 
 	Namespace() string
 	Name() string
+
+	//ContainerLogs retrieves the logs from the given namespace
+	ContainerLogs(namespace string) ([]string, error)
+
+	JournalLogs() ([]string, error)
+	AuditLogs() ([]string, error)
 }

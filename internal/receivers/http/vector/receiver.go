@@ -2,9 +2,7 @@ package vector
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -17,35 +15,35 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
-// VectorHttpReceiver is a vector based HTTP receiver. It accepts records forwarded by a
+// HttpReceiver is a vector based HTTP receiver. It accepts records forwarded by a
 // ClusterLogForwarder http output on port 8090 and writes them to files by log type:
 // container records to /tmp/container/<namespace>_<pod>_<container>.json, journal records
 // to /tmp/journal/journal.json and audit records to /tmp/audit/audit.json.
 // The receiver pod carries the vector.dev/exclude label so its own logs are never
 // collected, which would otherwise create a feedback loop through the forwarder.
-type VectorHttpReceiver struct {
+type HttpReceiver struct {
 	name      string // the name of the receiver, it's also used to name the cm/deployment/svc
 	namespace string // the namespace where the receiver is deployed in
 	Oc        *exutil.CLI
 }
 
-func New(namespace, name string, oc *exutil.CLI) *VectorHttpReceiver {
-	return &VectorHttpReceiver{
+func New(namespace, name string, oc *exutil.CLI) *HttpReceiver {
+	return &HttpReceiver{
 		name:      name,
 		namespace: namespace,
 		Oc:        oc,
 	}
 }
 
-func (v VectorHttpReceiver) Name() string {
+func (v HttpReceiver) Name() string {
 	return v.name
 }
 
-func (v VectorHttpReceiver) Namespace() string {
+func (v HttpReceiver) Namespace() string {
 	return v.namespace
 }
 
-func (v VectorHttpReceiver) Deploy() {
+func (v HttpReceiver) Deploy() {
 	oc := v.Oc
 	filePath := []string{"logging", "external-log-stores", "vector-http-receiver"}
 
@@ -64,13 +62,13 @@ func (v VectorHttpReceiver) Deploy() {
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
-func (v VectorHttpReceiver) Remove() {
+func (v HttpReceiver) Remove() {
 	internaltypes.NewResource("configmap", v.name, v.namespace).Clear(v.Oc)
 	internaltypes.NewResource("deployment", v.name, v.namespace).Clear(v.Oc)
 	internaltypes.NewResource("svc", v.name, v.namespace).Clear(v.Oc)
 }
 
-func (v VectorHttpReceiver) PodName() string {
+func (v HttpReceiver) PodName() string {
 	pods, err := v.Oc.AdminKubeClient().CoreV1().Pods(v.namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "component=" + v.name})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	o.Expect(pods.Items).NotTo(o.BeEmpty())
@@ -80,7 +78,7 @@ func (v VectorHttpReceiver) PodName() string {
 // ExecCmd runs a shell command in the receiver pod and returns its output.
 // Transient exec transport failures are retried because the verification polls
 // below depend on it and must not flake on a single failed roundtrip.
-func (v VectorHttpReceiver) ExecCmd(cmd string) (string, error) {
+func (v HttpReceiver) ExecCmd(cmd string) (string, error) {
 	var out string
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
@@ -94,6 +92,36 @@ func (v VectorHttpReceiver) ExecCmd(cmd string) (string, error) {
 	return out, err
 }
 
+func (v HttpReceiver) catFile(file string) ([]string, error) {
+	out, err := v.ExecCmd(fmt.Sprintf("cat %s 2>/dev/null", file))
+	if err != nil {
+		return nil, err
+	}
+	return strings.Split(out, "\n"), nil
+}
+
+func (v HttpReceiver) AuditLogs() ([]string, error) {
+	return v.catFile("/tmp/audit/audit.json")
+}
+
+func (v HttpReceiver) JournalLogs() ([]string, error) {
+	return v.catFile("/tmp/journal/journal.json")
+}
+
+func (v HttpReceiver) ContainerLogs(namespace string) ([]string, error) {
+	files, err := v.listReceiverFiles()
+	if err != nil {
+		return nil, err
+	}
+	for _, file := range files.containerFiles {
+		fileNamespace := strings.SplitN(file, "_", 2)[0]
+		if namespace == fileNamespace {
+			return v.catFile(file)
+		}
+	}
+	return nil, fmt.Errorf("no application records from namespace %s received", namespace)
+}
+
 // receiverFiles is a snapshot of the files the receiver has written so far
 type receiverFiles struct {
 	containerFiles []string
@@ -101,7 +129,7 @@ type receiverFiles struct {
 	audit          bool
 }
 
-func (v VectorHttpReceiver) ListReceiverFiles(oc *exutil.CLI) (*receiverFiles, error) {
+func (v HttpReceiver) listReceiverFiles() (*receiverFiles, error) {
 	cmd := `ls -1 /tmp/container 2>/dev/null; echo "JOURNAL:$(ls /tmp/journal/journal.json 2>/dev/null)"; echo "AUDIT:$(ls /tmp/audit/audit.json 2>/dev/null)"`
 	out, err := v.ExecCmd(cmd)
 	if err != nil {
@@ -120,123 +148,4 @@ func (v VectorHttpReceiver) ListReceiverFiles(oc *exutil.CLI) (*receiverFiles, e
 		}
 	}
 	return files, nil
-}
-
-// ReadAllRecords returns every complete JSON record line the receiver has written so far
-func (v VectorHttpReceiver) ReadAllRecords(oc *exutil.CLI) ([]string, error) {
-	// "true" keeps the exit status zero when one of the globs has no match yet
-	out, err := v.ExecCmd("cat /tmp/container/*.json /tmp/journal/*.json /tmp/audit/*.json 2>/dev/null; true")
-	if err != nil {
-		return nil, err
-	}
-	var records []string
-	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		// incomplete lines are torn writes of records appended while cat runs
-		if strings.HasPrefix(line, "{") && strings.HasSuffix(line, "}") {
-			records = append(records, line)
-		}
-	}
-	return records, nil
-}
-
-// truncateForLog keeps failure messages readable
-func truncateForLog(s string, max int) string {
-	if len(s) <= max {
-		return s
-	}
-	return s[:max] + "...(truncated)"
-}
-
-// VerifyNoRecordsOlderThan asserts that every record the receiver wrote carries a
-// timestamp at or after the cutoff. The viaq normalizer emits both a "timestamp" and
-// an "@timestamp" field with the same value, so either is accepted. Records without
-// a timestamp are ignored because the drop filter retains them by design.
-func (v VectorHttpReceiver) VerifyNoRecordsOlderThan(oc *exutil.CLI, cutoff time.Time) error {
-	records, err := v.ReadAllRecords(oc)
-	if err != nil {
-		return err
-	}
-	if len(records) == 0 {
-		return fmt.Errorf("no records received by the receiver")
-	}
-	for _, record := range records {
-		var entry struct {
-			Timestamp       string `json:"timestamp"`
-			TimestampLegacy string `json:"@timestamp"`
-		}
-		if err := json.Unmarshal([]byte(record), &entry); err != nil {
-			e2e.Logf("skipping unparseable receiver record: %s", truncateForLog(record, 200))
-			continue
-		}
-		tsRaw := entry.Timestamp
-		if tsRaw == "" {
-			tsRaw = entry.TimestampLegacy
-		}
-		if tsRaw == "" {
-			continue
-		}
-		ts, err := time.Parse(time.RFC3339Nano, tsRaw)
-		if err != nil {
-			return fmt.Errorf("received record has an unparseable timestamp %q: %v", tsRaw, err)
-		}
-		if ts.Before(cutoff) {
-			return fmt.Errorf("received record is older than the cutoff %s: %s", cutoff.Format(time.RFC3339), truncateForLog(record, 300))
-		}
-	}
-	return nil
-}
-
-// VerifyPostCutoffRecordsArrived asserts the receiver keeps getting fresh records of
-// every log type: application records from the log generator project, infrastructure
-// container records from an infrastructure namespace, journal records and audit records
-func (v VectorHttpReceiver) VerifyPostCutoffRecordsArrived(oc *exutil.CLI, appProj string) error {
-	files, err := v.ListReceiverFiles(oc)
-	if err != nil {
-		return err
-	}
-	var appFile string
-	infraSeen := false
-	for _, file := range files.containerFiles {
-		namespace := strings.SplitN(file, "_", 2)[0]
-		if namespace == appProj {
-			appFile = file
-		}
-		if strings.HasPrefix(namespace, "openshift-") || strings.HasPrefix(namespace, "kube-") || namespace == "default" {
-			infraSeen = true
-		}
-	}
-	if appFile == "" {
-		return fmt.Errorf("no application records from project %s received", appProj)
-	}
-	if !infraSeen {
-		return fmt.Errorf("no infrastructure container records received")
-	}
-	if !files.journal {
-		return fmt.Errorf("no journal records received")
-	}
-	if !files.audit {
-		return fmt.Errorf("no audit records received")
-	}
-	out, err := v.ExecCmd("cat /tmp/container/" + appFile + " 2>/dev/null")
-	if err != nil {
-		return err
-	}
-	if !strings.Contains(out, "MERGE_JSON_LOG") {
-		return fmt.Errorf("application records from project %s do not contain the logtest marker", appProj)
-	}
-	return nil
-}
-
-// ContainerRecordCount returns the number of records the receiver wrote for a namespace
-func (v VectorHttpReceiver) ContainerRecordCount(oc *exutil.CLI, namespace string) (int, error) {
-	out, err := v.ExecCmd("cat /tmp/container/" + namespace + "_*.json 2>/dev/null | wc -l")
-	if err != nil {
-		return 0, err
-	}
-	count, err := strconv.Atoi(strings.TrimSpace(out))
-	if err != nil {
-		return 0, fmt.Errorf("can't parse record count %q: %v", out, err)
-	}
-	return count, nil
 }
