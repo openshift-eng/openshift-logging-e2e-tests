@@ -22,6 +22,7 @@ import (
 
 	// Import test packages from this module
 	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e"
+	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e/collection/filters"
 )
 
 func main() {

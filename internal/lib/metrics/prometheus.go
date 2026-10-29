@@ -119,6 +119,6 @@ func EnableClusterMonitoring(oc *exutil.CLI, namespace string) {
 	err := oc.AsAdmin().WithoutNamespace().Run("label").Args("ns", namespace, "openshift.io/cluster-monitoring=true").Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	err = oc.AsAdmin().WithoutNamespace().InputString(RbacPrometheus).Run("apply").Args("-n", namespace, "-f", "-").Execute()
+	err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-n", namespace, "-f", "-").InputString(RbacPrometheus).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }

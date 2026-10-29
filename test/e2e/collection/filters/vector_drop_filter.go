@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	libmetrics "github.com/openshift/openshift-logging-e2e-tests/internal/lib/metrics"
 	librandom "github.com/openshift/openshift-logging-e2e-tests/internal/lib/random"
 	libstrings "github.com/openshift/openshift-logging-e2e-tests/internal/lib/strings"
@@ -53,116 +54,118 @@ func waitDropFilterDiscardedEvents(oc *exutil.CLI, token, clfName, clfNamespace 
 	compat_otp.AssertWaitPollNoErr(err, "the drop filter did not discard any event: "+query)
 }
 
-var _ = Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
-	defer GinkgoRecover()
-	var (
-		oc             = exutil.NewCLIWithoutNamespace("logfwddropfilter")
-		loggingBaseDir string
-	)
+var _ = Describe("[sig-openshift-logging] Logging NonPreRelease",
+	Label(labels.CLO, labels.Slow, labels.ReleaseLogging67, labels.Filter), func() {
+		defer GinkgoRecover()
+		var (
+			oc             = exutil.NewCLIWithoutNamespace("logfwddropfilter")
+			loggingBaseDir string
+		)
 
-	Context("CLF drop filter olderThan", func() {
-		BeforeEach(func() {
-			loggingBaseDir = testdata.FixturePath("logging")
-			By("Deploy CLO")
-			CLO := logging.SubscriptionObjects{
-				OperatorName:  observability.OperatorName,
-				Namespace:     observability.NamespaceClusterLoggingOperator,
-				PackageName:   observability.PackageClusterLogging,
-				Subscription:  filepath.Join(loggingBaseDir, "subscription", "sub-template.yaml"),
-				OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-oyaml"),
-			}
-			CLO.SubscribeOperator(oc)
-		})
-
-		// author jcantril@redhat.com
-		// LOG-10200 regression test for the LOG-9876 olderThan drop filter: a ClusterLogForwarder
-		// created with a drop filter whose olderThan cutoff is "now" must discard the historical
-		// backlog a first-time collector reads (container files, journald and audit inputs) while
-		// forwarding every record written after the cutoff. The filter must keep applying after a
-		// collector restart, including to records retained by checkpoints.
-		It("Author:jcantril-Critical-LOG-9876-CLF drop filter olderThan discards historical logs and retains newer logs of all input types[Slow][CLO]", func() {
-			By("Deploy the vector http receiver")
-			oc.SetupProject()
-			receiverProj := oc.Namespace()
-			receiver := receivers.New(
-				receivers.ReceiverTypeHttp, receiverProj,
-				"vector-http-receiver-"+librandom.String(),
-				oc,
-			)
-			defer receiver.Remove()
-			receiver.Deploy()
-
-			By("compute the olderThan cutoff as the current time minus a clock-skew margin")
-			// the margin keeps records written around "now" on clock-skewed nodes on the
-			// retained side of the cutoff; the journal/audit/container backlog still
-			// guarantees plenty of strictly older records to drop. The cutoff is truncated
-			// to whole seconds because the olderThan string is second precision: the filter
-			// enforces the truncated instant, and comparing against the sub-second remainder
-			// of time.Now() would flag records in that window the filter correctly retains.
-			cutoff := time.Now().UTC().Add(-1 * time.Minute).Truncate(time.Second)
-			olderThan := cutoff.Format(time.RFC3339)
-
-			By("create a ClusterLogForwarder with a drop olderThan filter for all log types")
-			clf := observability.NewClusterLogForwarder(oc, receiverProj, "clf-"+librandom.String(), func(f *observability.ClusterLogForwarder) {
-				f.TemplateFile = filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "drop-olderthan-86600.yaml")
-				f.CollectApplicationLogs = true
-				f.CollectAuditLogs = true
-				f.CollectInfrastructureLogs = true
-				f.EnableMonitoring = true
-				f.WaitForPodReady = true
-				f.ServiceAccountName = "test-clf-" + librandom.String()
-			})
-			defer clf.Delete()
-			// the forwarder gets a unique name and namespace, so its vector checkpoint
-			// directory is empty and the collector reads every source from the beginning,
-			// i.e. the first-time collection scenario the filter is meant for
-			clf.Create("URL=http://"+receiver.Name()+"."+receiver.Namespace()+".svc:8090", "OLDER_THAN="+olderThan)
-
-			By("generate application logs written after the cutoff")
-			oc.SetupProject()
-			appProj := oc.Namespace()
-			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
-			err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile, "-p", "RATE=1").Execute()
-			Expect(err).NotTo(HaveOccurred())
-
-			By("wait for post-cutoff application, infrastructure-container, journal and audit records to reach the receiver")
-			Eventually(func() error {
-				return VerifyPostCutoffRecordsArrived(receiver, appProj)
-			}, 10*time.Minute, 30*time.Second).Should(Succeed())
-
-			By("verify the drop filter actually discarded the historical backlog")
-			promToken := serviceaccount.Token(oc, "prometheus-k8s", "openshift-monitoring")
-			waitDropFilterDiscardedEvents(oc, promToken, clf.Name, clf.Namespace)
-
-			By("assert no record older than the cutoff reached the receiver")
-			Consistently(func() error {
-				return VerifyPostCutoffRecordsArrived(receiver, appProj)
-			}, 3*time.Minute, 45*time.Second).Should(Succeed())
-
-			By("restart the collector and verify the filter still applies to subsequently read records")
-			recordsBefore, err := receiver.ContainerLogs(appProj)
-			//recordCountBefore, err := receiver.ContainerRecordCount(oc, appProj)
-			Expect(err).NotTo(HaveOccurred())
-			err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", "-n", clf.Namespace, "-l", "app.kubernetes.io/component=collector").Execute()
-			Expect(err).NotTo(HaveOccurred())
-			clf.WaitForCollectorPodsReady()
-
-			By("wait for records written while the collector was down to be forwarded")
-			Eventually(func() (int, error) {
-				recordsAfter, err := receiver.ContainerLogs(appProj)
-				if err != nil {
-					return 0, err
+		Context("CLF drop filter olderThan", Label("dropFilter"), func() {
+			BeforeEach(func() {
+				loggingBaseDir = testdata.FixturePath("logging")
+				By("Deploy CLO")
+				CLO := logging.SubscriptionObjects{
+					OperatorName:  observability.OperatorName,
+					Namespace:     observability.NamespaceClusterLoggingOperator,
+					PackageName:   observability.PackageClusterLogging,
+					Subscription:  filepath.Join(loggingBaseDir, "subscription", "sub-template.yaml"),
+					OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-oyaml"),
 				}
-				return len(recordsAfter), nil
-			}, 5*time.Minute, 30*time.Second).Should(BeNumerically(">", len(recordsBefore)))
+				CLO.SubscribeOperator(oc)
+			})
 
-			By("assert again that no record older than the cutoff reached the receiver")
-			Consistently(func() error {
-				return VerifyNoRecordsOlderThan(receiver, appProj, cutoff)
-			}, 2*time.Minute, 60*time.Second).Should(Succeed())
+			// author jcantril@redhat.com
+			// LOG-10200 regression test for the LOG-9876 olderThan drop filter: a ClusterLogForwarder
+			// created with a drop filter whose olderThan cutoff is "now" must discard the historical
+			// backlog a first-time collector reads (container files, journald and audit inputs) while
+			// forwarding every record written after the cutoff. The filter must keep applying after a
+			// collector restart, including to records retained by checkpoints.
+			It("Author:jcantril-Critical-LOG-9876-CLF drop filter olderThan discards historical logs and retains newer logs of all input types[Slow][CLO]",
+				Label(labels.CLO, labels.Slow, "LOG-9876"), func() {
+					By("Deploy the vector http receiver")
+					oc.SetupProject()
+					receiverProj := oc.Namespace()
+					receiver := receivers.New(
+						receivers.ReceiverTypeHttp, receiverProj,
+						"vector-http-receiver-"+librandom.String(),
+						oc,
+					)
+					defer receiver.Remove()
+					receiver.Deploy()
+
+					By("compute the olderThan cutoff as the current time minus a clock-skew margin")
+					// the margin keeps records written around "now" on clock-skewed nodes on the
+					// retained side of the cutoff; the journal/audit/container backlog still
+					// guarantees plenty of strictly older records to drop. The cutoff is truncated
+					// to whole seconds because the olderThan string is second precision: the filter
+					// enforces the truncated instant, and comparing against the sub-second remainder
+					// of time.Now() would flag records in that window the filter correctly retains.
+					cutoff := time.Now().UTC().Add(-1 * time.Minute).Truncate(time.Second)
+					olderThan := cutoff.Format(time.RFC3339)
+
+					By("create a ClusterLogForwarder with a drop olderThan filter for all log types")
+					clf := observability.NewClusterLogForwarder(oc, receiverProj, "clf-"+librandom.String(), func(f *observability.ClusterLogForwarder) {
+						f.TemplateFile = filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "drop-olderthan-log9876.yaml")
+						f.CollectApplicationLogs = true
+						f.CollectAuditLogs = true
+						f.CollectInfrastructureLogs = true
+						f.EnableMonitoring = true
+						f.WaitForPodReady = true
+						f.ServiceAccountName = "test-clf-" + librandom.String()
+					})
+					defer clf.Delete()
+					// the forwarder gets a unique name and namespace, so its vector checkpoint
+					// directory is empty and the collector reads every source from the beginning,
+					// i.e. the first-time collection scenario the filter is meant for
+					clf.Create("URL=http://"+receiver.Name()+"."+receiver.Namespace()+".svc:8090", "OLDER_THAN="+olderThan)
+
+					By("generate application logs written after the cutoff")
+					oc.SetupProject()
+					appProj := oc.Namespace()
+					jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
+					err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile, "-p", "RATE=1").Execute()
+					Expect(err).NotTo(HaveOccurred())
+
+					By("wait for post-cutoff application, infrastructure-container, journal and audit records to reach the receiver")
+					Eventually(func() error {
+						return VerifyPostCutoffRecordsArrived(receiver, appProj)
+					}, 10*time.Minute, 30*time.Second).Should(Succeed())
+
+					By("verify the drop filter actually discarded the historical backlog")
+					promToken := serviceaccount.Token(oc, "prometheus-k8s", "openshift-monitoring")
+					waitDropFilterDiscardedEvents(oc, promToken, clf.Name, clf.Namespace)
+
+					By("assert no record older than the cutoff reached the receiver")
+					Consistently(func() error {
+						return VerifyPostCutoffRecordsArrived(receiver, appProj)
+					}, 3*time.Minute, 45*time.Second).Should(Succeed())
+
+					By("restart the collector and verify the filter still applies to subsequently read records")
+					recordsBefore, err := receiver.ContainerLogs(appProj)
+					//recordCountBefore, err := receiver.ContainerRecordCount(oc, appProj)
+					Expect(err).NotTo(HaveOccurred())
+					err = oc.AsAdmin().WithoutNamespace().Run("delete").Args("pod", "-n", clf.Namespace, "-l", "app.kubernetes.io/component=collector").Execute()
+					Expect(err).NotTo(HaveOccurred())
+					clf.WaitForCollectorPodsReady()
+
+					By("wait for records written while the collector was down to be forwarded")
+					Eventually(func() (int, error) {
+						recordsAfter, err := receiver.ContainerLogs(appProj)
+						if err != nil {
+							return 0, err
+						}
+						return len(recordsAfter), nil
+					}, 5*time.Minute, 30*time.Second).Should(BeNumerically(">", len(recordsBefore)))
+
+					By("assert again that no record older than the cutoff reached the receiver")
+					Consistently(func() error {
+						return VerifyNoRecordsOlderThan(receiver, appProj, cutoff)
+					}, 2*time.Minute, 60*time.Second).Should(Succeed())
+				})
 		})
 	})
-})
 
 // VerifyNoRecordsOlderThan asserts that every record the receiver wrote carries a
 // timestamp at or after the cutoff. The viaq normalizer emits both a "timestamp" and

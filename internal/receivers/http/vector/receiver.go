@@ -3,6 +3,7 @@ package vector
 import (
 	"context"
 	"fmt"
+	"path"
 	"strings"
 	"time"
 
@@ -13,6 +14,10 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+)
+
+const (
+	PathContainer = "/tmp/container"
 )
 
 // HttpReceiver is a vector based HTTP receiver. It accepts records forwarded by a
@@ -80,20 +85,24 @@ func (v HttpReceiver) PodName() string {
 // below depend on it and must not flake on a single failed roundtrip.
 func (v HttpReceiver) ExecCmd(cmd string) (string, error) {
 	var out string
+	var stderr string
 	var err error
 	for attempt := 0; attempt < 3; attempt++ {
-		out, err = v.Oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("exec").Args("-n", v.namespace, v.PodName(), "--", "/bin/sh", "-c", cmd).Output()
+		out, stderr, err = v.Oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("exec").Args("-n", v.namespace, v.PodName(), "--", "/bin/sh", "-c", cmd).Outputs()
 		if err == nil {
 			return out, nil
 		}
-		e2e.Logf("exec %q in the receiver pod failed (attempt %d): %v", cmd, attempt+1, err)
+		e2e.Logf("exec %q in the receiver pod failed (attempt %d): %v, stderr: %s", cmd, attempt+1, err, stderr)
 		time.Sleep(5 * time.Second)
+	}
+	if err != nil {
+		return stderr, err
 	}
 	return out, err
 }
 
 func (v HttpReceiver) catFile(file string) ([]string, error) {
-	out, err := v.ExecCmd(fmt.Sprintf("cat %s 2>/dev/null", file))
+	out, err := v.ExecCmd(fmt.Sprintf("cat %s", file))
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +125,7 @@ func (v HttpReceiver) ContainerLogs(namespace string) ([]string, error) {
 	for _, file := range files.containerFiles {
 		fileNamespace := strings.SplitN(file, "_", 2)[0]
 		if namespace == fileNamespace {
-			return v.catFile(file)
+			return v.catFile(path.Join(PathContainer, file))
 		}
 	}
 	return nil, fmt.Errorf("no application records from namespace %s received", namespace)
@@ -130,7 +139,7 @@ type receiverFiles struct {
 }
 
 func (v HttpReceiver) listReceiverFiles() (*receiverFiles, error) {
-	cmd := `ls -1 /tmp/container 2>/dev/null; echo "JOURNAL:$(ls /tmp/journal/journal.json 2>/dev/null)"; echo "AUDIT:$(ls /tmp/audit/audit.json 2>/dev/null)"`
+	cmd := `ls -1 /tmp/container; echo "JOURNAL:$(ls /tmp/journal/journal.json)"; echo "AUDIT:$(ls /tmp/audit/audit.json)"`
 	out, err := v.ExecCmd(cmd)
 	if err != nil {
 		return nil, err
