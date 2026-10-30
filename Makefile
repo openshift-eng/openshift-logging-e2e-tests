@@ -51,7 +51,7 @@ run-case:
 .PHONY: run-labels
 run-labels:
 	@if [ -z "$(LABELS)" ]; then \
-		echo "❌ Set LABELS=<label or space-separated labels>, e.g. make run-labels LABELS=\"CLO Slow\""; exit 1; \
+		echo "❌ Set LABELS=<label or space-separated labels>, e.g. make run-labels LABELS=\"component:clo exec:slow\""; exit 1; \
 	fi; \
 	NAMES=$$($(BINARY) list -o json 2>/dev/null | python3 -c 'import json,sys; raw=sys.stdin.read(); specs=json.loads(raw[raw.find("["):]); wanted=set("$(LABELS)".split()); print("\n".join(s["name"] for s in specs if wanted <= set(s.get("labels") or {})))'); \
 	if [ -z "$$NAMES" ]; then \
