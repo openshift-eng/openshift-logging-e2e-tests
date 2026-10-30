@@ -2029,3 +2029,30 @@ func (l lokiStack) validateThanosObjStoreClientIsEnabled(oc *exutil.CLI) (bool, 
 	}
 	return cfg.StorageConfig.UseThanoObjstore, nil
 }
+
+// waitForLokiOperatorLeaseAcquired polls the first 40 lines of the loki-operator-controller-manager
+// pod logs until the controller manager reports successful leader lease acquisition after an upgrade.
+func waitForLokiOperatorLeaseAcquired(oc *exutil.CLI) {
+	const leaseAcquiredMsg = `"Successfully acquired lease" lock="openshift-operators-redhat/loki-operator.grafana.com"`
+	err := wait.PollUntilContextTimeout(context.Background(), 40*time.Second, 300*time.Second, true, func(context.Context) (done bool, err error) {
+		output, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args(
+			"-n", loNS,
+			"-l", "name=loki-operator-controller-manager",
+			"--tail=-1",
+		).Output()
+		if err != nil {
+			e2e.Logf("error getting loki-operator logs: %v, retrying", err)
+			return false, nil
+		}
+		lines := strings.Split(output, "\n")
+		if len(lines) > 40 {
+			lines = lines[:40]
+		}
+		if strings.Contains(strings.Join(lines, "\n"), leaseAcquiredMsg) {
+			return true, nil
+		}
+		e2e.Logf("loki-operator has not yet acquired leader lease, retrying")
+		return false, nil
+	})
+	compat_otp.AssertWaitPollNoErr(err, "loki-operator did not acquire leader lease within timeout")
+}

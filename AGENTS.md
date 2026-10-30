@@ -11,10 +11,23 @@ make build
 
 Always rebuild after editing any `.go` file or testdata fixtures before running tests.
 
+## Required environment variables
+
+Most tests subscribe operators via OLM and require the target channel to be set:
+
+| Variable | Example | Purpose |
+|---|---|---|
+| `LOGGING_TEST_VERSION` | `6.7` | OLM channel suffix; becomes `stable-6.7`. **Required** for the majority of tests — omitting it causes an explicit failure rather than a silent skip. |
+| `LOGGING_UPGRADE_FROM_VERSION` | `6.6` | Source channel for major-version upgrade tests (53404). Omitting it skips those tests. |
+
+Pass only the version number (e.g. `6.7`), not the full channel name — `stable-6.7` will be rejected at startup.
+
 ## Running tests
 
 ```bash
 export KUBECONFIG=/path/to/kubeconfig
+export LOGGING_TEST_VERSION=6.7          # required for most tests
+export LOGGING_UPGRADE_FROM_VERSION=6.6  # required for upgrade tests 53404/53407
 
 # Run by case ID (preferred)
 make run-case CASE=65131

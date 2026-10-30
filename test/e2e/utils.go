@@ -39,6 +39,20 @@ import (
 	e2eoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
 )
 
+func channelFromEnv(envName string) string {
+	v := os.Getenv(envName)
+	if v == "" {
+		return ""
+	}
+	if matched, _ := regexp.MatchString(`^\d+\.\d+$`, v); !matched {
+		panic(fmt.Sprintf("env var %s=%q: expected format like \"6.7\"", envName, v))
+	}
+	return "stable-" + v
+}
+
+var targetChannel = channelFromEnv("LOGGING_TEST_VERSION")
+var upgradeFromChannel = channelFromEnv("LOGGING_UPGRADE_FROM_VERSION")
+
 // SubscriptionObjects objects are used to create operators via OLM
 type SubscriptionObjects struct {
 	OperatorName       string
@@ -176,7 +190,10 @@ func (so *SubscriptionObjects) checkPackagemanifestBySource(oc *exutil.CLI) {
 func (so *SubscriptionObjects) setCatalogSourceObjects(oc *exutil.CLI) {
 	// set channel
 	if so.CatalogSource.Channel == "" {
-		so.CatalogSource.Channel = "stable-6.6"
+		if targetChannel == "" {
+			g.Fail("LOGGING_TEST_VERSION env var must be set before running this test suite")
+		}
+		so.CatalogSource.Channel = targetChannel
 	}
 
 	// set source namespace
