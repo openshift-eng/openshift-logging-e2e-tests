@@ -44,6 +44,32 @@ run-case:
 	echo "Running: $$NAME"; \
 	$(BINARY) run-test "$$NAME" > /dev/null
 
+# Usage: make run-labels LABELS="<label or space-separated labels>"
+# Example: make run-labels LABELS="jira:LOG-9876"
+#          make run-labels LABELS="component:clo exec:slow"
+# All given labels must match a test (AND semantics).
+.PHONY: run-labels
+run-labels:
+	@if [ -z "$(LABELS)" ]; then \
+		echo "❌ Set LABELS=<label or space-separated labels>, e.g. make run-labels LABELS=\"component:clo exec:slow\""; exit 1; \
+	fi; \
+	NAMES=$$($(BINARY) list -o json 2>/dev/null | python3 -c 'import json,sys; raw=sys.stdin.read(); specs=json.loads(raw[raw.find("["):]); wanted=set("$(LABELS)".split()); print("\n".join(s["name"] for s in specs if wanted <= set(s.get("labels") or {})))'); \
+	if [ -z "$$NAMES" ]; then \
+		echo "❌ No tests match labels: $(LABELS)"; \
+		echo "Hint: make list-labels to see available labels"; exit 1; \
+	fi; \
+	echo "Running tests matching labels [$(LABELS)]:"; echo "$$NAMES" | sed 's/^/  /'; \
+	echo "$$NAMES" | while IFS= read -r NAME; do \
+		[ -n "$$NAME" ] || continue; \
+		$(BINARY) run-test "$$NAME" > /dev/null || exit 1; \
+	done
+
+# Usage: make list-labels [GREP="<substring>"]
+# Lists labels in use across all tests, optionally filtered.
+.PHONY: list-labels
+list-labels:
+	@$(BINARY) list -o json 2>/dev/null | python3 -c 'import json,sys; raw=sys.stdin.read(); specs=json.loads(raw[raw.find("["):]); print("\n".join(sorted({l for s in specs for l in (s.get("labels") or {}) if "$(GREP)" in l})))'
+
 .PHONY: help
 help:
 	@echo "Available targets:"
@@ -51,4 +77,6 @@ help:
 	@echo "  clean       - Remove binaries and bindata"
 	@echo "  run-test    - Run a test by name (set TEST=<name>)"
 	@echo "  run-case    - Run a test by case ID (set CASE=<id>)"
+	@echo "  run-labels  - Run all tests matching labels (set LABELS=\"<l1> <l2>...\")"
 	@echo "  list-tests  - List tests, optionally filtered (set GREP=<pattern>)"
+	@echo "  list-labels - List labels in use, optionally filtered (set GREP=<pattern>)"
