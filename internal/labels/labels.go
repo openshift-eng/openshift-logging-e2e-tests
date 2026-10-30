@@ -1,11 +1,13 @@
 package labels
 
 const (
-	CLO              = "CLO"
-	Slow             = "Slow"
-	ReleaseLogging67 = "6.7"
+	ComponentCLO = "component:clo"
+	ExecSlow     = "exec:slow"
 
 	// Collector Feature Labels
 
-	Filter = "Filter"
+	FilterDrop = "filter:drop"
 )
+
+// Jira returns a label referencing a Jira issue, e.g. jira:LOG-9876.
+func Jira(key string) string { return "jira:" + key }

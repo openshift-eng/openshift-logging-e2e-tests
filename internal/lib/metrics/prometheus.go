@@ -84,9 +84,10 @@ func QueryPrometheus(oc *exutil.CLI, token string, path string, query string, ac
 	}
 	address := "https://" + openshift.RouteAddress(oc, "openshift-monitoring", "prometheus-k8s")
 
-	h := make(http.Header)
-	h.Add("Content-Type", "application/json")
-	h.Add("Authorization", "Bearer "+bearerToken)
+  h := http.Header{
+		"Content-Type":  {"application/json"},
+		"Authorization": {"Bearer " + bearerToken},
+  }
 
 	params := url.Values{}
 	if len(query) > 0 {
@@ -109,7 +110,7 @@ func QueryPrometheus(oc *exutil.CLI, token string, path string, query string, ac
 func Get(oc *exutil.CLI, token, query string) ([]Metric, error) {
 	res, err := QueryPrometheus(oc, token, "/api/v1/query", query, "GET")
 	if err != nil {
-		return []Metric{}, err
+		return nil, err
 	}
 	return res.Data.Result, nil
 }

@@ -55,7 +55,7 @@ func waitDropFilterDiscardedEvents(oc *exutil.CLI, token, clfName, clfNamespace 
 }
 
 var _ = Describe("[sig-openshift-logging] Logging NonPreRelease",
-	Label(labels.CLO, labels.Slow, labels.ReleaseLogging67, labels.Filter), func() {
+	Label(labels.ComponentCLO, labels.FilterDrop), func() {
 		defer GinkgoRecover()
 		var (
 			oc             = exutil.NewCLIWithoutNamespace("logfwddropfilter")
@@ -83,7 +83,7 @@ var _ = Describe("[sig-openshift-logging] Logging NonPreRelease",
 			// forwarding every record written after the cutoff. The filter must keep applying after a
 			// collector restart, including to records retained by checkpoints.
 			It("Author:jcantril-Critical-LOG-9876-CLF drop filter olderThan discards historical logs and retains newer logs of all input types[Slow][CLO]",
-				Label(labels.CLO, labels.Slow, "LOG-9876"), func() {
+				Label(labels.ExecSlow, labels.Jira("LOG-9876")), func() {
 					By("Deploy the vector http receiver")
 					oc.SetupProject()
 					receiverProj := oc.Namespace()

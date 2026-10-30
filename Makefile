@@ -45,8 +45,8 @@ run-case:
 	$(BINARY) run-test "$$NAME" > /dev/null
 
 # Usage: make run-labels LABELS="<label or space-separated labels>"
-# Example: make run-labels LABELS="LOG-9876"
-#          make run-labels LABELS="CLO Slow"
+# Example: make run-labels LABELS="jira:LOG-9876"
+#          make run-labels LABELS="component:clo exec:slow"
 # All given labels must match a test (AND semantics).
 .PHONY: run-labels
 run-labels:
