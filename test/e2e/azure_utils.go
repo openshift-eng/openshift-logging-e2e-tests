@@ -74,7 +74,7 @@ func createFederatedCredentialforLoki(defaultAzureCred *azidentity.DefaultAzureC
 			Properties: &armmsi.FederatedIdentityCredentialProperties{
 				Issuer:    &serviceAccountIssuer,
 				Subject:   &subjectName,
-				Audiences: []*string{azto.Ptr("api://AzureADTokenExchange")},
+				Audiences: []*string{new("api://AzureADTokenExchange")},
 			},
 		},
 		nil,
@@ -95,9 +95,9 @@ func createRoleAssignmentForManagedIdentity(defaultAzureCred *azidentity.Default
 	// Create or update a role assignment by scope and name
 	_, err = clientFactory.NewRoleAssignmentsClient().Create(context.Background(), scope, uuid.NewString(), armauthorization.RoleAssignmentCreateParameters{
 		Properties: &armauthorization.RoleAssignmentProperties{
-			PrincipalID:      azto.Ptr(identityPrincipalID),
+			PrincipalID:      new(identityPrincipalID),
 			PrincipalType:    azto.Ptr(armauthorization.PrincipalTypeServicePrincipal),
-			RoleDefinitionID: azto.Ptr(roleDefinitionID),
+			RoleDefinitionID: new(roleDefinitionID),
 		},
 	}, nil)
 	o.Expect(err).NotTo(o.HaveOccurred(), "Role Assignment operation failure....")
@@ -110,7 +110,7 @@ func createStorageAccountOnAzure(defaultAzureCred *azidentity.DefaultAzureCreden
 	storageClient, err := armstorage.NewAccountsClient(azureSubscriptionID, defaultAzureCred, nil)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	result, err := storageClient.BeginCreate(context.Background(), resourceGroup, storageAccountName, armstorage.AccountCreateParameters{
-		Location: azto.Ptr(region),
+		Location: new(region),
 		SKU: &armstorage.SKU{
 			Name: azto.Ptr(armstorage.SKUNameStandardLRS),
 		},
@@ -295,7 +295,7 @@ func createAzureResourceGroup(resourceGroupName, subscriptionId, location string
 	rgClient, _ := armresources.NewResourceGroupsClient(subscriptionId, credential, nil)
 
 	param := armresources.ResourceGroup{
-		Location: azto.Ptr(location),
+		Location: new(location),
 	}
 
 	return rgClient.CreateOrUpdate(context.Background(), resourceGroupName, param, nil)
@@ -345,7 +345,10 @@ func readAzureCredentials() bool {
 			e2e.Logf("can't read file %s: %v", azureCredFile, err)
 			return false
 		}
-		json.Unmarshal(fileContent, &azureCred)
+		if err := json.Unmarshal(fileContent, &azureCred); err != nil {
+			e2e.Logf("can't parse azure credentials file %s: %v", azureCredFile, err)
+			return false
+		}
 		os.Setenv("AZURE_SUBSCRIPTION_ID", azureCred.SubscriptionID)
 		os.Setenv("AZURE_TENANT_ID", azureCred.TenantID)
 		os.Setenv("AZURE_CLIENT_ID", azureCred.ClientID)
@@ -398,7 +401,7 @@ func (azLog *azureMonitorLog) getSourceGroupLocation() error {
 	if err != nil {
 		return err
 	}
-	azLog.location = *resourceGroupGetResponse.ResourceGroup.Location
+	azLog.location = *resourceGroupGetResponse.Location
 	return nil
 }
 
@@ -418,7 +421,7 @@ func (azLog *azureMonitorLog) createLogWorkspace() error {
 		azLog.resourceGroupName,
 		azLog.workspaceName,
 		armoperationalinsights.Workspace{
-			Location:   azto.Ptr(azLog.location),
+			Location:   new(azLog.location),
 			Properties: &armoperationalinsights.WorkspaceProperties{},
 		},
 		nil,
@@ -501,7 +504,7 @@ func newAzureLog(oc *exutil.CLI, location, resouceGroupName, workspaceName, tPre
 			return azLog, fmt.Errorf("skip on %s", cloudName)
 		}
 	} else {
-		//TODO: get az cloud type from env vars
+		// TODO: get az cloud type from env vars
 		azLog.clientOpts = azcore.ClientOptions{Cloud: azcloud.AzurePublic}
 		azLog.host = "ods.opinsights.azure.com"
 	}
@@ -548,14 +551,14 @@ func (azLog *azureMonitorLog) getLogByTable(logTable string) ([]azlogs.Row, erro
 		return entries, err
 	}
 
-	//https://learn.microsoft.com/en-us/cli/azure/monitor/log-analytics?view=azure-cli-latest
-	//https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/
+	// https://learn.microsoft.com/en-us/cli/azure/monitor/log-analytics?view=azure-cli-latest
+	// https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/
 	err = wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
 		res, err1 := client.QueryWorkspace(
 			context.TODO(),
 			azLog.customerID,
 			azlogs.QueryBody{
-				Query: azto.Ptr(queryString),
+				Query: new(queryString),
 			},
 			nil)
 		if err1 != nil {
@@ -587,6 +590,12 @@ func (azLog *azureMonitorLog) deleteWorkspace() error {
 	if err != nil {
 		return err
 	}
-	workspacesClient.BeginDelete(ctx, azLog.resourceGroupName, azLog.workspaceName, &armoperationalinsights.WorkspacesClientBeginDeleteOptions{Force: new(bool)})
+	poller, err := workspacesClient.BeginDelete(ctx, azLog.resourceGroupName, azLog.workspaceName, &armoperationalinsights.WorkspacesClientBeginDeleteOptions{Force: new(bool)})
+	if err != nil {
+		return err
+	}
+	if _, err := poller.PollUntilDone(ctx, nil); err != nil {
+		return err
+	}
 	return nil
 }

@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
-
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
@@ -18,20 +16,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Performance Test", func() {
 	defer g.GinkgoRecover()
 
 	var (
-		oc                 = exutil.NewCLIWithoutNamespace("lokistack-performace-test")
+		oc                 = exutil.NewCLIWithoutNamespace("lokistack-performance-test")
 		loggingBaseDir, sc string
 		nodes              *corev1.NodeList
 		workerNodeCount    int
 	)
 
 	g.BeforeEach(func() {
-
 		// Check worker nodes count
 		var err error
 		nodes, err = oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{
@@ -292,7 +291,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:kbharti-Longduration-High-84975-Performance-Vector-LokiStack-Performance test from vector to LokiStack using 1x.extra-small t-shirt size and Otel datamodel with log loss measurement[CLO][LokiOperator][Serial][Slow]", func() {
-
 		if !validateInfraAndResourcesForLoki(oc, "36Gi", "18") {
 			g.Skip("Current platform not supported/resources not available for this test!")
 		}
@@ -513,7 +511,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:kbharti-Longduration-High-87993-Performance-Vector-LokiStack-Performance test from vector to LokiStack using 1x.pico t-shirt size and ViaQ datamodel with log loss measurement[CLO][LokiOperator][Serial][Slow]", func() {
-
 		if !validateInfraAndResourcesForLoki(oc, "18Gi", "8") {
 			g.Skip("Current platform not supported/resources not available for this test!")
 		}
@@ -734,7 +731,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:kbharti-Longduration-High-87994-Performance-Vector-LokiStack-Performance test from vector to LokiStack using 1x.pico t-shirt size and Otel datamodel with log loss measurement[CLO][LokiOperator][Serial][Slow]", func() {
-
 		if !validateInfraAndResourcesForLoki(oc, "18Gi", "8") {
 			g.Skip("Current platform not supported/resources not available for this test!")
 		}
@@ -955,7 +951,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:kbharti-Longduration-High-87998-Performance-Vector-LokiStack-Performance test from vector to LokiStack using 1x.small t-shirt size and ViaQ datamodel with log loss measurement[CLO][LokiOperator][Serial][Slow]", func() {
-
 		if !validateInfraAndResourcesForLoki(oc, "84Gi", "42") {
 			g.Skip("Current platform not supported/resources not available for this test!")
 		}
@@ -1160,7 +1155,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:kbharti-Longduration-High-87999-Performance-Vector-LokiStack-Performance test from vector to LokiStack using 1x.small t-shirt size and Otel datamodel with log loss measurement[CLO][LokiOperator][Serial][Slow]", func() {
-
 		if !validateInfraAndResourcesForLoki(oc, "84Gi", "42") {
 			g.Skip("Current platform not supported/resources not available for this test!")
 		}
@@ -1372,7 +1366,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:kbharti-Longduration-High-88000-Performance-Vector-LokiStack-Performance test from vector to LokiStack using 1x.medium t-shirt size and ViaQ datamodel with log loss measurement[CLO][LokiOperator][Serial][Slow]", func() {
-
 		if !validateInfraAndResourcesForLoki(oc, "172Gi", "70") {
 			g.Skip("Current platform not supported/resources not available for this test!")
 		}
@@ -1583,7 +1576,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:kbharti-Longduration-High-88001-Performance-Vector-LokiStack-Performance test from vector to LokiStack using 1x.medium t-shirt size and Otel datamodel with log loss measurement[CLO][LokiOperator][Serial][Slow]", func() {
-
 		if !validateInfraAndResourcesForLoki(oc, "172Gi", "70") {
 			g.Skip("Current platform not supported/resources not available for this test!")
 		}

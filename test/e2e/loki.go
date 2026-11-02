@@ -3,7 +3,6 @@ package logging
 import (
 	"context"
 	"fmt"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"os"
 	"path/filepath"
 	"time"
@@ -17,6 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
@@ -93,20 +94,20 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				}
 				replicaCount, err := getPodNames(oc, ls.namespace, "app.kubernetes.io/component="+component)
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(len(replicaCount) == 2).Should(o.BeTrue())
+				o.Expect(replicaCount).Should(o.HaveLen(2))
 			}
 			replicacount, err := getPodNames(oc, ls.namespace, "app.kubernetes.io/component=compactor")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(replicacount) == 1).Should(o.BeTrue())
+			o.Expect(replicacount).Should(o.HaveLen(1))
 
 			g.By("Check PodDisruptionBudgets set for 1x.extra-small bucket size")
 			for _, component := range lokiComponents {
 				minAvailable, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-"+component, "-n", cloNS, "-o=jsonpath={.spec.minAvailable}").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(minAvailable == "1").Should(o.BeTrue())
+				o.Expect(minAvailable).Should(o.Equal("1"))
 				disruptionsAllowed, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-"+component, "-n", cloNS, "-o=jsonpath={.status.disruptionsAllowed}").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(disruptionsAllowed == "1").Should(o.BeTrue())
+				o.Expect(disruptionsAllowed).Should(o.Equal("1"))
 			}
 
 			g.By("Deploying LokiStack CR for 1x.small tshirt size")
@@ -120,24 +121,24 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			g.By("Checking Replica count for 1x.small tshirt size")
 			replicacount, err = getPodNames(oc, ls.namespace, "app.kubernetes.io/component=compactor")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(replicacount) == 1).Should(o.BeTrue())
+			o.Expect(replicacount).Should(o.HaveLen(1))
 			for _, component := range lokiComponents {
 				if component == "gateway" {
 					component = "lokistack-gateway"
 				}
 				replicaCount, err := getPodNames(oc, ls.namespace, "app.kubernetes.io/component="+component)
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(len(replicaCount) == 2).Should(o.BeTrue())
+				o.Expect(replicaCount).Should(o.HaveLen(2))
 			}
 
 			g.By("Check PodDisruptionBudgets set for 1x.small bucket size")
 			for _, component := range lokiComponents {
 				minAvailable, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-"+component, "-n", cloNS, "-o=jsonpath={.spec.minAvailable}").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(minAvailable == "1").Should(o.BeTrue())
+				o.Expect(minAvailable).Should(o.Equal("1"))
 				disruptionsAllowed, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-"+component, "-n", cloNS, "-o=jsonpath={.status.disruptionsAllowed}").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(disruptionsAllowed == "1").Should(o.BeTrue())
+				o.Expect(disruptionsAllowed).Should(o.Equal("1"))
 			}
 
 			g.By("Redeploying LokiStack with 1x.medium tshirt size")
@@ -151,7 +152,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			g.By("Checking Replica replica for 1x.medium tshirt size")
 			replicacount, err = getPodNames(oc, ls.namespace, "app.kubernetes.io/component=compactor")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(replicacount) == 1).Should(o.BeTrue())
+			o.Expect(replicacount).Should(o.HaveLen(1))
 			for _, component := range lokiComponents {
 				if component == "gateway" {
 					component = "lokistack-gateway"
@@ -159,9 +160,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				replicaCount, err := getPodNames(oc, ls.namespace, "app.kubernetes.io/component="+component)
 				o.Expect(err).NotTo(o.HaveOccurred())
 				if component == "ingester" || component == "querier" {
-					o.Expect(len(replicaCount) == 3).Should(o.BeTrue())
+					o.Expect(replicaCount).Should(o.HaveLen(3))
 				} else {
-					o.Expect(len(replicaCount) == 2).Should(o.BeTrue())
+					o.Expect(replicaCount).Should(o.HaveLen(2))
 				}
 			}
 
@@ -170,23 +171,22 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				if component == "ingester" || component == "querier" {
 					minAvailable, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-"+component, "-n", cloNS, "-o=jsonpath={.spec.minAvailable}").Output()
 					o.Expect(err).NotTo(o.HaveOccurred())
-					o.Expect(minAvailable == "2").Should(o.BeTrue())
+					o.Expect(minAvailable).Should(o.Equal("2"))
 					disruptionsAllowed, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-"+component, "-n", cloNS, "-o=jsonpath={.status.disruptionsAllowed}").Output()
 					o.Expect(err).NotTo(o.HaveOccurred())
-					o.Expect(disruptionsAllowed == "1").Should(o.BeTrue())
+					o.Expect(disruptionsAllowed).Should(o.Equal("1"))
 				} else {
 					minAvailable, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-"+component, "-n", cloNS, "-o=jsonpath={.spec.minAvailable}").Output()
 					o.Expect(err).NotTo(o.HaveOccurred())
-					o.Expect(minAvailable == "1").Should(o.BeTrue())
+					o.Expect(minAvailable).Should(o.Equal("1"))
 					disruptionsAllowed, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-"+component, "-n", cloNS, "-o=jsonpath={.status.disruptionsAllowed}").Output()
 					o.Expect(err).NotTo(o.HaveOccurred())
-					o.Expect(disruptionsAllowed == "1").Should(o.BeTrue())
+					o.Expect(disruptionsAllowed).Should(o.Equal("1"))
 				}
 			}
-
 		})
 
-		//Author: kbharti@redhat.com (GitHub: kabirbhartiRH)
+		// Author: kbharti@redhat.com (GitHub: kabirbhartiRH)
 		// port=unknown - no data in BigQuery last 60 days
 		g.It("Author:kbharti-ConnectedOnly-High-48608-Loki Operator-Reconcile and re-create objects on accidental user deletes[PreMerge][LokiOperator][Serial]", func() {
 			objectStorage := getStorageType(oc)
@@ -262,16 +262,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			ls.waitForLokiStackToBeReady(oc)
 			podList, err := oc.AdminKubeClient().CoreV1().Pods(ls.namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "app.kubernetes.io/component=distributor,app.kubernetes.io/instance=" + ls.name})
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(podList.Items) == 1).Should(o.BeTrue())
+			o.Expect(podList.Items).Should(o.HaveLen(1))
 			e2e.Logf("Distributor deployment reconciled!")
 
 			listLokiControllerCMs("post-reconciliation")
 			e2e.Logf("Loki Configmaps are reconciled \n")
-
 		})
 		// port=unknown - no data in BigQuery last 60 days
 		g.It("Author:kbharti-ConnectedOnly-High-48679-High-48616-Define limits and overrides per tenant for Loki and restart loki components on config change[PreMerge][LokiOperator][Serial]", func() {
-
 			objectStorage := getStorageType(oc)
 			if len(objectStorage) == 0 {
 				g.Skip("Current cluster doesn't have a proper object storage for this test!")
@@ -341,7 +339,7 @@ spec:
 			g.By("Validate limits and overrides per tenant under runtime-config.yaml")
 			dirname := "/tmp/" + oc.Namespace() + "-comp-restart"
 			defer os.RemoveAll(dirname)
-			err = os.MkdirAll(dirname, 0777)
+			err = os.MkdirAll(dirname, 0o777)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			_, err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("cm/"+ls.name+"-config", "-n", ls.namespace, "--confirm", "--to="+dirname).Output()
@@ -358,11 +356,11 @@ spec:
 			o.Expect(*runtimeConfig.Overrides.Application.IngestionRateMb).Should(o.Equal(20))
 			o.Expect(*runtimeConfig.Overrides.Application.MaxLabelNameLength).Should(o.Equal(2048))
 			o.Expect(*runtimeConfig.Overrides.Application.MaxLabelValueLength).Should(o.Equal(1024))
-			//validating overrides for infra tenant
+			// validating overrides for infra tenant
 			o.Expect(*runtimeConfig.Overrides.Infrastructure.IngestionRateMb).Should(o.Equal(15))
 			o.Expect(runtimeConfig.Overrides.Infrastructure.MaxLabelNameLength).To(o.BeNil())
 			o.Expect(runtimeConfig.Overrides.Infrastructure.MaxLabelValueLength).To(o.BeNil())
-			//validating overrides for audit tenant
+			// validating overrides for audit tenant
 			o.Expect(*runtimeConfig.Overrides.Audit.IngestionRateMb).Should(o.Equal(10))
 			o.Expect(runtimeConfig.Overrides.Audit.MaxLabelNameLength).To(o.BeNil())
 			o.Expect(runtimeConfig.Overrides.Audit.MaxLabelValueLength).To(o.BeNil())
@@ -410,34 +408,31 @@ spec:
 				}
 				replicaCount, err := getPodNames(oc, ls.namespace, "app.kubernetes.io/component="+component+",app.kubernetes.io/instance="+ls.name)
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(len(replicaCount) == 2).Should(o.BeTrue())
+				o.Expect(replicaCount).Should(o.HaveLen(2))
 			}
 			replicacount, err := getPodNames(oc, ls.namespace, "app.kubernetes.io/component=compactor,app.kubernetes.io/instance="+ls.name)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(replicacount) == 1).Should(o.BeTrue())
+			o.Expect(replicacount).Should(o.HaveLen(1))
 			ingesterReplicaCount, err := getPodNames(oc, ls.namespace, "app.kubernetes.io/component=ingester,app.kubernetes.io/instance="+ls.name)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(ingesterReplicaCount) == 3).Should(o.BeTrue())
+			o.Expect(ingesterReplicaCount).Should(o.HaveLen(3))
 
 			compat_otp.By("Check PodDisruptionBudgets set for 1x.pico bucket size")
 			for _, component := range lokiComponents {
 				maxUnavailable, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-"+component, "-n", cloNS, "-o=jsonpath={.spec.maxUnavailable}").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(maxUnavailable == "1").Should(o.BeTrue())
+				o.Expect(maxUnavailable).Should(o.Equal("1"))
 				disruptionsAllowed, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-"+component, "-n", cloNS, "-o=jsonpath={.status.disruptionsAllowed}").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(disruptionsAllowed == "1").Should(o.BeTrue())
+				o.Expect(disruptionsAllowed).Should(o.Equal("1"))
 			}
 
 			maxUnavailable, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-ingester", "-n", cloNS, "-o=jsonpath={.spec.maxUnavailable}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(maxUnavailable == "1").Should(o.BeTrue())
+			o.Expect(maxUnavailable).Should(o.Equal("1"))
 			disruptionsAllowed, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("PodDisruptionBudget", ls.name+"-ingester", "-n", cloNS, "-o=jsonpath={.status.disruptionsAllowed}").Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(disruptionsAllowed == "1").Should(o.BeTrue())
-
+			o.Expect(disruptionsAllowed).Should(o.Equal("1"))
 		})
-
 	})
-
 })

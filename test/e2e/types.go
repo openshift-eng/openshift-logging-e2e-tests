@@ -116,9 +116,9 @@ type SearchResult struct {
 					Key      string `json:"key,omitempty"`
 					DocCount int64  `json:"doc_count,omitempty"`
 				} `json:"buckets,omitempty"`
-			} `json:"inner_aggregations,omitempty"`
-		} `json:"logging_aggregations,omitempty"`
-	} `json:"aggregations,omitempty"`
+			} `json:"inner_aggregations,omitzero"`
+		} `json:"logging_aggregations,omitzero"`
+	} `json:"aggregations,omitzero"`
 }
 
 /*
@@ -201,7 +201,7 @@ type LogEntity struct {
 		PodIP             string            `json:"pod_ip,omitempty"`
 		PodName           string            `json:"pod_name"`
 		PodOwner          string            `json:"pod_owner"`
-	} `json:"kubernetes,omitempty"`
+	} `json:"kubernetes,omitzero"`
 	Systemd struct {
 		SystemdT struct {
 			SystemdInvocationID string `json:"SYSTEMD_INVOCATION_ID"`
@@ -225,7 +225,7 @@ type LogEntity struct {
 			SyslogIdntifier string `json:"SYSLOG_IDENTIFIER"`
 			SyslogFacility  string `json:"SYSLOG_FACILITY"`
 		} `json:"u"`
-	} `json:"systemd,omitempty"`
+	} `json:"systemd,omitzero"`
 	ViaqMsgID string `json:"viaq_msg_id,omitempty"`
 	Level     string `json:"level"`
 	LogSource string `json:"log_source"`
@@ -233,7 +233,7 @@ type LogEntity struct {
 	Message   string `json:"message"`
 	Docker    struct {
 		ContainerID string `json:"container_id"`
-	} `json:"docker,omitempty"`
+	} `json:"docker,omitzero"`
 	HostName  string `json:"hostname"`
 	TimeStamp string `json:"@timestamp"`
 	File      string `json:"file,omitempty"`
@@ -241,7 +241,7 @@ type LogEntity struct {
 		ClusterID string            `json:"cluster_id,omitempty"`
 		Sequence  int64             `json:"sequence"`
 		Labels    map[string]string `json:"labels,omitempty"`
-	} `json:"openshift,omitempty"`
+	} `json:"openshift,omitzero"`
 	PipelineMetadata struct {
 		Collector struct {
 			ReceivedAt string `json:"received_at"`
@@ -250,7 +250,7 @@ type LogEntity struct {
 			Version    string `json:"version"`
 			IPaddr4    string `json:"ipaddr4"`
 		} `json:"collector"`
-	} `json:"pipeline_metadata,omitempty"`
+	} `json:"pipeline_metadata,omitzero"`
 	Structured struct {
 		Level        string `json:"level,omitempty"`
 		StringNumber string `json:"StringNumber,omitempty"`
@@ -264,8 +264,8 @@ type LogEntity struct {
 		Layer2       struct {
 			Name string `json:"name,omitempty"`
 			Tips string `json:"tips,omitempty"`
-		} `json:"layer2,omitempty"`
-	} `json:"structured,omitempty"`
+		} `json:"layer2,omitzero"`
+	} `json:"structured,omitzero"`
 }
 
 // CountResult example
@@ -489,8 +489,8 @@ type lokiQueryResponse struct {
 				KubernetesNamespaceName string `json:"kubernetes_namespace_name,omitempty"`
 				KubernetesPodName       string `json:"kubernetes_pod_name,omitempty"`
 			} `json:"metric,omitempty"`
-			Values []interface{} `json:"values,omitempty"`
-			Value  interface{}   `json:"value,omitempty"`
+			Values []any `json:"values,omitempty"`
+			Value  any   `json:"value,omitempty"`
 		} `json:"result"`
 		Stats struct {
 			Summary struct {
@@ -567,7 +567,7 @@ type metric struct {
 		ExportedNamespace string `json:"exported_namespace,omitempty"`
 		State             string `json:"state,omitempty"`
 	} `json:"metric"`
-	Value []interface{} `json:"value"`
+	Value []any `json:"value"`
 }
 
 // alert the pending/firing alert
@@ -580,12 +580,12 @@ type alert struct {
 		Pod       string `json:"pod,omitempty"`
 		Instance  string `json:"instance,omitempty"`
 		Severity  string `json:"severity,omitempty"`
-	} `json:"labels,omitempty"`
+	} `json:"labels,omitzero"`
 	Annotations struct {
 		Message    string `json:"message,omitempty"`
 		RunBookURL string `json:"runbook_url,omitempty"`
 		Summary    string `json:"summary,omitempty"`
-	} `json:"annotations,omitempty"`
+	} `json:"annotations,omitzero"`
 	State    string `json:"state,omitempty"`
 	ActiveAt string `json:"activeAt,omitempty"`
 	Value    string `json:"value,omitempty"`
@@ -652,8 +652,8 @@ type splunkLogRecord struct {
 type splunkSearchResult struct {
 	Preview    bool              `json:"preview"`
 	InitOffset float64           `json:"init_offset"`
-	Fields     []interface{}     `json:"fields"`
-	Messages   []interface{}     `json:"messages"`
+	Fields     []any             `json:"fields"`
+	Messages   []any             `json:"messages"`
 	Results    []splunkLogRecord `json:"results"`
 }
 

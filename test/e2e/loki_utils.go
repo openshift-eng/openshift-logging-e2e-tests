@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,12 +29,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 func getMinIOCreds(oc *exutil.CLI, ns string) AWSClientConfig {
 	dirname := "/tmp/" + oc.Namespace() + "-creds"
 	defer os.RemoveAll(dirname)
-	err := os.MkdirAll(dirname, 0777)
+	err := os.MkdirAll(dirname, 0o777)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	_, err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/"+minioSecret, "-n", ns, "--confirm", "--to="+dirname).Output()
@@ -69,7 +71,7 @@ func createSecretForODFBucket(oc *exutil.CLI, bucketName, secretName, ns string)
 		return fmt.Errorf("secret name shouldn't be empty")
 	}
 	dirname := "/tmp/" + oc.Namespace() + "-creds"
-	err := os.MkdirAll(dirname, 0777)
+	err := os.MkdirAll(dirname, 0o777)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	defer os.RemoveAll(dirname)
 	_, err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/noobaa-admin", "-n", "openshift-storage", "--confirm", "--to="+dirname).Output()
@@ -100,26 +102,11 @@ func getGCPProjectNumber(projectID string) (string, error) {
 	return strconv.FormatInt(project.ProjectNumber, 10), nil
 }
 
-func getGCPAudience(providerName string) (string, error) {
-	ctx := context.Background()
-	service, err := iam.NewService(ctx)
-
-	if err != nil {
-		return "", fmt.Errorf("iam.NewService: %w", err)
-	}
-	audience, err := service.Projects.Locations.WorkloadIdentityPools.Providers.Get(providerName).Do()
-	if err != nil {
-		return "", fmt.Errorf("can't get audience: %v", err)
-	}
-	return audience.Oidc.AllowedAudiences[0], nil
-
-}
-
 func generateServiceAccountNameForGCS(clusterName string) string {
 	// Service Account should be between 6-30 characters long
 	name := clusterName + getRandomString()
 	if len(name) > 30 {
-		return (name[0:30])
+		return name[0:30]
 	}
 	return name
 }
@@ -149,13 +136,13 @@ func createServiceAccountOnGCP(projectID, name string) (*iam.ServiceAccount, err
 func addBinding(projectID, member, role string) error {
 	crmService, err := cloudresourcemanager.NewService(context.Background())
 	if err != nil {
-		return fmt.Errorf("cloudresourcemanager.NewService: %v", err)
+		return fmt.Errorf("cloudresourcemanager.NewService: %w", err)
 	}
 
 	err = wait.ExponentialBackoffWithContext(context.Background(), wait.Backoff{Steps: 5, Factor: 2, Duration: 5 * time.Second}, func(context.Context) (done bool, err error) {
 		policy, err := getPolicy(crmService, projectID)
 		if err != nil {
-			return false, fmt.Errorf("error getting policy: %v", err)
+			return false, fmt.Errorf("error getting policy: %w", err)
 		}
 		// Find the policy binding for role. Only one binding can have the role.
 		var binding *cloudresourcemanager.Binding
@@ -201,12 +188,12 @@ func addBinding(projectID, member, role string) error {
 func removeMember(projectID, member, role string) error {
 	crmService, err := cloudresourcemanager.NewService(context.Background())
 	if err != nil {
-		return fmt.Errorf("cloudresourcemanager.NewService: %v", err)
+		return fmt.Errorf("cloudresourcemanager.NewService: %w", err)
 	}
 	err = wait.ExponentialBackoffWithContext(context.Background(), wait.Backoff{Steps: 5, Factor: 2, Duration: 5 * time.Second}, func(context.Context) (done bool, err error) {
 		policy, err := getPolicy(crmService, projectID)
 		if err != nil {
-			return false, fmt.Errorf("error getting policy: %v", err)
+			return false, fmt.Errorf("error getting policy: %w", err)
 		}
 		// Find the policy binding for role. Only one binding can have the role.
 		var binding *cloudresourcemanager.Binding
@@ -291,12 +278,12 @@ func grantPermissionsToGCPServiceAccount(poolID, projectID, projectNumber, lokiN
 	for _, role := range gcsRoles {
 		err := addBinding(projectID, "serviceAccount:"+serviceAccountEmail, role)
 		if err != nil {
-			return fmt.Errorf("error adding role %s to %s: %v", role, serviceAccountEmail, err)
+			return fmt.Errorf("error adding role %s to %s: %w", role, serviceAccountEmail, err)
 		}
 		for _, sub := range subjects {
 			err := addBinding(projectID, "principal://iam.googleapis.com/projects/"+projectNumber+"/locations/global/workloadIdentityPools/"+poolID+"/subject/"+sub, role)
 			if err != nil {
-				return fmt.Errorf("error adding role %s to %s: %v", role, sub, err)
+				return fmt.Errorf("error adding role %s to %s: %w", role, sub, err)
 			}
 		}
 	}
@@ -316,12 +303,12 @@ func removePermissionsFromGCPServiceAccount(poolID, projectID, projectNumber, lo
 	for _, role := range gcsRoles {
 		err := removeMember(projectID, "serviceAccount:"+serviceAccountEmail, role)
 		if err != nil {
-			return fmt.Errorf("error removing role %s from %s: %v", role, serviceAccountEmail, err)
+			return fmt.Errorf("error removing role %s from %s: %w", role, serviceAccountEmail, err)
 		}
 		for _, sub := range subjects {
 			err := removeMember(projectID, "principal://iam.googleapis.com/projects/"+projectNumber+"/locations/global/workloadIdentityPools/"+poolID+"/subject/"+sub, role)
 			if err != nil {
-				return fmt.Errorf("error removing role %s from %s: %v", role, sub, err)
+				return fmt.Errorf("error removing role %s from %s: %w", role, sub, err)
 			}
 		}
 	}
@@ -336,7 +323,7 @@ func removeServiceAccountFromGCP(name string) error {
 	}
 	_, err = service.Projects.ServiceAccounts.Delete(name).Do()
 	if err != nil {
-		return fmt.Errorf("can't remove service account: %v", err)
+		return fmt.Errorf("can't remove service account: %w", err)
 	}
 	return nil
 }
@@ -351,7 +338,7 @@ func createSecretForGCSBucket(oc *exutil.CLI, bucketName, secretName, ns string)
 		return fmt.Errorf("secret name shouldn't be empty")
 	}
 
-	//get gcp-credentials from env var GOOGLE_APPLICATION_CREDENTIALS
+	// get gcp-credentials from env var GOOGLE_APPLICATION_CREDENTIALS
 	gcsCred := os.Getenv("GOOGLE_APPLICATION_CREDENTIALS")
 	return oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", secretName, "-n", ns, "--from-literal=bucketname="+bucketName, "--from-file=key.json="+gcsCred).Execute()
 }
@@ -361,7 +348,7 @@ func createSecretForAzureContainer(oc *exutil.CLI, bucketName, secretName, ns st
 	environment := "AzureGlobal"
 	cloudName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure", "cluster", "-o=jsonpath={.status.platformStatus.azure.cloudName}").Output()
 	if err != nil {
-		return fmt.Errorf("can't get azure cluster type  %v", err)
+		return fmt.Errorf("can't get azure cluster type  %w", err)
 	}
 	if strings.ToLower(cloudName) == "azureusgovernmentcloud" {
 		environment = "AzureUSGovernment"
@@ -375,7 +362,7 @@ func createSecretForAzureContainer(oc *exutil.CLI, bucketName, secretName, ns st
 
 	accountName, accountKey, err1 := compat_otp.GetAzureStorageAccountFromCluster(oc)
 	if err1 != nil {
-		return fmt.Errorf("can't get azure storage account from cluster: %v", err1)
+		return fmt.Errorf("can't get azure storage account from cluster: %w", err1)
 	}
 	return oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "-n", ns, secretName, "--from-literal=environment="+environment, "--from-literal=container="+bucketName, "--from-literal=account_name="+accountName, "--from-literal=account_key="+accountKey).Execute()
 }
@@ -584,7 +571,7 @@ func (l lokiStack) prepareResourcesForLokiStack(oc *exutil.CLI) error {
 			} else {
 				err = createSecretForAWSS3Bucket(oc, l.bucketName, l.storageSecret, l.namespace, cred)
 				if err != nil {
-					return fmt.Errorf("failed to create secret for aws s3 buctke: %v", err)
+					return fmt.Errorf("failed to create secret for aws s3 buctke: %w", err)
 				}
 			}
 			s3Client := factory.S3()
@@ -601,7 +588,7 @@ func (l lokiStack) prepareResourcesForLokiStack(oc *exutil.CLI) error {
 			} else {
 				accountName, accountKey, err1 := compat_otp.GetAzureStorageAccountFromCluster(oc)
 				if err1 != nil {
-					return fmt.Errorf("can't get azure storage account from cluster: %v", err1)
+					return fmt.Errorf("can't get azure storage account from cluster: %w", err1)
 				}
 				client, err2 := compat_otp.NewAzureContainerClient(oc, accountName, accountKey, l.bucketName)
 				if err2 != nil {
@@ -628,20 +615,20 @@ func (l lokiStack) prepareResourcesForLokiStack(oc *exutil.CLI) error {
 				os.Setenv("LOGGING_GCS_SERVICE_ACCOUNT_NAME", gcsSAName)
 				projectNumber, err1 := getGCPProjectNumber(projectID)
 				if err1 != nil {
-					return fmt.Errorf("can't get GCP project number: %v", err1)
+					return fmt.Errorf("can't get GCP project number: %w", err1)
 				}
 				poolID, err2 := getPoolID(oc)
 				if err2 != nil {
-					return fmt.Errorf("can't get pool ID: %v", err2)
+					return fmt.Errorf("can't get pool ID: %w", err2)
 				}
 				sa, err3 := createServiceAccountOnGCP(projectID, gcsSAName)
 				if err3 != nil {
-					return fmt.Errorf("can't create service account: %v", err3)
+					return fmt.Errorf("can't create service account: %w", err3)
 				}
 				os.Setenv("LOGGING_GCS_SERVICE_ACCOUNT_EMAIL", sa.Email)
 				err4 := grantPermissionsToGCPServiceAccount(poolID, projectID, projectNumber, l.namespace, l.name, sa.Email)
 				if err4 != nil {
-					return fmt.Errorf("can't add roles to the serviceaccount: %v", err4)
+					return fmt.Errorf("can't add roles to the serviceaccount: %w", err4)
 				}
 
 				patchLokiOperatorOnGCPSTSforCCO(oc, loNS, projectNumber, poolID, sa.Email)
@@ -704,7 +691,7 @@ func (l lokiStack) deployLokiStack(oc *exutil.CLI, optionalParameters ...string)
 	if GetIPVersionStackType(oc) == "ipv6single" {
 		lokistackTemplate = strings.ReplaceAll(l.template, ".yaml", "-ipv6.yaml")
 	}
-	//Add Proxy CA for object storage
+	// Add Proxy CA for object storage
 	caBundle := getProxyCaBundle(oc)
 	if caBundle != "" {
 		e2e.Logf("Enable caBundle for lokistack storage")
@@ -887,7 +874,7 @@ func (l lokiStack) removeObjectStorage(oc *exutil.CLI) {
 func (l lokiStack) createSecretFromGateway(oc *exutil.CLI, name, namespace, token string) {
 	dirname := "/tmp/" + oc.Namespace() + getRandomString()
 	defer os.RemoveAll(dirname)
-	err := os.MkdirAll(dirname, 0777)
+	err := os.MkdirAll(dirname, 0o777)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
 	// The service-ca operator creates the *-gateway-ca-bundle configmap before it
@@ -915,20 +902,19 @@ func (l lokiStack) createSecretFromGateway(oc *exutil.CLI, name, namespace, toke
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", name, "-n", namespace, "--from-file=ca-bundle.crt="+dirname+"/service-ca.crt").Execute()
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
-
 }
 
 // TODO: add an option to provide TLS config
 type lokiClient struct {
-	username        string //Username for HTTP basic auth.
-	password        string //Password for HTTP basic auth
-	address         string //Server address.
-	orgID           string //adds X-Scope-OrgID to API requests for representing tenant ID. Useful for requesting tenant data when bypassing an auth gateway.
-	bearerToken     string //adds the Authorization header to API requests for authentication purposes.
-	bearerTokenFile string //adds the Authorization header to API requests for authentication purposes.
-	retries         int    //How many times to retry each query when getting an error response from Loki.
-	queryTags       string //adds X-Query-Tags header to API requests.
-	quiet           bool   //Suppress query metadata.
+	username        string // Username for HTTP basic auth.
+	password        string // Password for HTTP basic auth
+	address         string // Server address.
+	orgID           string // adds X-Scope-OrgID to API requests for representing tenant ID. Useful for requesting tenant data when bypassing an auth gateway.
+	bearerToken     string // adds the Authorization header to API requests for authentication purposes.
+	bearerTokenFile string // adds the Authorization header to API requests for authentication purposes.
+	retries         int    // How many times to retry each query when getting an error response from Loki.
+	queryTags       string // adds X-Query-Tags header to API requests.
+	quiet           bool   // Suppress query metadata.
 }
 
 // newLokiClient initializes a lokiClient with server address
@@ -1002,7 +988,7 @@ func (c *lokiClient) getHTTPRequestHeader() (http.Header, error) {
 	if c.bearerTokenFile != "" {
 		b, err := os.ReadFile(c.bearerTokenFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read authorization credentials file %s: %s", c.bearerTokenFile, err)
+			return nil, fmt.Errorf("unable to read authorization credentials file %s: %w", c.bearerTokenFile, err)
 		}
 		bearerToken := strings.TrimSpace(string(b))
 		h.Set("Authorization", "Bearer "+bearerToken)
@@ -1010,7 +996,7 @@ func (c *lokiClient) getHTTPRequestHeader() (http.Header, error) {
 	return h, nil
 }
 
-func (c *lokiClient) doRequest(path, query string, out interface{}) error {
+func (c *lokiClient) doRequest(path, query string, out any) error {
 	h, err := c.getHTTPRequestHeader()
 	if err != nil {
 		return err
@@ -1156,7 +1142,7 @@ func extractLogEntities(lokiQueryResult *lokiQueryResponse) []LogEntity {
 		for _, value := range res.Values {
 			lokiLog := LogEntity{}
 			// only process log data, drop timestamp
-			json.Unmarshal([]byte(convertInterfaceToArray(value)[1]), &lokiLog)
+			o.Expect(json.Unmarshal([]byte(convertInterfaceToArray(value)[1]), &lokiLog)).To(o.Succeed())
 			lokiLogs = append(lokiLogs, lokiLog)
 		}
 	}
@@ -1244,7 +1230,6 @@ func (c *lokiClient) queryRules(tenant, ns string) ([]byte, error) {
 		return nil, err
 	}
 	return resp, nil
-
 }
 
 type queryStringBuilder struct {
@@ -1329,19 +1314,19 @@ type externalLoki struct {
 }
 
 func (l externalLoki) deployLoki(oc *exutil.CLI) {
-	//Create configmap for Loki
+	// Create configmap for Loki
 	cmTemplate := testdata.FixturePath("logging", "external-log-stores", "loki", "loki-configmap.yaml")
 	lokiCM := resource{"configmap", l.name, l.namespace}
 	err := lokiCM.applyFromTemplate(oc, "-n", l.namespace, "-f", cmTemplate, "-p", "LOKINAMESPACE="+l.namespace, "-p", "LOKICMNAME="+l.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	//Create Deployment for Loki
+	// Create Deployment for Loki
 	deployTemplate := testdata.FixturePath("logging", "external-log-stores", "loki", "loki-deployment.yaml")
 	lokiDeploy := resource{"deployment", l.name, l.namespace}
 	err = lokiDeploy.applyFromTemplate(oc, "-n", l.namespace, "-f", deployTemplate, "-p", "LOKISERVERNAME="+l.name, "-p", "LOKINAMESPACE="+l.namespace, "-p", "LOKICMNAME="+l.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	//Expose Loki as a Service
+	// Expose Loki as a Service
 	WaitForDeploymentPodsToBeReady(oc, l.namespace, l.name)
 	err = oc.AsAdmin().WithoutNamespace().Run("expose").Args("-n", l.namespace, "deployment", l.name).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -1498,7 +1483,7 @@ func validatesIfLogsArePushedToGCSBucket(bucketName string, tenants []string) {
 		itr := bucket.Objects(context.Background(), query)
 		for {
 			objAttrs, err := itr.Next()
-			if err == iterator.Done {
+			if errors.Is(err, iterator.Done) {
 				break
 			}
 			if err != nil {
@@ -1723,18 +1708,17 @@ func (l lokiStack) getLokiStackNetworkPolicy(oc *exutil.CLI, policyName string) 
 	var netpol NetworkPolicy
 	np, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", l.namespace, policyName, "-oyaml").Output()
 	if err != nil {
-		return netpol, fmt.Errorf("error getting networkpolicy %s: %v", policyName, err)
+		return netpol, fmt.Errorf("error getting networkpolicy %s: %w", policyName, err)
 	}
 	err = yaml.Unmarshal([]byte(np), &netpol)
 	if err != nil {
-		return netpol, fmt.Errorf("error unmarshalling YAML: %v", err)
+		return netpol, fmt.Errorf("error unmarshalling YAML: %w", err)
 	}
 	return netpol, nil
 }
 
 // validateLokiStackNetworkPolicyContent validates the specific content of each LokiStack network policy
 func (l lokiStack) validateLokiStackNetworkPolicyContent(oc *exutil.CLI, policyName string) error {
-
 	np, err := l.getLokiStackNetworkPolicy(oc, policyName)
 	o.Expect(err).NotTo(o.HaveOccurred(), fmt.Sprintf("Failed to get network policy %s", policyName))
 
@@ -2021,11 +2005,11 @@ func (l lokiStack) validateThanosObjStoreClientIsEnabled(oc *exutil.CLI) (bool, 
 	cmName := l.name + "-config"
 	raw, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", "-n", l.namespace, cmName, "-o", "jsonpath={.data.config\\.yaml}").Output()
 	if err != nil {
-		return false, fmt.Errorf("error getting configmap %s: %v", cmName, err)
+		return false, fmt.Errorf("error getting configmap %s: %w", cmName, err)
 	}
 	var cfg LokiStorageConfig
 	if err := yaml.Unmarshal([]byte(raw), &cfg); err != nil {
-		return false, fmt.Errorf("error unmarshalling Loki config: %v", err)
+		return false, fmt.Errorf("error unmarshalling Loki config: %w", err)
 	}
 	return cfg.StorageConfig.UseThanoObjstore, nil
 }

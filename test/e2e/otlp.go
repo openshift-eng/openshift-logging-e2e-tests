@@ -6,13 +6,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
-
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Otlp output testing", func() {
@@ -98,7 +98,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Otlp output te
 		}
 		defer clf.delete(oc)
 		clf.create(oc, "URL="+svc)
-		//exclude logs from  project otel.namespace because the OTEL collector writes received logs to stdout
+		// exclude logs from  project otel.namespace because the OTEL collector writes received logs to stdout
 		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"excludes": [{"namespace":"` + otel.namespace + `"}]}}]},{"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app", "infrastructure", "audit"]}]`
 		clf.update(oc, "", patch, "--type=json")
 		clf.waitForCollectorPodsReady(oc)
@@ -129,10 +129,9 @@ type = "opentelemetry"`,
 		logs, err := oc.AsAdmin().WithoutNamespace().Run("logs").Args("-n", otel.namespace, otelCollector, "--tail=60").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(strings.Contains(logs, "LogRecord")).Should(o.BeTrue())
-
 	})
 
-	//author: qitang@redhat.com
+	// author: qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:qitang-ConnectedOnly-High-76728-Add stream info to data model OTEL LokiStack[CLO][Serial][Slow]", func() {
 		s := getStorageType(oc)
@@ -254,7 +253,7 @@ type = "opentelemetry"`,
 			lc.waitForLogsAppearByProject("application", "multiline-log-"+ioStream+"-76727")
 			dataInLoki, _ := lc.searchByNamespace("application", "multiline-log-"+ioStream+"-76727")
 			for _, log := range dataInLoki.Data.Result {
-				o.Expect(log.Stream.LogIOStream == ioStream).Should(o.BeTrue(), `iostream is wrong, expected: `+ioStream+`, got: `+log.Stream.LogIOStream)
+				o.Expect(log.Stream.LogIOStream).Should(o.Equal(ioStream), `iostream is wrong, expected: `+ioStream+`, got: `+log.Stream.LogIOStream)
 				for _, value := range log.Values {
 					message := convertInterfaceToArray(value)
 					o.Expect(containSubstring(multilineLogs, message[1])).Should(o.BeTrue(), fmt.Sprintf("Parse multiline error failed, iostream: %s, message: \n%s", ioStream, message[1]))
@@ -293,5 +292,4 @@ type = "opentelemetry"`,
 		clf.update(oc, "", `{"metadata": {"annotations": {"observability.openshift.io/tech-preview-otlp-output": "disabled"}}}`, "--type=merge")
 		checkResource(oc, true, false, `output "otlp" requires a valid tech-preview annotation`, []string{"clusterlogforwarder.observability.openshift.io", clf.name, "-n", clf.namespace, "-ojsonpath={.status.outputConditions[*].message}"})
 	})
-
 })

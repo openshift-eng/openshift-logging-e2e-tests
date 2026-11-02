@@ -2,7 +2,6 @@ package logging
 
 import (
 	"context"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 	"strings"
 	"time"
@@ -14,6 +13,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	e2eoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
@@ -24,7 +25,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	)
 
 	g.Context("to Syslog", func() {
-
 		g.BeforeEach(func() {
 			loggingBaseDir = testdata.FixturePath("logging")
 			CLO := SubscriptionObjects{
@@ -85,9 +85,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			if err != nil || len(dataPods.Items) < 1 {
 				e2e.Failf("failed to get pods by label test=centos-logtest")
 			}
-			//RFC3164 Format: <PRI>TIMESTAMP HOSTNAME TAG: MESSAGE
-			//tag is namespacePod (Vector RFC3164 format truncates at 31 chars in Logging 6.6+)
-			tagName := strings.Replace(appProj+dataPods.Items[0].Name, "-", "", -1)[0:31]
+			// RFC3164 Format: <PRI>TIMESTAMP HOSTNAME TAG: MESSAGE
+			// tag is namespacePod (Vector RFC3164 format truncates at 31 chars in Logging 6.6+)
+			tagName := strings.ReplaceAll(appProj+dataPods.Items[0].Name, "-", "")[0:31]
 			rsyslog.checkDataContent(oc, true, "app-container.log", ` `+tagName+`:`)
 			// Validate some key fileds exits
 			rsyslog.checkDataContent(oc, true, "app-container.log", `"hostname":`)
@@ -99,7 +99,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			rsyslog.checkDataContent(oc, true, "app-container.log", `"message":`)
 			rsyslog.checkDataContent(oc, true, "app-container.log", `"openshift":{"cluster_id":`)
 
-			//tag is SYSLOG_IDENTIFIER[ProcId] or SYSLOG_IDENTIFIER
+			// tag is SYSLOG_IDENTIFIER[ProcId] or SYSLOG_IDENTIFIER
 			rsyslog.checkDataContent(oc, true, "infra.log", ` (crio|systemd|kubenswrapper|ovs-vswitchd)\[\d+\]: `)
 			rsyslog.checkDataContent(oc, true, "infra.log", `"@timestamp":`)
 			rsyslog.checkDataContent(oc, true, "infra.log", `"hostname":`)
@@ -107,7 +107,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			rsyslog.checkDataContent(oc, true, "infra.log", `"tag":".journal.system"`)
 			rsyslog.checkDataContent(oc, true, "infra.log", `"openshift":{"cluster_id":`)
 
-			//tag is log_source for audit logs
+			// tag is log_source for audit logs
 			if hasMaster(oc) {
 				rsyslog.checkDataContent(oc, true, "audit-openshiftAPI.log", ` openshiftAPI: `)
 				rsyslog.checkDataContent(oc, true, "audit-openshiftAPI.log", `@timestamp`)
@@ -179,18 +179,18 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			rsyslog.checkDataContent(oc, false, "audit.log", "namespace_name=.*container_name=.*pod_name=")
 
 			g.By("Verify the syslog RFC5424 default fields")
-			//RFC5424 Format: <PRI> VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID [STRUCTURED-DATA] MESSAGE
-			//app_name=namespace_podname_container_name[pod_id]
+			// RFC5424 Format: <PRI> VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID [STRUCTURED-DATA] MESSAGE
+			// app_name=namespace_podname_container_name[pod_id]
 			appName := appProj + "_" + dataPods.Items[0].Name + `_logging-centos-logtest\[[0-9a-f-]+\]`
 			rsyslog.checkDataContent(oc, true, "app-container.log", " "+appName+" ")
 			rsyslog.checkDataContent(oc, true, "infra.log", ` (crio|systemd|kubenswrapper|ovs-vswitchd)\[\d+\] `)
 
 			if hasMaster(oc) {
-				//app_name is logSource by default.it is logSource[auditID]
+				// app_name is logSource by default.it is logSource[auditID]
 				rsyslog.checkDataContent(oc, true, "audit-kubeAPI.log", ` kubeAPI\[[0-9a-f-]+] `)
 				rsyslog.checkDataContent(oc, true, "audit-openshiftAPI.log", ` openshiftAPI\[[0-9a-f-]+\] `)
 			}
-			//app_name is logSource by default.it is logSource
+			// app_name is logSource by default.it is logSource
 			rsyslog.checkDataContent(oc, true, "audit-linux.log", ` auditd `)
 		})
 
@@ -241,22 +241,22 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				e2e.Failf("failed to get pods by label test=centos-logtest")
 			}
 
-			//RFC5424 Format: <PRI> VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID [STRUCTURED-DATA] MESSAGE
-			//app_name=namespace_podname_container_name by default, here we use appName[proc_id]=containerName[podName]
+			// RFC5424 Format: <PRI> VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID [STRUCTURED-DATA] MESSAGE
+			// app_name=namespace_podname_container_name by default, here we use appName[proc_id]=containerName[podName]
 			rsyslog.checkDataContent(oc, true, "app-container.log", ` logging-centos-logtest\[.+\] `)
 
-			//app_name=namespace_podname_container_name by default, here we appName[proc_id]=containerName[podName]
+			// app_name=namespace_podname_container_name by default, here we appName[proc_id]=containerName[podName]
 			rsyslog.checkDataContent(oc, true, "infra-container.log", ` .+\[.+\] `)
 
-			//app_name is SYSLOG_IDENTIFIER[proc_id] by default, here we use appName[proc_id]=logSource[logSource]
+			// app_name is SYSLOG_IDENTIFIER[proc_id] by default, here we use appName[proc_id]=logSource[logSource]
 			rsyslog.checkDataContent(oc, true, "infra.log", ` node\[node\] `)
 
 			if hasMaster(oc) {
-				//app_name is kubeAPI by default. here we use appName[proc_id]=logSource[logSource]
+				// app_name is kubeAPI by default. here we use appName[proc_id]=logSource[logSource]
 				rsyslog.checkDataContent(oc, true, "audit-kubeAPI.log", ` kubeAPI\[kubeAPI\] `)
 				rsyslog.checkDataContent(oc, true, "audit-openshiftAPI.log", ` openshiftAPI\[openshiftAPI\] `)
 			}
-			//app_name is kubeAPI by default. here we use appName[proc_id]=logSource[logSource]
+			// app_name is kubeAPI by default. here we use appName[proc_id]=logSource[logSource]
 			rsyslog.checkDataContent(oc, true, "audit-linux.log", ` auditd\[auditd\] `)
 
 			g.By("Check collector expose debug logs")
@@ -368,7 +368,6 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-mtls/ca-bundle.crt"`
 
 		// port=unknown - no data in BigQuery last 60 days
 		g.It("Author:ikanse-High-62527-Collector External syslog output complies with the tlsSecurityProfile configuration.[Slow][Disruptive][CLO]", func() {
-
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			if !compareExpectedTLSConfigWithCurrent(oc, `{"custom":{"ciphers":["ECDHE-ECDSA-CHACHA20-POLY1305","ECDHE-RSA-CHACHA20-POLY1305","ECDHE-RSA-AES128-GCM-SHA256","ECDHE-ECDSA-AES128-GCM-SHA256"],"minTLSVersion":"VersionTLS12"},"type":"Custom"}`) {
 				g.Skip("Current tlsSecurityProfile is not the expected one, skipping the test...")
@@ -583,7 +582,6 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 				}
 				rsyslog.checkData(oc, false, "audit-linux.log")
 			}
-
 		})
 		// author anli@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
@@ -620,17 +618,17 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
 			defer clf.delete(oc)
-			//PAYLOAD_KEY can be .message; .a.b.c and etc
+			// PAYLOAD_KEY can be .message; .a.b.c and etc
 			clf.create(oc, "URL=tls://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:6514", "LOG_LEVEL=off", "NAMESPACE_PATTERN="+appProj, "PAYLOAD_KEY=.message")
 
 			g.By("Check logs in rsyslog server")
-			//Logs are not sent to app-container.log as payload_key=.message
+			// Logs are not sent to app-container.log as payload_key=.message
 			rsyslog.checkData(oc, false, "app-container.log")
 			rsyslog.checkData(oc, true, "other.log")
 
 			g.By("Verify the syslog payloadKey fields")
-			//Only message is included. the @timestemp, kubernetes,metadata, openshift.cluster_id are dropped
-			//2025-04-21T08:16:43+00:00 ip-10-0-136-217.ec2.internal e2etestvectorsyslog9znqjloggingc: MERGE_JSON_LOG=true
+			// Only message is included. the @timestemp, kubernetes,metadata, openshift.cluster_id are dropped
+			// 2025-04-21T08:16:43+00:00 ip-10-0-136-217.ec2.internal e2etestvectorsyslog9znqjloggingc: MERGE_JSON_LOG=true
 			rsyslog.checkDataContent(oc, true, "other.log", `MERGE_JSON_LOG=true`)
 			rsyslog.checkDataContent(oc, false, "other.log", `timestamp`)
 			rsyslog.checkDataContent(oc, false, "other.log", `kubernetes`)

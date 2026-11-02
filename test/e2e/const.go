@@ -258,7 +258,7 @@ created by net/http.(*Server).Serve
  config/error_reporting_logger.rb:62:in ` + "`" + `tagged'
 `
 
-	//Please be careful when editing this file, there should have 2 blankspaces in the line below `RAILS_EXC = ` ActionController::RoutingError (No route matches [GET] "/settings"):`
+	// Please be careful when editing this file, there should have 2 blankspaces in the line below `RAILS_EXC = ` ActionController::RoutingError (No route matches [GET] "/settings"):`
 	railsExc = ` ActionController::RoutingError (No route matches [GET] "/settings"):
   
   actionpack (5.1.4) lib/action_dispatch/middleware/debug_exceptions.rb:63:in ` + "`" + `call'

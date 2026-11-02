@@ -2,7 +2,6 @@ package logging
 
 import (
 	"context"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 	"strings"
 	"time"
@@ -15,6 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease scheduler", func() {
@@ -121,7 +122,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease scheduler", fu
 		checkResource(oc, true, true, `{"kubernetes.io/os":"linux","logging":"test"}`, []string{"daemonset", clf.name, "-n", clf.namespace, "-ojsonpath={.spec.template.spec.nodeSelector}"})
 		checkResource(oc, true, true, `[{"effect":"NoSchedule","key":"node-role.kubernetes.io/master","operator":"Exists"},{"effect":"NoSchedule","key":"node.kubernetes.io/disk-pressure","operator":"Exists"},{"effect":"NoExecute","key":"test","operator":"Equal","tolerationSeconds":3000,"value":"logging"}]`, []string{"daemonset", clf.name, "-n", clf.namespace, "-ojsonpath={.spec.template.spec.tolerations}"})
 
-		//check vector.toml, use use_apiserver_cache are added into application logs inputs
+		// check vector.toml, use use_apiserver_cache are added into application logs inputs
 		searchString1 := ` rotate_wait_secs = 5
 use_apiserver_cache = true
 
@@ -187,7 +188,7 @@ use_apiserver_cache = true
 		dsAffinity, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ds", clf.name, "-n", clf.namespace, `-ojsonpath={.spec.template.spec.affinity}`).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		g.By("Verfy affinity is expected")
-		o.Expect(dsAffinity == clfAffinity).Should(o.BeTrue(), "The affanity in damonset: %v", dsAffinity)
+		o.Expect(dsAffinity).Should(o.Equal(clfAffinity), "The affanity in damonset: %v", dsAffinity)
 
 		g.By("Verify there is running collector pod binding to pod run=centos-logtest")
 		pods, _ := oc.AdminKubeClient().CoreV1().Pods(appProj).List(context.Background(), metav1.ListOptions{LabelSelector: "run=centos-logtest"})
@@ -231,7 +232,7 @@ use_apiserver_cache = true
 		defer clf.delete(oc)
 		clf.create(oc, "URL=udp://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:514")
 
-		//Note: Some pods may in pending status as no affinity pod can be found, so we only validate one pod is running here
+		// Note: Some pods may in pending status as no affinity pod can be found, so we only validate one pod is running here
 		g.By("Wait the collector deployment one pod is ready")
 		var deploymentReplicas int32 = 0
 		err = wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
@@ -244,21 +245,21 @@ use_apiserver_cache = true
 				return false, err
 			}
 			deploymentReplicas = *deployment.Spec.Replicas
-			//Exist the AvailableReplicas is not zero
+			// Exist the AvailableReplicas is not zero
 			if deployment.Status.AvailableReplicas != 0 {
 				return true, nil
 			}
 			return false, nil
 		})
 		compat_otp.AssertWaitPollNoErr(err, "the collector deployment is not available")
-		o.Expect(deploymentReplicas == 2).Should(o.BeTrue(), "The deployment.Spec.Replicas is not 2")
+		o.Expect(deploymentReplicas).Should(o.Equal(int32(2)), "The deployment.Spec.Replicas is not 2")
 
 		g.By("Verfy there is affinity in the deployment")
 		dpAffinity, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment", clf.name, "-n", clf.namespace, `-ojsonpath={.spec.template.spec.affinity}`).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clfAffinity := `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"label-1","operator":"Exists"}]},"weight":1},{"preference":{"matchExpressions":[{"key":"label-2","operator":"In","values":["key-2"]}]},"weight":50}],"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/os","operator":"In","values":["linux"]}]},{"matchExpressions":[{"key":"node-role.kubernetes.io/worker","operator":"Exists"}]}]}},"podAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"podAffinityTerm":{"labelSelector":{"matchExpressions":[{"key":"qe-test","operator":"In","values":["value1"]}]},"topologyKey":"kubernetes.io/hostname"},"weight":50}],"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"run","operator":"In","values":["centos-logtest"]}]},"namespaceSelector":{},"topologyKey":"kubernetes.io/hostname"}]},"podAntiAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"podAffinityTerm":{"labelSelector":{"matchExpressions":[{"key":"security","operator":"In","values":["S2"]}]},"topologyKey":"topology.kubernetes.io/zone"},"weight":100}]}}`
 		g.By("Verfy affinity is expected")
-		o.Expect(dpAffinity == clfAffinity).Should(o.BeTrue(), "The affanity in deployment: %v", dpAffinity)
+		o.Expect(dpAffinity).Should(o.Equal(clfAffinity), "The affanity in deployment: %v", dpAffinity)
 
 		g.By("Verify there is running collector pod binding to pod run=centos-logtest")
 		pods, _ := oc.AdminKubeClient().CoreV1().Pods(appProj).List(context.Background(), metav1.ListOptions{LabelSelector: "run=centos-logtest"})

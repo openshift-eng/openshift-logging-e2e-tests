@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,6 +18,8 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 func (s *splunkPodServer) checkLogs(query string) bool {
@@ -70,7 +71,7 @@ func (s *splunkPodServer) allQueryFound(queries []string) bool {
 			"log_type=\"audit\" .openshift-audit.log|head 1",
 		}
 	}
-	//return false if any query fail
+	// return false if any query fail
 	foundAll := true
 	for _, query := range queries {
 		if !s.checkLogs(query) {
@@ -104,12 +105,12 @@ func (s *splunkPodServer) getSearchResult(searchID string) (*splunkSearchResult,
 
 	resp, err1 := doHTTPRequest(h, "https://"+s.splunkdRoute, "/services/search/jobs/"+searchID+"/results", params.Encode(), "GET", true, 5, nil, 200)
 	if err1 != nil {
-		return nil, fmt.Errorf("failed to get response: %v", err1)
+		return nil, fmt.Errorf("failed to get response: %w", err1)
 	}
 
 	err2 := json.Unmarshal(resp, &searchResult)
 	if err2 != nil {
-		return nil, fmt.Errorf("failed to unmarshal splunk response: %v", err2)
+		return nil, fmt.Errorf("failed to unmarshal splunk response: %w", err2)
 	}
 	return searchResult, nil
 }
@@ -117,7 +118,7 @@ func (s *splunkPodServer) getSearchResult(searchID string) (*splunkSearchResult,
 func (s *splunkPodServer) searchLogs(query string) (*splunkSearchResult, error) {
 	searchID, err := s.requestSearchTask(query)
 	if err != nil {
-		return nil, fmt.Errorf("error getting search ID: %v", err)
+		return nil, fmt.Errorf("error getting search ID: %w", err)
 	}
 	return s.getSearchResult(searchID)
 }
@@ -150,14 +151,14 @@ func (s *splunkPodServer) init() {
 	s.adminUser = "admin"
 	s.adminPassword = getRandomString()
 	s.hecToken = uuid.New().String()
-	//https://idelta.co.uk/generate-hec-tokens-with-python/,https://docs.splunk.com/Documentation/SplunkCloud/9.0.2209/Security/Passwordbestpracticesforadministrators
+	// https://idelta.co.uk/generate-hec-tokens-with-python/,https://docs.splunk.com/Documentation/SplunkCloud/9.0.2209/Security/Passwordbestpracticesforadministrators
 	s.serviceName = s.name + "-0"
 	s.serviceURL = s.serviceName + "." + s.namespace + ".svc"
 	if s.name == "" {
 		s.name = "splunk-default"
 	}
-	//authType must be one of "http|tls_serveronly|tls_mutual"
-	//Note: when authType==http, you can still access splunk via https://${splunk_route}
+	// authType must be one of "http|tls_serveronly|tls_mutual"
+	// Note: when authType==http, you can still access splunk via https://${splunk_route}
 	if s.authType == "" {
 		s.authType = "http"
 	}
@@ -165,11 +166,11 @@ func (s *splunkPodServer) init() {
 		s.version = "9.0"
 	}
 
-	//Exit if anyone of caFile, keyFile,CertFile is null
+	// Exit if anyone of caFile, keyFile,CertFile is null
 	if s.authType == "tls_clientauth" || s.authType == "tls_serveronly" {
-		o.Expect(s.caFile == "").To(o.BeFalse())
-		o.Expect(s.keyFile == "").To(o.BeFalse())
-		o.Expect(s.certFile == "").To(o.BeFalse())
+		o.Expect(s.caFile).ToNot(o.Equal(""))
+		o.Expect(s.keyFile).ToNot(o.Equal(""))
+		o.Expect(s.certFile).ToNot(o.Equal(""))
 	}
 }
 
@@ -177,9 +178,9 @@ func (s *splunkPodServer) deploy(oc *exutil.CLI) {
 	// Get route URL of splunk service
 	appDomain, err := getAppDomain(oc)
 	o.Expect(err).NotTo(o.HaveOccurred())
-	//splunkd route URL
+	// splunkd route URL
 	s.splunkdRoute = s.name + "-splunkd-" + s.namespace + "." + appDomain
-	//splunkd hec URL
+	// splunkd hec URL
 	s.hecRoute = s.name + "-hec-" + s.namespace + "." + appDomain
 	s.webRoute = s.name + "-web-" + s.namespace + "." + appDomain
 
@@ -203,26 +204,26 @@ func (s *splunkPodServer) deploy(oc *exutil.CLI) {
 	default:
 		s.deployHTTPSplunk(oc)
 	}
-	//In general, it take 1 minutes to be started, here wait 30second before call  waitForStatefulsetReady
+	// In general, it take 1 minutes to be started, here wait 30second before call  waitForStatefulsetReady
 	time.Sleep(30 * time.Second)
 	waitForStatefulsetReady(oc, s.namespace, s.name)
 }
 
 func (s *splunkPodServer) deployHTTPSplunk(oc *exutil.CLI) {
 	filePath := testdata.FixturePath("logging", "external-log-stores", "splunk")
-	//Create secret for splunk Statefulset
+	// Create secret for splunk Statefulset
 	secretTemplate := filepath.Join(filePath, "secret_splunk_template.yaml")
 	secret := resource{"secret", s.name, s.namespace}
 	err := secret.applyFromTemplate(oc, "-f", secretTemplate, "-p", "NAME="+secret.name, "-p", "HEC_TOKEN="+s.hecToken, "-p", "PASSWORD="+s.adminPassword)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	//create splunk StatefulSet
+	// create splunk StatefulSet
 	statefulsetTemplate := filepath.Join(filePath, "statefulset_splunk-"+s.version+"_template.yaml")
 	splunkSfs := resource{"StatefulSet", s.name, s.namespace}
 	err = splunkSfs.applyFromTemplate(oc, "-f", statefulsetTemplate, "-p", "NAME="+s.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	//create route for splunk service
+	// create route for splunk service
 	routeHecTemplate := filepath.Join(filePath, "route-edge_splunk_template.yaml")
 	routeHec := resource{"route", s.name + "-hec", s.namespace}
 	err = routeHec.applyFromTemplate(oc, "-f", routeHecTemplate, "-p", "NAME="+routeHec.name, "-p", "SERVICE_NAME="+s.serviceName, "-p", "PORT_NAME=http-hec", "-p", "ROUTE_HOST="+s.hecRoute)
@@ -255,12 +256,12 @@ func (s *splunkPodServer) genHecPemFile(hecFile string) error {
 	buf = append(buf, dat1...)
 	buf = append(buf, dat2...)
 	buf = append(buf, dat3...)
-	err = os.WriteFile(hecFile, buf, 0644)
+	err = os.WriteFile(hecFile, buf, 0o644)
 	return err
 }
 
 func (s *splunkPodServer) deployCustomCertSplunk(oc *exutil.CLI) {
-	//Create basic secret content for splunk Statefulset
+	// Create basic secret content for splunk Statefulset
 	filePath := testdata.FixturePath("logging", "external-log-stores", "splunk")
 	secretTemplate := filepath.Join(filePath, "secret_tls_splunk_template.yaml")
 	if s.passphrase != "" {
@@ -275,13 +276,13 @@ func (s *splunkPodServer) deployCustomCertSplunk(oc *exutil.CLI) {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 
-	//HEC need all in one PEM file.
+	// HEC need all in one PEM file.
 	hecPemFile := "/tmp/" + getRandomString() + "hecAllKeys.crt"
 	defer os.Remove(hecPemFile)
 	err := s.genHecPemFile(hecPemFile)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	//The secret will be mounted into splunk pods and used in server.conf,inputs.conf
+	// The secret will be mounted into splunk pods and used in server.conf,inputs.conf
 	args := []string{"data", "secret/" + secret.name, "-n", secret.namespace}
 	args = append(args, "--from-file=hec.pem="+hecPemFile)
 	args = append(args, "--from-file=ca.pem="+s.caFile)
@@ -293,13 +294,13 @@ func (s *splunkPodServer) deployCustomCertSplunk(oc *exutil.CLI) {
 	err = oc.AsAdmin().WithoutNamespace().Run("set").Args(args...).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	//create splunk StatefulSet
+	// create splunk StatefulSet
 	statefulsetTemplate := filepath.Join(filePath, "statefulset_splunk-"+s.version+"_template.yaml")
 	splunkSfs := resource{"StatefulSet", s.name, s.namespace}
 	err = splunkSfs.applyFromTemplate(oc, "-f", statefulsetTemplate, "-p", "NAME="+splunkSfs.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	//create route for splunk service
+	// create route for splunk service
 	routeHecTemplate := filepath.Join(filePath, "route-passthrough_splunk_template.yaml")
 	routeHec := resource{"route", s.name + "-hec", s.namespace}
 	err = routeHec.applyFromTemplate(oc, "-f", routeHecTemplate, "-p", "NAME="+routeHec.name, "-p", "SERVICE_NAME="+s.serviceName, "-p", "PORT_NAME=http-hec", "-p", "ROUTE_HOST="+s.hecRoute)
@@ -312,7 +313,7 @@ func (s *splunkPodServer) deployCustomCertSplunk(oc *exutil.CLI) {
 }
 
 func (s *splunkPodServer) deployCustomCertClientForceSplunk(oc *exutil.CLI) {
-	//Create secret for splunk Statefulset
+	// Create secret for splunk Statefulset
 	filePath := testdata.FixturePath("logging", "external-log-stores", "splunk")
 	secretTemplate := filepath.Join(filePath, "secret_tls_splunk_template.yaml")
 	if s.passphrase != "" {
@@ -327,13 +328,13 @@ func (s *splunkPodServer) deployCustomCertClientForceSplunk(oc *exutil.CLI) {
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 
-	//HEC need all in one PEM file.
+	// HEC need all in one PEM file.
 	hecPemFile := "/tmp/" + getRandomString() + "hecAllKeys.crt"
 	defer os.Remove(hecPemFile)
 	err := s.genHecPemFile(hecPemFile)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	//The secret will be mounted into splunk pods and used in server.conf,inputs.conf
+	// The secret will be mounted into splunk pods and used in server.conf,inputs.conf
 	secretArgs := []string{"data", "secret/" + secret.name, "-n", secret.namespace}
 	secretArgs = append(secretArgs, "--from-file=hec.pem="+hecPemFile)
 	secretArgs = append(secretArgs, "--from-file=ca.pem="+s.caFile)
@@ -345,13 +346,13 @@ func (s *splunkPodServer) deployCustomCertClientForceSplunk(oc *exutil.CLI) {
 	err = oc.AsAdmin().WithoutNamespace().Run("set").Args(secretArgs...).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	//create splunk StatefulSet
+	// create splunk StatefulSet
 	statefulsetTemplate := filepath.Join(filePath, "statefulset_splunk-"+s.version+"_template.yaml")
 	splunkSfs := resource{"StatefulSet", s.name, s.namespace}
 	err = splunkSfs.applyFromTemplate(oc, "-f", statefulsetTemplate, "-p", "NAME="+splunkSfs.name)
 	o.Expect(err).NotTo(o.HaveOccurred())
 
-	//create route for splunk service
+	// create route for splunk service
 	routeHecTemplate := filepath.Join(filePath, "route-passthrough_splunk_template.yaml")
 	routeHec := resource{"route", s.name + "-hec", s.namespace}
 	err = routeHec.applyFromTemplate(oc, "-f", routeHecTemplate, "-p", "NAME="+routeHec.name, "-p", "SERVICE_NAME="+s.serviceName, "-p", "PORT_NAME=http-hec", "-p", "ROUTE_HOST="+s.hecRoute)
@@ -375,7 +376,7 @@ func (s *splunkPodServer) destroy(oc *exutil.CLI) {
 func (s *splunkPodServer) createIndexes(oc *exutil.CLI, indexes ...string) error {
 	splunkPod, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", s.namespace, "pod", "-l", "app.kubernetes.io/instance="+s.name, "-ojsonpath={.items[0].metadata.name}").Output()
 	if err != nil {
-		return fmt.Errorf("error getting splunk pod: %v", err)
+		return fmt.Errorf("error getting splunk pod: %w", err)
 	}
 	for _, index := range indexes {
 		// curl -k -u admin:gjc2t9jx  https://localhost:8089/servicesNS/admin/search/data/indexes -d name=devtutorial
@@ -383,7 +384,7 @@ func (s *splunkPodServer) createIndexes(oc *exutil.CLI, indexes ...string) error
 		stdout, err := oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("exec").Args("-n", s.namespace, splunkPod, "--", "/bin/sh", "-x", "-c", cmd).Output()
 		if err != nil {
 			e2e.Logf("query output: %v", stdout)
-			return fmt.Errorf("can't create index %s, error: %v", index, err)
+			return fmt.Errorf("can't create index %s, error: %w", index, err)
 		}
 	}
 	return nil

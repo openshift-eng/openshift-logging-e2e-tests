@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
-
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
@@ -18,6 +16,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
@@ -133,7 +133,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		o.Expect(thanosObjstoreClientIsEnabled).Should(o.BeTrue())
 		e2e.Logf("Thanos objstore client is enabled")
 
-		//check logs in loki stack
+		// check logs in loki stack
 		g.By("check logs in loki")
 		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
 		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
@@ -150,7 +150,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		journalLog, err := lc.searchLogsInLoki("infrastructure", `{log_type = "infrastructure", kubernetes_namespace_name !~ ".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		journalLogs := extractLogEntities(journalLog)
-		o.Expect(len(journalLogs) > 0).Should(o.BeTrue(), "can't find journal logs in lokistack")
+		o.Expect(journalLogs).ShouldNot(o.BeEmpty(), "can't find journal logs in lokistack")
 		e2e.Logf("find journal logs")
 		lc.waitForLogsAppearByProject("application", appProj)
 
@@ -162,11 +162,11 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		logs, err := lc.searchLogsInLoki("infrastructure", `{openshift_log_type = "infrastructure", k8s_namespace_name=~".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		extractedLogs := extractLogEntities(logs)
-		o.Expect(len(extractedLogs) > 0).Should(o.BeTrue())
+		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
 		journalLog, err = lc.searchLogsInLoki("infrastructure", `{openshift_log_type = "infrastructure", k8s_namespace_name !~ ".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		journalLogs = extractLogEntities(journalLog)
-		o.Expect(len(journalLogs) > 0).Should(o.BeTrue())
+		o.Expect(journalLogs).ShouldNot(o.BeEmpty())
 		// For Audit tenant
 		lc.waitForLogsAppearByKey("audit", "openshift_log_type", "audit")
 		e2e.Logf("Otel semantic convention labels found!")
@@ -269,7 +269,7 @@ retry_max_duration_secs = 20`,
 		o.Expect(result).Should(o.BeTrue())
 	})
 
-	//author qitang@redhat.com
+	// author qitang@redhat.com
 	// port=yes - 99.1% pass rate (687 runs last 60 days)
 	g.It("Author:qitang-ConnectedOnly-Critical-74924-Forward logs to GCL[CLO]", func() {
 		projectID, err := getGCPProjectID(oc)
@@ -327,7 +327,7 @@ retry_max_duration_secs = 20`,
 		o.Expect(result).Should(o.BeTrue())
 	})
 
-	//author anli@redhat.com
+	// author anli@redhat.com
 	// port=maybe - 88.2% pass rate (687 runs last 60 days)
 	g.It("Author:anli-ConnectedOnly-Critical-71772-Forward logs to AZMonitor -- full options[CLO]", func() {
 		platform := compat_otp.CheckPlatform(oc)
@@ -346,7 +346,7 @@ retry_max_duration_secs = 20`,
 			resourceGroupName = infraName + "-logging-71772-rg"
 			azureSubscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
 			cred := createNewDefaultAzureCredential()
-			location = "westus" //TODO: define default location
+			location = "westus" // TODO: define default location
 
 			_, err := createAzureResourceGroup(resourceGroupName, azureSubscriptionID, location, cred)
 			defer deleteAzureResourceGroup(resourceGroupName, azureSubscriptionID, cred)
@@ -356,8 +356,8 @@ retry_max_duration_secs = 20`,
 			e2e.Logf("Successfully created resource group %s", resourceGroupName)
 		} else {
 			cloudName := getAzureCloudName(oc)
-			if !(cloudName == "azurepubliccloud" || cloudName == "azureusgovernmentcloud") {
-				g.Skip("The case can only be running on Azure Public and Azure US Goverment now!")
+			if cloudName != "azurepubliccloud" && cloudName != "azureusgovernmentcloud" {
+				g.Skip("The case can only be running on Azure Public and Azure US Government now!")
 			}
 			resourceGroupName, _ = compat_otp.GetAzureCredentialFromCluster(oc)
 		}
@@ -402,7 +402,6 @@ retry_max_duration_secs = 20`,
 
 	// port=no - 67.6% pass rate (253 runs last 60 days)
 	g.It("Author:kbharti-Critical-85642-Deploy LokiOperator with network policies enabled[Slow][Serial][CLO][LokiOperator]", func() {
-
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "aws" && platform != "azure" && platform != "gcp" {
 			g.Skip("This test only runs on aws, azure, or gcp platforms due to open bugs against Swift, ODF, and minIO backend storage")
@@ -499,7 +498,7 @@ retry_max_duration_secs = 20`,
 		o.Expect(thanosObjstoreClientIsEnabled).Should(o.BeTrue())
 		e2e.Logf("Thanos objstore client is enabled")
 
-		//check logs in loki stack
+		// check logs in loki stack
 		compat_otp.By("Check logs in LokiStack")
 		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
 		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
@@ -516,7 +515,7 @@ retry_max_duration_secs = 20`,
 		journalLog, err := lc.searchLogsInLoki("infrastructure", `{log_type = "infrastructure", kubernetes_namespace_name !~ ".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		journalLogs := extractLogEntities(journalLog)
-		o.Expect(len(journalLogs) > 0).Should(o.BeTrue(), "can't find journal logs in lokistack")
+		o.Expect(journalLogs).ShouldNot(o.BeEmpty(), "can't find journal logs in lokistack")
 		e2e.Logf("find journal logs")
 		lc.waitForLogsAppearByProject("application", appProj)
 

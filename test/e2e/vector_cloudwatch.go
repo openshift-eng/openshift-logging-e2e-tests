@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -12,6 +11,8 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
@@ -23,7 +24,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	)
 
 	g.Context("Log Forward to Cloudwatch", func() {
-
 		g.BeforeEach(func() {
 			loggingBaseDir = testdata.FixturePath("logging")
 			CLO := SubscriptionObjects{
@@ -238,7 +238,7 @@ ciphersuites = "ECDHE-ECDSA-CHACHA20-POLY1305,ECDHE-RSA-CHACHA20-POLY1305,ECDHE-
 			o.Expect(cw.logsFound()).To(o.BeTrue())
 			filteredLogs, err := cw.getLogRecordsByNamespace(30, logGroupName, appProj1)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(filteredLogs) > 0).Should(o.BeTrue(), "Couldn't filter logs by namespace")
+			o.Expect(filteredLogs).ShouldNot(o.BeEmpty(), "Couldn't filter logs by namespace")
 
 			compat_otp.By("Set Intermediate tlsSecurityProfile for the Cloudwatch output.")
 			patch := `[{"op": "add", "path": "/spec/outputs/0/tls", "value": {"securityProfile": {"type": "Intermediate"}}}]`
@@ -271,7 +271,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			o.Expect(cw.logsFound()).To(o.BeTrue())
 			filteredLogs, err = cw.getLogRecordsByNamespace(30, logGroupName, appProj2)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(filteredLogs) > 0).Should(o.BeTrue(), "Couldn't filter logs by namespace")
+			o.Expect(filteredLogs).ShouldNot(o.BeEmpty(), "Couldn't filter logs by namespace")
 		})
 
 		// author qitang@redhat.com
@@ -300,7 +300,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			err := oc.AsAdmin().WithoutNamespace().Run("new-app").Args("-f", jsonLogFile, "-n", appNS1, "-p", "LABELS={\"test\": \"logging-71778\", \"test.logging.io/logging.qe-test-label\": \"logging-71778-test\"}").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			var namespaces []string
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				ns := "logging-project-71778-" + strconv.Itoa(i) + "-" + getRandomString()
 				defer oc.DeleteSpecifiedNamespaceAsAdmin(ns)
 				oc.CreateSpecifiedNamespaceAsAdmin(ns)
@@ -345,7 +345,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			patch = `[{"op": "add", "path": "/spec/inputs/0/application/includes", "value": [{"namespace": "*71778*"}]}, {"op": "add", "path": "/spec/inputs/0/application/excludes", "value": [{"namespace": "` + namespaces[1] + `"}]}]`
 			clf.update(oc, "", patch, "--type=json")
 			clf.waitForCollectorPodsReady(oc)
-			//sleep 10 seconds to wait for the caches in collectors to be cleared
+			// sleep 10 seconds to wait for the caches in collectors to be cleared
 			time.Sleep(10 * time.Second)
 
 			compat_otp.By("Check logs in Cloudwatch")
@@ -404,7 +404,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-infrastructure-logs")
 			err := addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-infrastructure-logs")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			//sleep 2 minutes for CLO to update the CLF
+			// sleep 2 minutes for CLO to update the CLF
 			time.Sleep(2 * time.Minute)
 			checkResource(oc, false, false, `insufficient permissions on service account, not authorized to collect ["infrastructure"] logs`, []string{"clusterlogforwarder.observability.openshift.io", clf.name, "-n", clf.namespace, "-ojsonpath={.status.conditions[*].message}"})
 			clf.waitForCollectorPodsReady(oc)
@@ -479,18 +479,18 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			o.Expect(cw.logsFound() && fakeCW.logsFound()).Should(o.BeTrue())
 
 			compat_otp.By("update one of the output to use another secret")
-			//since we can't get another aws key pair, here add a secret with fake aws_access_key_id and aws_secret_access_key
+			// since we can't get another aws key pair, here add a secret with fake aws_access_key_id and aws_secret_access_key
 			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "-n", clf.namespace, fakeCW.secretName, "--from-literal=aws_access_key_id="+getRandomString(), "--from-literal=aws_secret_access_key="+getRandomString()).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			patch = `[{"op": "replace", "path": "/spec/outputs/0/cloudwatch/authentication/awsAccessKey/keyId/secretName", "value": "` + fakeCW.secretName + `"}, {"op": "replace", "path": "/spec/outputs/0/cloudwatch/authentication/awsAccessKey/keySecret/secretName", "value": "` + fakeCW.secretName + `"}]`
 			clf.update(oc, "", patch, "--type=json")
-			//sleep 10 seconds for collector pods to load new credentials
+			// sleep 10 seconds for collector pods to load new credentials
 			time.Sleep(10 * time.Second)
 			clf.waitForCollectorPodsReady(oc)
 
 			cw.deleteGroups("")
 			fakeCW.deleteGroups("")
-			//ensure collector pods still can forward logs to cloudwatch with correct credentials
+			// ensure collector pods still can forward logs to cloudwatch with correct credentials
 			o.Expect(cw.logsFound() || fakeCW.logsFound()).Should(o.BeTrue())
 		})
 
@@ -553,7 +553,9 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			compat_otp.By("Check collector configurations")
 			err = oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", "-n", clf.namespace, clf.name+"-aws-creds").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			checkCollectorConfiguration(oc, clf.namespace, clf.name, `auth.profile = "output_cloudwatch-1"`, `auth.profile = "output_cloudwatch-2"`, `auth.credentials_file = "/var/run/ocp-collector/config/`+clf.name+`-aws-creds/credentials"`)
+			result, err := checkCollectorConfiguration(oc, clf.namespace, clf.name+"-config", `auth.profile = "output_cloudwatch-1"`, `auth.profile = "output_cloudwatch-2"`, `auth.credentials_file = "/var/run/ocp-collector/config/`+clf.name+`-aws-creds/credentials"`)
+			o.Expect(err).NotTo(o.HaveOccurred())
+			o.Expect(result).To(o.BeTrue(), "the cloudwatch auth configuration is not in vector.toml")
 
 			compat_otp.By("Check data in cloudwatch")
 			nodes, err := clf.getCollectorNodeNames(oc)
@@ -571,6 +573,5 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			o.Expect(err).NotTo(o.HaveOccurred())
 			resource{"configmap", clf.name + "-aws-creds", clf.namespace}.WaitForResourceToAppear(oc)
 		})
-
 	})
 })
