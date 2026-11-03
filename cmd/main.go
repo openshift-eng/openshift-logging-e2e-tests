@@ -6,22 +6,20 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/spf13/cobra"
-	"k8s.io/component-base/logs"
-
 	"github.com/openshift-eng/openshift-tests-extension/pkg/cmd"
 	e "github.com/openshift-eng/openshift-tests-extension/pkg/extension"
 	et "github.com/openshift-eng/openshift-tests-extension/pkg/extension/extensiontests"
 	g "github.com/openshift-eng/openshift-tests-extension/pkg/ginkgo"
 	"github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
+	"github.com/spf13/cobra"
+	"k8s.io/component-base/logs"
 	framework "k8s.io/kubernetes/test/e2e/framework"
-
-	// Import testdata package from this module
-	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 
 	// Import test packages from this module
 	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e"
+	// Import testdata package from this module
+	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 func main() {
@@ -76,8 +74,8 @@ func main() {
 	componentSpecs.Walk(func(spec *et.ExtensionTestSpec) {
 		// Apply platform filters based on Platform: labels
 		for label := range spec.Labels {
-			if strings.HasPrefix(label, "Platform:") {
-				platformName := strings.TrimPrefix(label, "Platform:")
+			if after, ok := strings.CutPrefix(label, "Platform:"); ok {
+				platformName := after
 				spec.Include(et.PlatformEquals(platformName))
 			}
 		}

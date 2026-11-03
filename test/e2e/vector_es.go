@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -19,6 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	e2eoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
@@ -229,31 +230,30 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 			// in index app-$containerName-0, only logs in container $containerName-0 are stored in it
 			log0 := ees.searchDocByQuery(oc, containerName+"-0", queryContainerLog(containerName+"-0"))
-			o.Expect(len(log0.Hits.DataHits) > 0).To(o.BeTrue())
-			o.Expect(log0.Hits.DataHits[0].Source.Structured.Message != "").Should(o.BeTrue())
+			o.Expect(log0.Hits.DataHits).ToNot(o.BeEmpty())
+			o.Expect(log0.Hits.DataHits[0].Source.Structured.Message).ShouldNot(o.Equal(""))
 			log01 := ees.searchDocByQuery(oc, containerName+"-0", queryContainerLog(containerName+"-1"))
-			o.Expect(len(log01.Hits.DataHits) == 0).To(o.BeTrue())
+			o.Expect(log01.Hits.DataHits).To(o.BeEmpty())
 			log02 := ees.searchDocByQuery(oc, containerName+"-0", queryContainerLog(containerName+"-2"))
-			o.Expect(len(log02.Hits.DataHits) == 0).To(o.BeTrue())
+			o.Expect(log02.Hits.DataHits).To(o.BeEmpty())
 
 			// in index app-$containerName-1, only logs in container $containerName-1 are stored in it
 			log1 := ees.searchDocByQuery(oc, containerName+"-1", queryContainerLog(containerName+"-1"))
-			o.Expect(len(log1.Hits.DataHits) > 0).To(o.BeTrue())
-			o.Expect(log1.Hits.DataHits[0].Source.Structured.Message != "").Should(o.BeTrue())
+			o.Expect(log1.Hits.DataHits).ToNot(o.BeEmpty())
+			o.Expect(log1.Hits.DataHits[0].Source.Structured.Message).ShouldNot(o.Equal(""))
 			log10 := ees.searchDocByQuery(oc, containerName+"-1", queryContainerLog(containerName+"-0"))
-			o.Expect(len(log10.Hits.DataHits) == 0).To(o.BeTrue())
+			o.Expect(log10.Hits.DataHits).To(o.BeEmpty())
 			log12 := ees.searchDocByQuery(oc, containerName+"-1", queryContainerLog(containerName+"-2"))
-			o.Expect(len(log12.Hits.DataHits) == 0).To(o.BeTrue())
+			o.Expect(log12.Hits.DataHits).To(o.BeEmpty())
 
 			// in index app-$app-project, only logs in container $containerName-2 are stored in it
 			log2 := ees.searchDocByQuery(oc, containerName+"-2", queryContainerLog(containerName+"-2"))
-			o.Expect(len(log2.Hits.DataHits) > 0).To(o.BeTrue())
-			o.Expect(log2.Hits.DataHits[0].Source.Structured.Message != "").Should(o.BeTrue())
+			o.Expect(log2.Hits.DataHits).ToNot(o.BeEmpty())
+			o.Expect(log2.Hits.DataHits[0].Source.Structured.Message).ShouldNot(o.Equal(""))
 			log20 := ees.searchDocByQuery(oc, containerName+"-2", queryContainerLog(containerName+"-0"))
-			o.Expect(len(log20.Hits.DataHits) == 0).To(o.BeTrue())
+			o.Expect(log20.Hits.DataHits).To(o.BeEmpty())
 			log21 := ees.searchDocByQuery(oc, containerName+"-2", queryContainerLog(containerName+"-1"))
-			o.Expect(len(log21.Hits.DataHits) == 0).To(o.BeTrue())
-
+			o.Expect(log21.Hits.DataHits).To(o.BeEmpty())
 		})
 
 		// author qitang@redhat.com
@@ -304,7 +304,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			for _, proj := range []string{app1, app2} {
 				count, err := ees.getDocCount(oc, containerName, "{\"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+proj+"\"}}}")
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(count > 0).To(o.BeTrue())
+				o.Expect(count).To(o.BeNumerically(">", 0))
 			}
 		})
 
@@ -365,12 +365,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				})
 				compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("No %s logs found with label in extranl ES", index))
 			}
-
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
 		g.It("Author:ikanse-Medium-48593-Vector ClusterLogForwarder Label each message type differently and send all to the same output[CLO]", func() {
-
 			g.By("Create external Elasticsearch instance")
 			esProj := oc.Namespace()
 			ees := externalES{
@@ -410,7 +408,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			g.By("Check logs with pipeline label in external ES")
 			indexName := []string{"app", "infra", "audit"}
-			for i := 0; i < len(indexName); i++ {
+			for i := range indexName {
 				checkLog := "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match\": {\"openshift.labels.logging\": \"" + indexName[i] + "-logs\"}}}"
 				err = wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 60*time.Second, true, func(context.Context) (done bool, err error) {
 					logs := ees.searchDocByQuery(oc, indexName[i], checkLog)
@@ -421,12 +419,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				})
 				compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("No %s logs found with pipeline label in extranl ES", indexName[i]))
 			}
-
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
 		g.It("Author:ikanse-High-46882-High-47061-Vector ClusterLogForwarder forward logs to Elasticsearch insecure forward and metadata check[CLO]", func() {
-
 			g.By("Create external Elasticsearch instance")
 			esProj := oc.Namespace()
 			ees := externalES{
@@ -474,24 +470,23 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			appLogs := ees.searchDocByQuery(oc, "app", "{\"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+app+"\"}}}")
 			log := appLogs.Hits.DataHits[0].Source
-			o.Expect(log.Message == "ㄅㄉˇˋㄓˊ˙ㄚㄞㄢㄦㄆ 中国 883.317µs ā á ǎ à ō ó ▅ ▆ ▇ █ 々").Should(o.BeTrue())
-			o.Expect(log.OpenShift.ClusterID == clusterID).Should(o.BeTrue())
-			o.Expect(log.OpenShift.Sequence > 0).Should(o.BeTrue())
-			o.Expect(log.Kubernetes.NamespaceLabels["app_kubernetes_io_instance"] == "logging-apps-test").Should(o.BeTrue())
-			o.Expect(log.Kubernetes.NamespaceLabels["app_test"] == "test").Should(o.BeTrue())
+			o.Expect(log.Message).Should(o.Equal("ㄅㄉˇˋㄓˊ˙ㄚㄞㄢㄦㄆ 中国 883.317µs ā á ǎ à ō ó ▅ ▆ ▇ █ 々"))
+			o.Expect(log.OpenShift.ClusterID).Should(o.Equal(clusterID))
+			o.Expect(log.OpenShift.Sequence).Should(o.BeNumerically(">", 0))
+			o.Expect(log.Kubernetes.NamespaceLabels["app_kubernetes_io_instance"]).Should(o.Equal("logging-apps-test"))
+			o.Expect(log.Kubernetes.NamespaceLabels["app_test"]).Should(o.Equal("test"))
 			infraLogs := ees.searchDocByQuery(oc, "infra", "")
-			o.Expect(infraLogs.Hits.DataHits[0].Source.OpenShift.ClusterID == clusterID).Should(o.BeTrue())
+			o.Expect(infraLogs.Hits.DataHits[0].Source.OpenShift.ClusterID).Should(o.Equal(clusterID))
 			auditLogs := ees.searchDocByQuery(oc, "audit", "")
-			o.Expect(auditLogs.Hits.DataHits[0].Source.OpenShift.ClusterID == clusterID).Should(o.BeTrue())
+			o.Expect(auditLogs.Hits.DataHits[0].Source.OpenShift.ClusterID).Should(o.Equal(clusterID))
 
 			for _, logType := range []string{"app", "infra", "audit"} {
 				for _, field := range []string{"@timestamp", "openshift.cluster_id", "openshift.sequence"} {
 					count, err := ees.getDocCount(oc, logType, "{\"query\": {\"bool\": {\"must_not\": {\"exists\": {\"field\": \""+field+"\"}}}}}")
 					o.Expect(err).NotTo(o.HaveOccurred())
-					o.Expect(count == 0).Should(o.BeTrue())
+					o.Expect(count).Should(o.BeZero())
 				}
 			}
-
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
@@ -593,7 +588,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			ees.waitForIndexAppear(oc, "app")
 			ees.waitForIndexAppear(oc, "infra")
 			ees.waitForIndexAppear(oc, "audit")
-
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
@@ -644,7 +638,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			ees.waitForIndexAppear(oc, "app")
 			ees.waitForIndexAppear(oc, "infra")
 			ees.waitForIndexAppear(oc, "audit")
-
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
@@ -739,7 +732,6 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			ees.waitForIndexAppear(oc, "app")
 			ees.waitForIndexAppear(oc, "infra")
 			ees.waitForIndexAppear(oc, "audit")
-
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
@@ -775,7 +767,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 
 			compat_otp.By("Create project for app logs and deploy the log generator")
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
-			for i := 0; i < 3; i++ {
+			for i := range 3 {
 				ns := "logging-project-71000-" + strconv.Itoa(i)
 				defer oc.DeleteSpecifiedNamespaceAsAdmin(ns)
 				oc.CreateSpecifiedNamespaceAsAdmin(ns)
@@ -796,7 +788,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			ees.waitForProjectLogsAppear(oc, appNS, "app")
 			count, err := ees.getDocCount(oc, "app", "{\"query\": {\"regexp\": {\"kubernetes.namespace_name\": \"logging-project-71000-2\"}}}")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(count == 0).Should(o.BeTrue())
+			o.Expect(count).Should(o.BeZero())
 
 			compat_otp.By("Update CLF to exclude all namespaces")
 			patch = `[{"op": "replace", "path": "/spec/inputs/0/application/excludes/0/namespace", "value": "*"}]`
@@ -833,7 +825,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			for _, ns := range []string{appNS, "logging-project-71000-2"} {
 				count, err = ees.getDocCount(oc, "app", "{\"query\": {\"regexp\": {\"kubernetes.namespace_name\": \""+ns+"\"}}}")
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(count == 0).Should(o.BeTrue(), "find logs from project "+ns+", this is not expected")
+				o.Expect(count).Should(o.BeZero(), "find logs from project "+ns+", this is not expected")
 			}
 
 			compat_otp.By("Remove excludes from CLF")
@@ -852,7 +844,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			ees.waitForProjectLogsAppear(oc, "logging-project-71000-2", "app")
 			count, err = ees.getDocCount(oc, "app", "{\"query\": {\"regexp\": {\"kubernetes.namespace_name\": \""+appNS+"\"}}}")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(count == 0).Should(o.BeTrue(), "find logs from project "+appNS+", this is not expected")
+			o.Expect(count).Should(o.BeZero(), "find logs from project "+appNS+", this is not expected")
 
 			compat_otp.By("Update CLF to include all namespaces")
 			patch = `[{"op": "replace", "path": "/spec/inputs/0/application/includes/0/namespace", "value": "*"}]`
@@ -868,11 +860,10 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			}
 			count, err = ees.getDocCount(oc, "app", "{\"query\": {\"regexp\": {\"kubernetes.namespace_name\": \"openshift@\"}}}")
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(count == 0).Should(o.BeTrue(), "find logs from project openshift*, this is not expected")
-
+			o.Expect(count).Should(o.BeZero(), "find logs from project openshift*, this is not expected")
 		})
 
-		//author qitang@redhat.com
+		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
 		g.It("Author:qitang-High-51740-Vector Preserve k8s Common Labels[CLO]", func() {
 			loglabeltemplate := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -904,8 +895,8 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			err := oc.WithoutNamespace().Run("new-app").Args("-f", loglabeltemplate, "-n", app, "-p", "LABELS="+labelStr).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			//For this case, we need to cover ES and non-ES, and we need to check the log entity in log store,
-			//to make the functions simple, here use external loki as the non-ES log store
+			// For this case, we need to cover ES and non-ES, and we need to check the log entity in log store,
+			// to make the functions simple, here use external loki as the non-ES log store
 			g.By("Create Loki project and deploy Loki Server")
 			oc.SetupProject()
 			lokiNS := oc.Namespace()
@@ -946,7 +937,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			ees.waitForProjectLogsAppear(oc, app, "app")
 			dataInES := ees.searchDocByQuery(oc, "app", "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+app+"\"}}}")
 			k8sLabelsInES := dataInES.Hits.DataHits[0].Source.Kubernetes.Lables
-			o.Expect(len(k8sLabelsInES) > 0).Should(o.BeTrue())
+			o.Expect(k8sLabelsInES).ShouldNot(o.BeEmpty())
 			o.Expect(reflect.DeepEqual(processedLabels, k8sLabelsInES)).Should(o.BeTrue())
 
 			g.By("check data in Loki")
@@ -968,7 +959,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			k8sLabelsInLoki := lokiLog[0].Kubernetes.Lables
 			o.Expect(reflect.DeepEqual(processedLabels, k8sLabelsInLoki)).Should(o.BeTrue())
 			flatLabelsInLoki := lokiLog[0].Kubernetes.FlatLabels
-			o.Expect(len(flatLabelsInLoki) == 0).Should(o.BeTrue())
+			o.Expect(flatLabelsInLoki).Should(o.BeEmpty())
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
@@ -1161,9 +1152,6 @@ test = "logging"`,
 			g.By("Should raise error when invalid headers are added")
 			clf.update(oc, "", `[{"op": "replace", "path": "/spec/outputs/0/elasticsearch/headers", "value": {"Content-Type": "application/json", "Authorization": "AFAETHBDFHG", "Accept": "application/json", "test": "logging"}}]`, "--type=json")
 			checkResource(oc, true, false, "invalid headers found: Authorization,Content-Type", []string{"clusterlogforwarders.observability.openshift.io", clf.name, "-n", clf.namespace, `-ojsonpath={.status.outputConditions[?(@.reason=="ValidationFailure")].message}`})
-
 		})
-
 	})
-
 })

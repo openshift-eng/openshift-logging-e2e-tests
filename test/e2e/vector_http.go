@@ -1,7 +1,6 @@
 package logging
 
 import (
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +11,8 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
@@ -194,12 +195,12 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer fluentdS.remove(oc)
 			fluentdS.deploy(oc)
 
-			//Create a fake secret from root ca which is used for TLSSkipVerify
+			// Create a fake secret from root ca which is used for TLSSkipVerify
 			fakeSecret := resource{"secret", "fake-bundle-60936", fluentdProj}
 			defer fakeSecret.clear(oc)
 			dirname := "/tmp/60936-keys"
 			defer os.RemoveAll(dirname)
-			err = os.MkdirAll(dirname, 0777)
+			err = os.MkdirAll(dirname, 0o777)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			_, err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("cm/kube-root-ca.crt", "-n", loggingNS, "--confirm", "--to="+dirname).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())

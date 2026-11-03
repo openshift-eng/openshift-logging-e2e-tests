@@ -10,8 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
-
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
@@ -19,6 +17,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Upgrade testing loki-operator", func() {
@@ -48,7 +48,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 		g.By("check source/redhat-operators status in operatorhub")
 		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("operatorhub/cluster", "-ojson").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		json.Unmarshal([]byte(output), &oh)
+		o.Expect(json.Unmarshal([]byte(output), &oh)).To(o.Succeed())
 		var disabled bool
 		for _, source := range oh.Status.Sources {
 			if source.Name == "redhat-operators" {
@@ -174,15 +174,15 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 		defer lfme.delete(oc)
 		lfme.create(oc)
 
-		//get current csv version
+		// get current csv version
 		preCloCSV := preCLO.getInstalledCSV(oc)
 		preLoCSV := preLO.getInstalledCSV(oc)
 
 		// get currentCSV in packagemanifests
 		currentCloCSV := getCurrentCSVFromPackage(oc, "cluster-logging-operator-registry", targetChannel, preCLO.PackageName)
 		currentLoCSV := getCurrentCSVFromPackage(oc, "loki-operator-registry", targetChannel, preLO.PackageName)
-		var upgraded = false
-		//change source to ART catsrc if needed, and wait for the new operators to be ready
+		upgraded := false
+		// change source to ART catsrc if needed, and wait for the new operators to be ready
 		if preCloCSV != currentCloCSV {
 			g.By(fmt.Sprintf("upgrade CLO to %s", currentCloCSV))
 			err = oc.AsAdmin().WithoutNamespace().Run("patch").Args("-n", preCLO.Namespace, "sub/"+preCLO.PackageName, "-p", "{\"spec\": {\"source\": \"cluster-logging-operator-registry\"}}", "--type=merge").Execute()
@@ -428,7 +428,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease OperatorDeploy
 
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:anli-Low-65518-deploy cluster-logging-operator after Datadog-Agent is deployed [Serial][CLO]", func() {
-
 		// skip the case when operator is installed by operator-sdk
 
 		channel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "--all-namespaces", `-ojsonpath={.items[?(@.spec.name=="cluster-logging")].spec.channel}`).Output()
@@ -791,7 +790,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		}
 		configmap.WaitForResourceToAppear(oc)
 	})
-
 })
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease rapidast scan", func() {
@@ -909,7 +907,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:qitang-High-75632-oc adm must-gather can collect logging data[Serial][CLO][LokiOperator]", func() {
-
 		oc.SetupProject()
 		clfNS := oc.Namespace()
 
@@ -1007,7 +1004,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 
 		files, err := runLoggingMustGather(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(files) > 0).Should(o.BeTrue())
+		o.Expect(files).ShouldNot(o.BeEmpty())
 		for _, expectFile := range []string{
 			"cluster-scoped-resources/observability.openshift.io/uiplugins/logging.yaml",
 			"namespaces/" + clfES.namespace + "/core/configmaps/" + clfES.name + "-config.yaml",
@@ -1109,7 +1106,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		defer clf.delete(oc)
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
 
-		//check logs in loki stack
+		// check logs in loki stack
 		g.By("check logs in loki")
 		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
 		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
@@ -1236,7 +1233,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		}
 		defer clf.delete(oc)
 		clf.create(oc, "URL="+svc, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
-		//exclude logs from  project otel.namespace because the OTEL collector writes received logs to stdout
+		// exclude logs from  project otel.namespace because the OTEL collector writes received logs to stdout
 		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"excludes": [{"namespace":"` + otel.namespace + `"}]}}]},{"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app", "infrastructure", "audit"]}]`
 		clf.update(oc, "", patch, "--type=json")
 		clf.waitForCollectorPodsReady(oc)
@@ -1441,7 +1438,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("networkpolicy/collector-%s in project/%s is not deleted", clf.name, clf.namespace))
 	})
 
-	//author qitang@redhat.com
+	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:qitang-ConnectedOnly-High-85410-NetworkPolicy for ClusterLogForwarder GCL output.[CLO]", func() {
 		platform := compat_otp.CheckPlatform(oc)
@@ -1584,7 +1581,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		}
 		clfNS := oc.Namespace()
 		g.By("Deploy splunk server")
-		//define splunk deployment
+		// define splunk deployment
 		sp := splunkPodServer{
 			namespace: clfNS,
 			name:      "splunk-http",
@@ -1621,7 +1618,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		clfHttpserverToSplunk.checkNetworkPolicy(oc)
 		o.Expect(clfHttpserverToSplunk.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"8088", "TCP"}}, []Port{{"8081", "TCP"}, {"8082", "TCP"}, {"8083", "TCP"}})).NotTo(o.HaveOccurred())
 
-		g.By("create CLF to foward logs to http server")
+		g.By("create CLF to forward logs to http server")
 		httpCLF := clusterlogforwarder{
 			name:                      "forward-to-http-85490",
 			namespace:                 clfNS,
@@ -1736,7 +1733,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		g.By("Create secret for collector pods to connect to syslog server")
 		tmpDir := "/tmp/" + getRandomString()
 		defer exec.Command("rm", "-r", tmpDir).Output()
-		err = os.Mkdir(tmpDir, 0755)
+		err = os.Mkdir(tmpDir, 0o755)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/"+lsCLF.name+"-syslog", "-n", lsCLF.namespace, "--confirm", "--to="+tmpDir).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -1747,7 +1744,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		sysCLF.checkNetworkPolicy(oc)
 		o.Expect(sysCLF.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"6514", "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
-		//check logs in loki stack
+		// check logs in loki stack
 		g.By("check logs in loki")
 		defer removeClusterRoleFromServiceAccount(oc, sysCLF.namespace, "default", "cluster-admin")
 		err = addClusterRoleToServiceAccount(oc, sysCLF.namespace, "default", "cluster-admin")
@@ -1759,7 +1756,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		sysLog, err := lc.searchLogsInLoki("infrastructure", `{log_type = "infrastructure"}|json|facility = "local0"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		sysLogs := extractLogEntities(sysLog)
-		o.Expect(len(sysLogs) > 0).Should(o.BeTrue(), "can't find logs from syslog in lokistack")
+		o.Expect(sysLogs).ShouldNot(o.BeEmpty(), "can't find logs from syslog in lokistack")
 
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
 		for _, clf := range []clusterlogforwarder{lsCLF, sysCLF} {
@@ -1780,7 +1777,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		}
 	})
 
-	//author qitang@redhat.com
+	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:qitang-ConnectedOnly-High-85496-NetworkPolicy for ClusterLogForwarder azureMonitor output.[CLO]", func() {
 		platform := compat_otp.CheckPlatform(oc)
@@ -1796,8 +1793,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		)
 		infraName := getInfrastructureName(oc)
 		cloudName := getAzureCloudName(oc)
-		if !(cloudName == "azurepubliccloud" || cloudName == "azureusgovernmentcloud") {
-			g.Skip("The case can only be running on Azure Public and Azure US Goverment now!")
+		if cloudName != "azurepubliccloud" && cloudName != "azureusgovernmentcloud" {
+			g.Skip("The case can only be running on Azure Public and Azure US Government now!")
 		}
 		resourceGroupName, _ = compat_otp.GetAzureCredentialFromCluster(oc)
 
@@ -1935,5 +1932,4 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		err = resource{"networkpolicy", "collector-" + clf.name, clf.namespace}.WaitUntilResourceIsGone(oc)
 		compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("networkpolicy/collector-%s in project/%s is not deleted", clf.name, clf.namespace))
 	})
-
 })

@@ -1,0 +1,73 @@
+# golangci.com configuration
+# https://golangci-lint.run/docs/configuration/file/
+version: "2"
+run:
+  go: "1.26"
+  timeout: 5m
+  relative-path-mode: cfg
+  modules-download-mode: readonly
+linters:
+  default: standard # use default linters: errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - copyloopvar # catches accidental copies of loop variables, including aliases
+    - errorlint # checks modern error wrapping, comparisons, and assertions
+    - ginkgolinter # catches wrong ginkgo/gomega assertion patterns and focused specs
+    - misspell # spell checker
+    - modernize # suggests newer stdlib and language idioms when applicable
+    - nolintlint # keeps nolint directives specific and actually used
+    - revive # configurable style and correctness checks
+  settings:
+    copyloopvar:
+      check-alias: true
+    errcheck:
+      exclude-functions:
+        # Best-effort helpers whose failures are meaningless in e2e cleanup paths
+        - os.Remove
+        - os.RemoveAll
+        - os.Setenv
+        - os.Unsetenv
+        # Origin test framework CLI: tests assert on command output, not the returned error
+        - (*github.com/openshift/origin/test/extended/util.CLI).Execute
+        # Shared best-effort cleanup helper used across suites
+        - (github.com/openshift/openshift-logging-e2e-tests/test/e2e.resource).clear
+        # Best-effort polling: a timeout is tolerated, the outcome is verified by subsequent checks
+        - k8s.io/apimachinery/pkg/util/wait.PollUntilContextTimeout
+    ginkgolinter:
+      # FDescribe/FContext/FIt focus one spec and silently skip the rest of the suite in CI
+      forbid-focus-container: true
+    misspell:
+      locale: US
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+  exclusions:
+    generated: strict
+    warn-unused: true
+    rules:
+      # Deferred best-effort teardown: defer cannot propagate errors anyway
+      - linters: [errcheck]
+        source: '^\s*defer\s'
+      # Best-effort teardown helpers invoked directly in AfterEach/cleanup paths,
+      # and fire-and-forget RBAC helpers for test setup/teardown (mirroring the oc.Execute pattern)
+      - linters: [errcheck]
+        source: '\.(clear|removeLogs|deleteWorkspace|updateNetworkPolicyRuleSet|applyFromTemplate)\(|(addClusterRoleToServiceAccount|removeClusterRoleFromServiceAccount)\('
+formatters:
+  enable:
+    - gci # Gci controls Go package import order and makes it always deterministic
+    - gofumpt # checks that gofumpt was run on all source code
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - prefix(github.com/openshift/openshift-logging-e2e-tests)
+        - blank
+        - dot
+  exclusions:
+    generated: strict
+    warn-unused: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0

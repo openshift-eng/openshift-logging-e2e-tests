@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 	"strings"
 	"time"
@@ -16,6 +15,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
@@ -192,15 +193,15 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer clf.delete(oc)
 			secretName := "secret-for-kafka-52420"
 			oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", secretName, "-n", clf.namespace, "--from-literal=username="+amqi.user, "--from-literal=password="+amqi.password, "--from-literal=ca-bundle.crt="+amqi.routeCA).Execute()
-			//To reduce the logs collected, we only collect app logs from appProj
-			//Note: all sasl and tls data are from secret clf-to-amq with fix name -- user,password,ca
+			// To reduce the logs collected, we only collect app logs from appProj
+			// Note: all sasl and tls data are from secret clf-to-amq with fix name -- user,password,ca
 			clf.create(oc, "URL=tls://"+amqi.route+"/"+topicName, "SECRET_NAME="+secretName, "NAMESPACE_PATTERN="+appProj)
 
 			g.By("verifiy the data are sent to kafka")
-			//application logs
+			// application logs
 			logs, err := getDataFromKafkaConsumerPod(oc, amqi.namespace, consumerPodName)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(logs) > 0).Should(o.BeTrue(), "Can not find any logs from kafka consumer pods")
+			o.Expect(logs).ShouldNot(o.BeEmpty(), "Can not find any logs from kafka consumer pods")
 		})
 
 		// author qitang@redhat.com
@@ -221,7 +222,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 			defer amqi.destroy(oc)
 			amqi.deploy(oc)
-			//topic name are fix value in clf_kafka_multi_topics.yaml
+			// topic name are fix value in clf_kafka_multi_topics.yaml
 			consumerAppPodName := amqi.createTopicAndConsumber(oc, amqi.topicPrefix+"-app")
 			consumerInfraPodName := amqi.createTopicAndConsumber(oc, amqi.topicPrefix+"-infra")
 			consumerAuditPodName := amqi.createTopicAndConsumber(oc, amqi.topicPrefix+"-audit")
@@ -249,24 +250,24 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer clf.delete(oc)
 			clf.create(oc, "BOOTSTRAP_SVC="+amqi.service, "NAMESPACE_PATTERN="+appProj, "APP_TOPIC="+amqi.topicPrefix+"-app", "INFRA_TOPIC="+amqi.topicPrefix+"-infra", "AUDIT_TOPIC="+amqi.topicPrefix+"-audit", "SECRET_NAME="+secretName)
 			g.By("check data in kafka")
-			//app logs
+			// app logs
 			appLogs, err := getDataFromKafkaConsumerPod(oc, amqNS, consumerAppPodName)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(appLogs) > 0).Should(o.BeTrue(), "Can not find any logs from topic-logging-app-consumer")
+			o.Expect(appLogs).ShouldNot(o.BeEmpty(), "Can not find any logs from topic-logging-app-consumer")
 			e2e.Logf("found app logs \n")
 
-			//infrastructure logs
+			// infrastructure logs
 			infraLogs, err := getDataFromKafkaConsumerPod(oc, amqNS, consumerInfraPodName)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(infraLogs) > 0).Should(o.BeTrue(), "Can not find any logs from topic-logging-infra-consumer")
-			o.Expect(infraLogs[0].LogType == "infrastructure").Should(o.BeTrue(), "Can not find infra logs in consumer pod")
+			o.Expect(infraLogs).ShouldNot(o.BeEmpty(), "Can not find any logs from topic-logging-infra-consumer")
+			o.Expect(infraLogs[0].LogType).Should(o.Equal("infrastructure"), "Can not find infra logs in consumer pod")
 			e2e.Logf("found infra logs \n")
 
-			//audit logs
+			// audit logs
 			auditLogs, err := getDataFromKafkaConsumerPod(oc, amqNS, consumerAuditPodName)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(auditLogs) > 0).Should(o.BeTrue(), "Can not find any logs from topic-logging-audit-consumer")
-			o.Expect(auditLogs[0].LogType == "audit").Should(o.BeTrue(), "Can not find audit logs in consumer pod")
+			o.Expect(auditLogs).ShouldNot(o.BeEmpty(), "Can not find any logs from topic-logging-audit-consumer")
+			o.Expect(auditLogs[0].LogType).Should(o.Equal("audit"), "Can not find audit logs in consumer pod")
 			e2e.Logf("found audit logs \n")
 		})
 
@@ -277,7 +278,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			if err != nil || len(nodes.Items) == 0 {
 				g.Skip("Skip for the cluster doesn't have amd64 node")
 			}
-			//create project at first , so the OLM has more time to prepare CSV in these namespaces
+			// create project at first , so the OLM has more time to prepare CSV in these namespaces
 			amqi1NS := oc.Namespace()
 			oc.SetupProject()
 			amqi2NS := oc.Namespace()
@@ -333,11 +334,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			g.By("check data in the first broker")
 			amqi1logs, _ := getDataFromKafkaConsumerPod(oc, amqi1.namespace, amqi1ConsumerPodName)
-			o.Expect(len(amqi1logs) > 0).Should(o.BeTrue(), "Can not fetch any logs from broker1-consumer")
+			o.Expect(amqi1logs).ShouldNot(o.BeEmpty(), "Can not fetch any logs from broker1-consumer")
 
 			g.By("check data in the second broker")
 			amqi2logs, _ := getDataFromKafkaConsumerPod(oc, amqi2.namespace, amqi2ConsumerPodName)
-			o.Expect(len(amqi2logs) > 0).Should(o.BeTrue(), "Can not fetch any logs from broker2-consumer")
+			o.Expect(amqi2logs).ShouldNot(o.BeEmpty(), "Can not fetch any logs from broker2-consumer")
 
 			g.By("check metrics exposed by collector")
 			promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
@@ -358,7 +359,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// port=unknown - no data in BigQuery last 60 days
 		g.It("Author:ikanse-High-61549-Collector-External Kafka output complies with the tlsSecurityProfile configuration.[Slow][Disruptive][CLO]", func() {
-
 			compat_otp.By("Check if the cluster has amd64 nodes")
 			nodes, err := oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: "kubernetes.io/os=linux,kubernetes.io/arch=amd64"})
 			if err != nil || len(nodes.Items) == 0 {

@@ -3,7 +3,6 @@ package logging
 import (
 	"context"
 	"fmt"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -13,6 +12,8 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	"k8s.io/apimachinery/pkg/util/wait"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL", func() {
@@ -38,7 +39,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 		oc.SetupProject()
 	})
 
-	//author qitang@redhat.com
+	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:qitang-High-53731-Forward logs to GCL using different logName for each log type and using Service Account authentication.[CLO]", func() {
 		platform := compat_otp.CheckPlatform(oc)
@@ -96,7 +97,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 		}
 	})
 
-	//author qitang@redhat.com
+	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:qitang-High-71003-Collect or exclude logs by matching pod expressions[Slow][CLO]", func() {
 		clfNS := oc.Namespace()
@@ -131,7 +132,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 		compat_otp.By("Create project for app logs and deploy the log generator")
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		var namespaces []string
-		for i := 0; i < 4; i++ {
+		for i := range 4 {
 			ns := "logging-project-71003-" + strconv.Itoa(i)
 			defer oc.DeleteSpecifiedNamespaceAsAdmin(ns)
 			oc.CreateSpecifiedNamespaceAsAdmin(ns)
@@ -151,11 +152,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 		compat_otp.AssertWaitPollNoErr(err, "application logs are not collected")
 		appLogs1, err := gcl.getLogByNamespace(namespaces[0])
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(appLogs1) > 0).Should(o.BeTrue())
+		o.Expect(appLogs1).ShouldNot(o.BeEmpty())
 		for i := 1; i < 4; i++ {
 			appLogs, err := gcl.getLogByNamespace(namespaces[i])
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(appLogs) == 0).Should(o.BeTrue())
+			o.Expect(appLogs).Should(o.BeEmpty())
 		}
 
 		compat_otp.By("Update CLF, change the matchExpressions")
@@ -175,7 +176,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 		for _, ns := range []string{namespaces[0], namespaces[3]} {
 			appLogs, err := gcl.getLogByNamespace(ns)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(appLogs) == 0).Should(o.BeTrue(), "find logs from project"+ns+", this is not expected")
+			o.Expect(appLogs).Should(o.BeEmpty(), "find logs from project"+ns+", this is not expected")
 		}
 
 		compat_otp.By("Update CLF, change the matchExpressions")
@@ -189,10 +190,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 		compat_otp.By("Check data in google cloud logging, logs from project namespaces[3] should be collected")
 		err = gcl.waitForLogsAppearByNamespace(namespaces[3])
 		compat_otp.AssertWaitPollNoErr(err, "can't find logs from project "+namespaces[3])
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			appLogs, err := gcl.getLogByNamespace(namespaces[i])
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(len(appLogs) == 0).Should(o.BeTrue(), "find logs from project"+namespaces[i]+", this is not expected")
+			o.Expect(appLogs).Should(o.BeEmpty(), "find logs from project"+namespaces[i]+", this is not expected")
 		}
 	})
 
@@ -261,7 +262,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 
 		appLogs1, err := gcl.getLogByNamespace(appProj1)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(appLogs1) > 0).Should(o.BeTrue())
+		o.Expect(appLogs1).ShouldNot(o.BeEmpty())
 
 		compat_otp.By("Set Modern tlsSecurityProfile for the External Google Cloud logging output.")
 		patch := `[{"op": "add", "path": "/spec/outputs/0/tls", "value": {"securityProfile": {"type": "Modern"}}}]`
@@ -291,10 +292,10 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 
 		appLogs1, err = gcl.getLogByNamespace(appProj1)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(appLogs1) > 0).Should(o.BeTrue())
+		o.Expect(appLogs1).ShouldNot(o.BeEmpty())
 	})
 
-	//author qitang@redhat.com
+	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:qitang-Medium-71777-Include or exclude logs by combining namespace and container selectors.[Slow][CLO]", func() {
 		platform := compat_otp.CheckPlatform(oc)
@@ -354,15 +355,15 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			for _, container := range containerNames {
 				appLogs, err := gcl.listLogEntries(generateQuery(ns, container))
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(len(appLogs) > 0).Should(o.BeTrue(), "can't find logs from container "+container+" in project"+ns+", this is not expected")
+				o.Expect(appLogs).ShouldNot(o.BeEmpty(), "can't find logs from container "+container+" in project"+ns+", this is not expected")
 			}
 		}
 		appLogs, err := gcl.listLogEntries(generateQuery("logging-log-71777", "log-71777-include"))
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(appLogs) > 0).Should(o.BeTrue(), "can't find logs from container/log-71777-include in project/logging-log-71777, this is not expected")
+		o.Expect(appLogs).ShouldNot(o.BeEmpty(), "can't find logs from container/log-71777-include in project/logging-log-71777, this is not expected")
 		appLogs, err = gcl.listLogEntries(generateQuery("logging-log-71777", "exclude-log-71777"))
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(appLogs) == 0).Should(o.BeTrue(), "find logs from container/exclude-log-71777 in project/logging-log-71777, this is not expected")
+		o.Expect(appLogs).Should(o.BeEmpty(), "find logs from container/exclude-log-71777 in project/logging-log-71777, this is not expected")
 
 		compat_otp.By("exclude logs from specific containers in all namespaces")
 		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/excludes", "value": [{"namespace": "*", "container": "exclude-log-71777"}]}]`
@@ -380,7 +381,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		}
 		logs, err := gcl.listLogEntries(` AND jsonPayload.kubernetes.container_name="exclude-log-71777"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(logs) == 0).Should(o.BeTrue(), "find logs from container exclude-log-71777, this is not expected")
+		o.Expect(logs).Should(o.BeEmpty(), "find logs from container exclude-log-71777, this is not expected")
 
 		compat_otp.By("exclude logs from all containers in specific namespaces")
 		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/excludes", "value": [{"namespace": "e2e-test-log-71777", "container": "*"}]}]`
@@ -396,12 +397,12 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			for _, container := range containerNames {
 				appLogs, err := gcl.listLogEntries(generateQuery(ns, container))
 				o.Expect(err).NotTo(o.HaveOccurred())
-				o.Expect(len(appLogs) > 0).Should(o.BeTrue(), "can't find logs from container "+container+" in project"+ns+", this is not expected")
+				o.Expect(appLogs).ShouldNot(o.BeEmpty(), "can't find logs from container "+container+" in project"+ns+", this is not expected")
 			}
 		}
 		logs, err = gcl.getLogByNamespace("e2e-test-log-71777")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(logs) == 0).Should(o.BeTrue(), "find logs from project e2e-test-log-71777, this is not expected")
+		o.Expect(logs).Should(o.BeEmpty(), "find logs from project e2e-test-log-71777, this is not expected")
 
 		compat_otp.By("Update CLF to collect logs from specific containers in specific namespaces")
 		patch = `[{"op": "remove", "path": "/spec/inputs/0/application/excludes"}, {"op": "add", "path": "/spec/inputs/0/application", "value": {"includes": [{"namespace": "logging-log-71777", "container": "log-71777-include"}]}}]`
@@ -415,10 +416,10 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		compat_otp.AssertWaitPollNoErr(err, "logs from project logging-log-71777 are not collected")
 		includeLogs, err := gcl.listLogEntries(generateQuery("logging-log-71777", "log-71777-include"))
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(includeLogs) > 0).Should(o.BeTrue(), "can't find logs from container log-71777-include in project logging-log-71777, this is not expected")
+		o.Expect(includeLogs).ShouldNot(o.BeEmpty(), "can't find logs from container log-71777-include in project logging-log-71777, this is not expected")
 		excludeLogs, err := gcl.listLogEntries(` AND jsonPayload.kubernetes.namespace_name!="logging-log-71777" OR jsonPayload.kubernetes.container_name!="log-71777-include"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(excludeLogs) == 0).Should(o.BeTrue(), "find logs from other containers, this is not expected")
+		o.Expect(excludeLogs).Should(o.BeEmpty(), "find logs from other containers, this is not expected")
 
 		compat_otp.By("collect logs from specific containers in all namespaces")
 		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/includes", "value": [{"namespace": "*", "container": "log-71777-include"}]}]`
@@ -436,7 +437,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		}
 		logs, err = gcl.listLogEntries(` AND jsonPayload.kubernetes.container_name != "log-71777-include"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(logs) == 0).Should(o.BeTrue(), "find logs from other containers, this is not expected")
+		o.Expect(logs).Should(o.BeEmpty(), "find logs from other containers, this is not expected")
 		// no logs from openshift* projects
 
 		compat_otp.By("collect logs from all containers in specific namespaces")
@@ -451,10 +452,10 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		compat_otp.AssertWaitPollNoErr(err, "application logs are not collected")
 		logs, err = gcl.listLogEntries(` AND jsonPayload.kubernetes.namespace_name != "logging-data-71777"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(logs) == 0).Should(o.BeTrue(), "find logs from other projects, this is not expected")
+		o.Expect(logs).Should(o.BeEmpty(), "find logs from other projects, this is not expected")
 		logs, err = gcl.getLogByNamespace("logging-data-71777")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(logs) > 0).Should(o.BeTrue(), "can't find logs from project logging-data-71777, this is not expected")
+		o.Expect(logs).ShouldNot(o.BeEmpty(), "can't find logs from project logging-data-71777, this is not expected")
 
 		compat_otp.By("combine includes and excludes")
 		patch = `[{"op": "replace", "path": "/spec/inputs/0/application", "value": {"includes": [{"namespace": "*log*", "container": "log-71777*"}], "excludes": [{"namespace": "logging*71777", "container": "log-71777-include"}]}}]`
@@ -468,10 +469,10 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		compat_otp.AssertWaitPollNoErr(err, "application logs are not collected")
 		logs, err = gcl.listLogEntries(generateQuery("e2e-test-log-71777", "log-71777-include"))
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(logs) > 0).Should(o.BeTrue(), "can't find logs from container log-71777-include in project e2e-test-log-71777, this is not expected")
+		o.Expect(logs).ShouldNot(o.BeEmpty(), "can't find logs from container log-71777-include in project e2e-test-log-71777, this is not expected")
 		logs, err = gcl.listLogEntries(` AND jsonPayload.kubernetes.namespace_name!="e2e-test-log-71777" OR jsonPayload.kubernetes.container_name!="log-71777-include"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(logs) == 0).Should(o.BeTrue(), "find logs from other containers, this is not expected")
+		o.Expect(logs).Should(o.BeEmpty(), "find logs from other containers, this is not expected")
 	})
 
 	// author qitang@redhat.com
@@ -531,14 +532,14 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		time.Sleep(30 * time.Second)
 		logs, err := gcl.getLogByType("application")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(logs) > 0).Should(o.BeTrue())
+		o.Expect(logs).ShouldNot(o.BeEmpty())
 		extractedLogs, err := extractGoogleCloudLoggingLogs(logs)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(extractedLogs) > 0).Should(o.BeTrue())
-		o.Expect(extractedLogs[0].File == "").Should(o.BeTrue())
-		o.Expect(extractedLogs[0].Kubernetes.Annotations == nil).Should(o.BeTrue())
-		o.Expect(extractedLogs[0].Kubernetes.NamespaceName == "").Should(o.BeTrue())
-		o.Expect(extractedLogs[0].Kubernetes.Lables["test_logging_io_logging_qe-test-label"] == "").Should(o.BeTrue())
+		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(extractedLogs[0].File).Should(o.Equal(""))
+		o.Expect(extractedLogs[0].Kubernetes.Annotations).Should(o.BeNil())
+		o.Expect(extractedLogs[0].Kubernetes.NamespaceName).Should(o.Equal(""))
+		o.Expect(extractedLogs[0].Kubernetes.Lables["test_logging_io_logging_qe-test-label"]).Should(o.Equal(""))
 
 		compat_otp.By("Prune .hostname, the CLF should be rejected")
 		patch = `[{"op": "replace", "path": "/spec/filters/0/prune/in", "value": [".hostname",".kubernetes.namespace_name",".kubernetes.labels.\"test.logging.io/logging.qe-test-label\"",".file",".kubernetes.annotations"]}]`
@@ -557,13 +558,13 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		compat_otp.AssertWaitPollNoErr(err, "logs from project/"+ns+" are not collected")
 		logs, err = gcl.getLogByNamespace(ns)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(logs) > 0).Should(o.BeTrue())
+		o.Expect(logs).ShouldNot(o.BeEmpty())
 		extractedLogs, err = extractGoogleCloudLoggingLogs(logs)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(extractedLogs) > 0).Should(o.BeTrue())
-		o.Expect(extractedLogs[0].File == "").Should(o.BeTrue())
-		o.Expect(extractedLogs[0].Kubernetes.Annotations != nil).Should(o.BeTrue())
-		o.Expect(extractedLogs[0].Kubernetes.Lables["test_logging_io_logging_qe-test-label"] == "logging-71753-test").Should(o.BeTrue())
+		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(extractedLogs[0].File).Should(o.Equal(""))
+		o.Expect(extractedLogs[0].Kubernetes.Annotations).ShouldNot(o.BeNil())
+		o.Expect(extractedLogs[0].Kubernetes.Lables["test_logging_io_logging_qe-test-label"]).Should(o.Equal("logging-71753-test"))
 
 		compat_otp.By("Prune .hostname, the CLF should be rejected")
 		patch = `[{"op": "replace", "path": "/spec/filters/0/prune/notIn", "value": [".log_type",".log_source",".message",".kubernetes",".\"@timestamp\"",".openshift"]}]`
@@ -580,14 +581,14 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 
 		logs, err = gcl.getLogByType("application")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(logs) > 0).Should(o.BeTrue())
+		o.Expect(logs).ShouldNot(o.BeEmpty())
 		extractedLogs, err = extractGoogleCloudLoggingLogs(logs)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(len(extractedLogs) > 0).Should(o.BeTrue())
-		o.Expect(extractedLogs[0].File == "").Should(o.BeTrue())
-		o.Expect(extractedLogs[0].OpenShift.ClusterID == "").Should(o.BeTrue())
-		o.Expect(extractedLogs[0].Kubernetes.Annotations == nil).Should(o.BeTrue())
-		o.Expect(extractedLogs[0].Kubernetes.NamespaceName == "").Should(o.BeTrue())
-		o.Expect(extractedLogs[0].Kubernetes.Lables["test_logging_io_logging_qe-test-label"] == "").Should(o.BeTrue())
+		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(extractedLogs[0].File).Should(o.Equal(""))
+		o.Expect(extractedLogs[0].OpenShift.ClusterID).Should(o.Equal(""))
+		o.Expect(extractedLogs[0].Kubernetes.Annotations).Should(o.BeNil())
+		o.Expect(extractedLogs[0].Kubernetes.NamespaceName).Should(o.Equal(""))
+		o.Expect(extractedLogs[0].Kubernetes.Lables["test_logging_io_logging_qe-test-label"]).Should(o.Equal(""))
 	})
 })

@@ -3,13 +3,14 @@ package logging
 
 import (
 	"fmt"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"path/filepath"
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
@@ -35,7 +36,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		oc.SetupProject()
 	})
 
-	//author anli@redhat.com
+	// author anli@redhat.com
 	// port=no - insufficient data: 5 runs last 60 days
 	g.It("Author:anli-ConnectedOnly-High-71770-Forward logs to AZMonitor -- Minimal Options[CLO]", func() {
 		if compat_otp.IsWorkloadIdentityCluster(oc) {

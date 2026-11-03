@@ -35,7 +35,7 @@ func getAWSCredentials(oc *exutil.CLI) (AWSClientConfig, error) {
 	if platform == "aws" {
 		rawRegion, err := compat_otp.GetAWSClusterRegion(oc)
 		if err != nil {
-			return AWSClientConfig{}, fmt.Errorf("can't get AWS region: %v", err)
+			return AWSClientConfig{}, fmt.Errorf("can't get AWS region: %w", err)
 		}
 		region = rawRegion
 	} else {
@@ -67,22 +67,22 @@ func getAWSCredentials(oc *exutil.CLI) (AWSClientConfig, error) {
 	if platform == "aws" && !compat_otp.IsWorkloadIdentityCluster(oc) {
 		dirname := "/tmp/" + oc.Namespace() + "-creds"
 		defer os.RemoveAll(dirname)
-		err := os.MkdirAll(dirname, 0777)
+		err := os.MkdirAll(dirname, 0o777)
 		if err != nil {
-			return AWSClientConfig{}, fmt.Errorf("error creating directory %s: %v", dirname, err)
+			return AWSClientConfig{}, fmt.Errorf("error creating directory %s: %w", dirname, err)
 		}
 		err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("secret/aws-creds", "-n", "kube-system", "--confirm", "--to="+dirname).Execute()
 		if err != nil {
-			return AWSClientConfig{}, fmt.Errorf("failed to extract secret/aws-creds: %v", err)
+			return AWSClientConfig{}, fmt.Errorf("failed to extract secret/aws-creds: %w", err)
 		}
 
 		accessKeyID, err := os.ReadFile(dirname + "/aws_access_key_id")
 		if err != nil {
-			return AWSClientConfig{}, fmt.Errorf("failed to read file aws_access_key_id: %v", err)
+			return AWSClientConfig{}, fmt.Errorf("failed to read file aws_access_key_id: %w", err)
 		}
 		secretAccessKey, err := os.ReadFile(dirname + "/aws_secret_access_key")
 		if err != nil {
-			return AWSClientConfig{}, fmt.Errorf("failed to read file aws_secret_access_key: %v", err)
+			return AWSClientConfig{}, fmt.Errorf("failed to read file aws_secret_access_key: %w", err)
 		}
 		e2e.Logf("use credentials from cluster")
 		return AWSClientConfig{AccessKey: string(accessKeyID), SecretKey: string(secretAccessKey), Region: region}, nil
@@ -241,7 +241,7 @@ func createS3Bucket(client *s3.Client, bucketName, region string) error {
 		Per https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateBucket.html#API_CreateBucket_RequestBody,
 		us-east-1 is the default region and it's not a valid value of LocationConstraint,
 		using `LocationConstraint: types.BucketLocationConstraint("us-east-1")` gets error `InvalidLocationConstraint`.
-		Here remove the configration when the region is us-east-1
+		Here remove the configuration when the region is us-east-1
 	*/
 	if len(region) == 0 || region == "us-east-1" {
 		_, err = client.CreateBucket(context.TODO(), &s3.CreateBucketInput{Bucket: &bucketName})
@@ -352,7 +352,7 @@ func iamDeletePolicy(iamClient *iam.Client, policyArn string) {
 // This func creates a IAM role, attaches custom trust policy and managed permission policy
 func createIAMRoleOnAWS(iamClient *iam.Client, trustPolicy string, roleName string, policyArn string) string {
 	roleArn := iamCreateRole(iamClient, trustPolicy, roleName)
-	//Adding managed permission policy if provided
+	// Adding managed permission policy if provided
 	if policyArn != "" {
 		_, err := iamClient.AttachRolePolicy(context.TODO(), &iam.AttachRolePolicyInput{
 			PolicyArn: aws.String(policyArn),
@@ -464,22 +464,22 @@ type cloudwatchSpec struct {
 	awsRegion           string
 	awsPolicyName       string
 	awsPolicyArn        string
-	awsPartition        string //The partition in which the resource is located, valid when the cluster is STS, ref: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html#arns-syntax
+	awsPartition        string // The partition in which the resource is located, valid when the cluster is STS, ref: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html#arns-syntax
 	clusterPlatformType string
 	collectorSAName     string // the service account for collector pod to use
 	cwClient            *cloudwatchlogs.Client
 	groupName           string // the strategy for grouping logstreams, for example: '{.log_type||"none"}'
 	hasMaster           bool   // wether the cluster has master nodes or not
 	iamClient           *iam.Client
-	logTypes            []string //default: "['infrastructure','application', 'audit']"
+	logTypes            []string // default: "['infrastructure','application', 'audit']"
 	nodes               []string // Cluster Nodes Names, required when checking infrastructure/audit logs and strict=true
 	ovnEnabled          bool     // if ovn is enabled
 	secretName          string   // the name of the secret for the collector to use
 	secretNamespace     string   // the namespace where the collector pods to be deployed
 	stsEnabled          bool     // Is sts enabled on the cluster
-	selAppNamespaces    []string //The app namespaces should be collected and verified
+	selAppNamespaces    []string // The app namespaces should be collected and verified
 	selNamespacesID     []string // The UUIDs of all app namespaces should be collected
-	disAppNamespaces    []string //The namespaces should not be collected and verified
+	disAppNamespaces    []string // The namespaces should not be collected and verified
 }
 
 // Set the default values to the cloudwatchSpec Object, you need to change the default in It if needs
@@ -501,7 +501,7 @@ func (cw *cloudwatchSpec) init(oc *exutil.CLI) {
 	if cw.clusterPlatformType == "aws" {
 		if compat_otp.IsSTSCluster(oc) {
 			cw.stsEnabled = true
-			//Note: AWS China is not added, and the partition is `aws-cn`.
+			// Note: AWS China is not added, and the partition is `aws-cn`.
 			if strings.HasPrefix(cw.awsRegion, "us-gov") {
 				cw.awsPartition = "aws-us-gov"
 			} else {
@@ -512,7 +512,7 @@ func (cw *cloudwatchSpec) init(oc *exutil.CLI) {
 			accountID, _ := getAwsAccount(stsClient)
 			oidcProvider, e := getOIDC(oc)
 			o.Expect(e).NotTo(o.HaveOccurred())
-			//Create IAM roles for cloudwatch
+			// Create IAM roles for cloudwatch
 			cw.createIAMCloudwatchRole(oc, accountID, oidcProvider)
 		}
 	}
@@ -627,7 +627,7 @@ func (cw *cloudwatchSpec) deleteGroups(groupPrefix string) {
 func (cw *cloudwatchSpec) deleteResources(oc *exutil.CLI) {
 	resource{"secret", cw.secretName, cw.secretNamespace}.clear(oc)
 	cw.deleteGroups("")
-	//delete roles when the role is created in case
+	// delete roles when the role is created in case
 	if cw.stsEnabled && os.Getenv("AWS_CLOUDWATCH_ROLE_ARN") == "" {
 		deleteIAMroleonAWS(cw.iamClient, cw.awsRoleName)
 		iamDeletePolicy(cw.iamClient, cw.awsPolicyArn)
@@ -636,9 +636,7 @@ func (cw *cloudwatchSpec) deleteResources(oc *exutil.CLI) {
 
 // Return Cloudwatch GroupNames
 func (cw cloudwatchSpec) getLogGroupNames(groupPrefix string) ([]string, error) {
-	var (
-		groupNames []string
-	)
+	var groupNames []string
 	if groupPrefix == "" {
 		if strings.Contains(cw.groupName, "{") {
 			groupPrefix = strings.Split(cw.groupName, "{")[0]
@@ -650,7 +648,7 @@ func (cw cloudwatchSpec) getLogGroupNames(groupPrefix string) ([]string, error) 
 		LogGroupNamePrefix: &groupPrefix,
 	})
 	if err != nil {
-		return groupNames, fmt.Errorf("can't get log groups from cloudwatch: %v", err)
+		return groupNames, fmt.Errorf("can't get log groups from cloudwatch: %w", err)
 	}
 	for _, group := range logGroupDesc.LogGroups {
 		groupNames = append(groupNames, *group.LogGroupName)
@@ -663,7 +661,7 @@ func (cw cloudwatchSpec) getLogGroupNames(groupPrefix string) ([]string, error) 
 			NextToken:          nextToken,
 		})
 		if err != nil {
-			return groupNames, fmt.Errorf("can't get log groups from cloudwatch: %v", err)
+			return groupNames, fmt.Errorf("can't get log groups from cloudwatch: %w", err)
 		}
 		for _, group := range logGroupDesc.LogGroups {
 			groupNames = append(groupNames, *group.LogGroupName)
@@ -724,7 +722,7 @@ func (cw *cloudwatchSpec) getLogStreamNames(groupName string, streamPrefix strin
 	}
 	logStreamDesc, err = cw.cwClient.DescribeLogStreams(context.TODO(), &logStreamsInput)
 	if err != nil {
-		return logStreamNames, fmt.Errorf("can't get log streams: %v", err)
+		return logStreamNames, fmt.Errorf("can't get log streams: %w", err)
 	}
 	for _, stream := range logStreamDesc.LogStreams {
 		logStreamNames = append(logStreamNames, *stream.LogStreamName)
@@ -746,7 +744,7 @@ func (cw *cloudwatchSpec) getLogStreamNames(groupName string, streamPrefix strin
 		}
 		logStreamDesc, err = cw.cwClient.DescribeLogStreams(context.TODO(), &logStreamsInput)
 		if err != nil {
-			return logStreamNames, fmt.Errorf("can't get log streams from cloudwatch: %v", err)
+			return logStreamNames, fmt.Errorf("can't get log streams from cloudwatch: %w", err)
 		}
 		for _, stream := range logStreamDesc.LogStreams {
 			logStreamNames = append(logStreamNames, *stream.LogStreamName)
@@ -849,7 +847,7 @@ func (cw *cloudwatchSpec) checkInfraNodeLogs(strict bool) bool {
 			e2e.Logf("node name is empty, please get node names at first")
 			return false
 		}
-		//stream name: ip-10-0-152-69.journal.system
+		// stream name: ip-10-0-152-69.journal.system
 		if cw.clusterPlatformType == "aws" {
 			for _, node := range cw.nodes {
 				expectedStreamNames = append(expectedStreamNames, strings.Split(node, ".")[0])
@@ -937,9 +935,7 @@ func (cw *cloudwatchSpec) auditLogsFound(strict bool) bool {
 
 // check if the container logs are grouped by namespace_id
 func (cw *cloudwatchSpec) checkLogGroupByNamespaceID() bool {
-	var (
-		groupPrefix string
-	)
+	var groupPrefix string
 
 	if strings.Contains(cw.groupName, ".kubernetes.namespace_id") {
 		groupPrefix = strings.Split(cw.groupName, "{")[0]
@@ -959,9 +955,7 @@ func (cw *cloudwatchSpec) checkLogGroupByNamespaceID() bool {
 
 // check if the container logs are grouped by namespace_name
 func (cw *cloudwatchSpec) checkLogGroupByNamespaceName() bool {
-	var (
-		groupPrefix string
-	)
+	var groupPrefix string
 	if strings.Contains(cw.groupName, ".kubernetes.namespace_name") {
 		groupPrefix = strings.Split(cw.groupName, "{")[0]
 	} else {
@@ -1116,11 +1110,13 @@ func (cw *cloudwatchSpec) getLogRecordsByNamespace(limit int32, logGroupName str
 		return true, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("the query is not completed in 5 minutes or there is no log record matches the query: %v", err)
+		return nil, fmt.Errorf("the query is not completed in 5 minutes or there is no log record matches the query: %w", err)
 	}
 	for _, event := range output.Events {
 		var log LogEntity
-		json.Unmarshal([]byte(*event.Message), &log)
+		if err := json.Unmarshal([]byte(*event.Message), &log); err != nil {
+			return nil, fmt.Errorf("can't parse log event from cloudwatch: %w", err)
+		}
 		logs = append(logs, log)
 	}
 
@@ -1175,7 +1171,7 @@ func (s3 *S3Output) Init(oc *exutil.CLI) error {
 	}
 	factory, err := NewAWSClientFactory(context.TODO(), cred)
 	if err != nil {
-		return fmt.Errorf("error loading aws config: %v", err)
+		return fmt.Errorf("error loading aws config: %w", err)
 	}
 	s3.Region = cred.Region
 
@@ -1183,7 +1179,7 @@ func (s3 *S3Output) Init(oc *exutil.CLI) error {
 		if compat_otp.IsSTSCluster(oc) {
 			s3.StsEnabled = true
 			partition := "aws"
-			//Note: AWS China is not added, and the partition is `aws-cn`.
+			// Note: AWS China is not added, and the partition is `aws-cn`.
 			if strings.HasPrefix(s3.Region, "us-gov") {
 				partition = "aws-us-gov"
 			}
@@ -1212,7 +1208,7 @@ func (s3 *S3Output) Init(oc *exutil.CLI) error {
 	if !s3.StsEnabled {
 		err = loadAccessKeySecretKeyFromFile(context.TODO(), &cred)
 		if err != nil {
-			return fmt.Errorf("can't get aws_access_key_id and aws_secret_access_key: %v", err)
+			return fmt.Errorf("can't get aws_access_key_id and aws_secret_access_key: %w", err)
 		}
 		err = oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", s3.SecretName, "--from-literal=aws_access_key_id="+cred.AccessKey, "--from-literal=aws_secret_access_key="+cred.SecretKey, "-n", s3.CollectorNamespace).Execute()
 		if err != nil {

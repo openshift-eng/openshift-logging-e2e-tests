@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
-
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
@@ -130,7 +130,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			g.By("generate fake certifate for testing")
 			defer exec.Command("rm", "-r", keysPath).Output()
-			err := os.MkdirAll(keysPath, 0755)
+			err := os.MkdirAll(keysPath, 0o755)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			_, err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("cm/kube-root-ca.crt", "-n", clfSecret.namespace, "--confirm", "--to="+keysPath).Output()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -200,7 +200,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			g.By("Generate certifcate for testing")
 			defer exec.Command("rm", "-r", keysPath).Output()
-			err := os.MkdirAll(keysPath, 0755)
+			err := os.MkdirAll(keysPath, 0o755)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			cert := certsConf{sp.serviceName, sp.namespace, sp.passphrase}
 			cert.generateCerts(oc, keysPath)
@@ -276,7 +276,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			g.By("Generate certifcate for testing")
 			defer exec.Command("rm", "-r", keysPath).Output()
-			err := os.MkdirAll(keysPath, 0755)
+			err := os.MkdirAll(keysPath, 0o755)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			cert := certsConf{sp.serviceName, sp.namespace, sp.passphrase}
 			cert.generateCerts(oc, keysPath)
@@ -341,7 +341,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			g.By("Generate certifcate for testing")
 			defer exec.Command("rm", "-r", keysPath).Output()
-			err := os.MkdirAll(keysPath, 0755)
+			err := os.MkdirAll(keysPath, 0o755)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			cert := certsConf{sp.serviceURL, sp.namespace, ""}
@@ -366,7 +366,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			g.By("check logs in splunk")
 			o.Expect(sp.anyLogFound()).To(o.BeTrue())
 		})
-
 	})
 
 	g.Context("Splunk Custom Tenant", func() {
@@ -440,7 +439,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				o.Expect(sp.checkLogs("index=\""+indexName+"\" log_type=\""+logType+"\"")).To(o.BeTrue(), "can't find "+logType+" logs in "+indexName+" index")
 				r, e := sp.searchLogs("index=\"main\" log_type=\"" + logType + "\"")
 				o.Expect(e).NotTo(o.HaveOccurred())
-				o.Expect(len(r.Results) == 0).Should(o.BeTrue(), "find "+logType+" logs in default index, this is not expected")
+				o.Expect(r.Results).Should(o.BeEmpty(), "find "+logType+" logs in default index, this is not expected")
 			}
 		})
 
@@ -506,10 +505,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				o.Expect(sp.checkLogs("index=\""+index+"\"")).To(o.BeTrue(), "can't find logs in "+index+" index")
 				r, e := sp.searchLogs("index=\"" + index + "\" kubernetes.namespace_name!=\"" + index + "\"")
 				o.Expect(e).NotTo(o.HaveOccurred())
-				o.Expect(len(r.Results) == 0).Should(o.BeTrue(), "find logs from other namespaces in "+index+" index, this is not expected")
+				o.Expect(r.Results).Should(o.BeEmpty(), "find logs from other namespaces in "+index+" index, this is not expected")
 				r, e = sp.searchLogs("index!=\"" + index + "\" kubernetes.namespace_name=\"" + index + "\"")
 				o.Expect(e).NotTo(o.HaveOccurred())
-				o.Expect(len(r.Results) == 0).Should(o.BeTrue(), "find logs from project "+index+" in other indexes, this is not expected")
+				o.Expect(r.Results).Should(o.BeEmpty(), "find logs from project "+index+" in other indexes, this is not expected")
 			}
 			// audit logs and journal logs should be stored in the default index, which is named main
 			for _, logType := range []string{"audit", "infrastructure"} {
@@ -568,7 +567,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			clf.update(oc, "", patch, "--type=json")
 			clf.waitForCollectorPodsReady(oc)
 
-			//sleep 10 seconds for collector pods to send logs to splunk
+			// sleep 10 seconds for collector pods to send logs to splunk
 			time.Sleep(10 * time.Second)
 			compat_otp.By("check logs in splunk")
 			for _, logType := range []string{"infrastructure", "application", "audit"} {
@@ -578,7 +577,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			for _, logType := range []string{"application", "infrastructure", "audit"} {
 				r, e := sp.searchLogs("index=\"main\" log_type=\"" + logType + "\"")
 				o.Expect(e).NotTo(o.HaveOccurred())
-				o.Expect(len(r.Results) == 0).Should(o.BeTrue(), "find "+logType+" logs in default index, this is not expected")
+				o.Expect(r.Results).Should(o.BeEmpty(), "find "+logType+" logs in default index, this is not expected")
 			}
 		})
 
@@ -636,16 +635,16 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			o.Expect(sp.checkLogs("index=\""+index+"\"")).To(o.BeTrue(), "can't find logs in "+index+" index")
 			r, e := sp.searchLogs("index=\"" + index + "\", kubernetes.namespace_name!=\"" + appProj + "\"")
 			o.Expect(e).NotTo(o.HaveOccurred())
-			o.Expect(len(r.Results) == 0).Should(o.BeTrue(), "find logs from other namespaces in "+index+" index, this is not expected")
+			o.Expect(r.Results).Should(o.BeEmpty(), "find logs from other namespaces in "+index+" index, this is not expected")
 			r, e = sp.searchLogs("index!=\"" + index + "\", kubernetes.namespace_name=\"" + appProj + "\"")
 			o.Expect(e).NotTo(o.HaveOccurred())
-			o.Expect(len(r.Results) == 0).Should(o.BeTrue(), "find logs from project "+appProj+" in other indexes, this is not expected")
+			o.Expect(r.Results).Should(o.BeEmpty(), "find logs from project "+appProj+" in other indexes, this is not expected")
 
 			for _, logType := range []string{"audit", "infrastructure"} {
 				o.Expect(sp.checkLogs("index=\"main\", log_type=\""+logType+"\"")).To(o.BeTrue(), "can't find "+logType+" logs in main index")
 				r, e := sp.searchLogs("index=\"" + index + "\", log_type=\"" + logType + "\"")
 				o.Expect(e).NotTo(o.HaveOccurred())
-				o.Expect(len(r.Results) == 0).Should(o.BeTrue(), "find "+logType+" logs in "+index+" index, this is not expected")
+				o.Expect(r.Results).Should(o.BeEmpty(), "find "+logType+" logs in "+index+" index, this is not expected")
 			}
 		})
 
@@ -728,7 +727,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			splunkProject := clfNS
 
 			g.By("Deploy splunk server")
-			//define splunk deployment
+			// define splunk deployment
 			sp := splunkPodServer{
 				namespace: splunkProject,
 				name:      "splunk-http",
@@ -912,7 +911,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			patch = `[{"op":"replace","path":"/spec/filters","value":[{"name":"prune-logs","prune":{"notIn":[".kubernetes",".\"@timestamp\"",".openshift",".hostname"]},"type":"prune"}]}]`
 			clf.update(oc, "", patch, "--type=json")
 			checkResource(oc, true, false, `prune-logs: [[".log_source" ".log_type" ".message"] is/are required fields and must be included in`+" the `notIn` list.]", []string{"clusterlogforwarder.observability.openshift.io", clf.name, "-n", clf.namespace, "-ojsonpath={.status.filterConditions[0].message}"})
-
 		})
 		// port=unknown - no data in BigQuery last 60 days
 		g.It("Author:anli-High-81855-Vector forward logs to Splunk - customized source[CLO]", func() {
@@ -966,9 +964,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			g.By("check the default logs source in splunk")
-			//For journal log: the source=comm name
+			// For journal log: the source=comm name
 			o.Expect(sp.checkLogs("source IN (ovs-vswitchd,kubenswrapper,crio,system)")).To(o.BeTrue())
-			//For container Logs:  source=projectName+podName+ContainerName
+			// For container Logs:  source=projectName+podName+ContainerName
 			o.Expect(sp.checkLogs("source=" + appProj + "*")).To(o.BeTrue())
 			o.Expect(sp.checkLogs("source=kubeAPI")).To(o.BeTrue())
 			o.Expect(sp.checkLogs("source=openshiftAPI")).To(o.BeTrue())
@@ -982,6 +980,5 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			o.Expect(sp.checkLogs("source=application")).To(o.BeTrue())
 			o.Expect(sp.checkLogs("source=audit")).To(o.BeTrue())
 		})
-
 	})
 })

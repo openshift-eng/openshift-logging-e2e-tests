@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,6 +17,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2eoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
+
+	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
 type externalES struct {
@@ -30,8 +31,8 @@ type externalES struct {
 	userAuth                   bool   // `true` means enable user auth
 	username                   string // shouldn't be empty when `userAuth: true`
 	password                   string // shouldn't be empty when `userAuth: true`
-	secretName                 string //the name of the secret for the collector to use, it shouldn't be empty when `httpSSL: true` or `userAuth: true`
-	loggingNS                  string //the namespace where the collector pods deployed in
+	secretName                 string // the name of the secret for the collector to use, it shouldn't be empty when `httpSSL: true` or `userAuth: true`
+	loggingNS                  string // the namespace where the collector pods deployed in
 }
 
 func (es externalES) createPipelineSecret(oc *exutil.CLI, keysPath string) {
@@ -73,7 +74,7 @@ func (es externalES) deploy(oc *exutil.CLI) {
 		baseDir := testdata.FixturePath("logging")
 		keysPath := filepath.Join(baseDir, "temp"+getRandomString())
 		defer exec.Command("rm", "-r", keysPath).Output()
-		err = os.MkdirAll(keysPath, 0755)
+		err = os.MkdirAll(keysPath, 0o755)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		cert := certsConf{es.serverName, es.namespace, es.clientPrivateKeyPassphrase}
@@ -195,9 +196,14 @@ func (es externalES) baseCurlString() string {
 func (es externalES) getIndices(oc *exutil.CLI) ([]ESIndex, error) {
 	cmd := es.baseCurlString() + "_cat/indices?format=JSON"
 	stdout, err := e2eoutput.RunHostCmdWithRetries(es.namespace, es.getPodName(oc), cmd, 3*time.Second, 9*time.Second)
+	if err != nil {
+		return nil, err
+	}
 	indices := []ESIndex{}
-	json.Unmarshal([]byte(stdout), &indices)
-	return indices, err
+	if err := json.Unmarshal([]byte(stdout), &indices); err != nil {
+		return nil, err
+	}
+	return indices, nil
 }
 
 func (es externalES) waitForIndexAppear(oc *exutil.CLI, indexName string) {
@@ -223,9 +229,14 @@ func (es externalES) waitForIndexAppear(oc *exutil.CLI, indexName string) {
 func (es externalES) getDocCount(oc *exutil.CLI, indexName string, queryString string) (int64, error) {
 	cmd := es.baseCurlString() + indexName + "*/_count?format=JSON -d '" + queryString + "'"
 	stdout, err := e2eoutput.RunHostCmdWithRetries(es.namespace, es.getPodName(oc), cmd, 5*time.Second, 30*time.Second)
+	if err != nil {
+		return 0, err
+	}
 	res := CountResult{}
-	json.Unmarshal([]byte(stdout), &res)
-	return res.Count, err
+	if err := json.Unmarshal([]byte(stdout), &res); err != nil {
+		return 0, err
+	}
+	return res.Count, nil
 }
 
 func (es externalES) waitForProjectLogsAppear(oc *exutil.CLI, projectName string, indexName string) {
@@ -248,9 +259,7 @@ func (es externalES) searchDocByQuery(oc *exutil.CLI, indexName string, queryStr
 	stdout, err := e2eoutput.RunHostCmdWithRetries(es.namespace, es.getPodName(oc), cmd, 3*time.Second, 30*time.Second)
 	o.Expect(err).ShouldNot(o.HaveOccurred())
 	res := SearchResult{}
-	//data := bytes.NewReader([]byte(stdout))
-	//_ = json.NewDecoder(data).Decode(&res)
-	json.Unmarshal([]byte(stdout), &res)
+	o.Expect(json.Unmarshal([]byte(stdout), &res)).ShouldNot(o.HaveOccurred())
 	return res
 }
 
