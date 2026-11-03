@@ -23,8 +23,7 @@ openshift-logging-e2e-tests/
 │   ├── elasticsearch_utils.go   # Elasticsearch helpers
 │   ├── const.go                 # Shared constants
 │   └── testdata/
-│       ├── fixtures.go          # FixturePath() helper (backed by embedded bindata)
-│       ├── bindata.go           # Generated — do not edit (run `make build` to regenerate)
+│       ├── fixtures.go          # FixturePath() helper (backed by //go:embed)
 │       └── logging/             # YAML fixtures (operators, log-stores, certs, …)
 ├── go.mod
 ├── go.sum
@@ -35,8 +34,7 @@ openshift-logging-e2e-tests/
 
 | Tool | Version |
 |------|---------|
-| Go | 1.23+ (toolchain 1.26 via `GOTOOLCHAIN=auto`) |
-| `go-bindata` | any — install with `go install github.com/jteeuwen/go-bindata/go-bindata@latest` |
+| Go | 1.26+ (fetched automatically via `GOTOOLCHAIN=auto`) |
 | `KUBECONFIG` | pointing at a running OpenShift cluster |
 
 > **Note**: `openshift-tests` is only needed if you want to run suites via the OTE runner in CI. For local development, use the extension binary directly (see below).
@@ -48,9 +46,13 @@ make build
 # produces: bin/openshift-logging-e2e-tests-tests-ext
 ```
 
-`make build` does two things:
-1. Regenerates `test/e2e/testdata/bindata.go` from the YAML fixtures under `testdata/logging/`
-2. Compiles the extension binary
+`make build` compiles the extension binary. The YAML fixtures under `test/e2e/testdata/logging/` are embedded into it via `//go:embed`, so there is no code generation step.
+
+To run the cluster-free unit tests (fixture embedding and fixture path references):
+
+```bash
+make test
+```
 
 To clean build artifacts:
 
@@ -141,12 +143,12 @@ All tests follow the OTE annotation conventions:
 ## Adding testdata fixtures
 
 1. Place new YAML files under `test/e2e/testdata/logging/`
-2. Run `make build` — this regenerates `bindata.go` and embeds the new files
+2. Run `make build` — the new files are embedded automatically
 3. Access them in tests via `testdata.FixturePath("logging", "your-dir", "file.yaml")`
 
 ## Module notes
 
-- `go.mod` declares `go 1.23` (minimum) with `toolchain go1.26.0` (preferred)
-- `GOTOOLCHAIN=auto` in the Makefile allows Go to download and use the declared toolchain automatically
+- `go.mod` declares `go 1.26.0` (minimum)
+- `GOTOOLCHAIN=auto` in the Makefile allows Go to download and use that version automatically if the local Go is older
 - `GONOSUMDB="*"` is required because several OpenShift-internal packages are fetched from private GitHub forks
-- Fixtures are embedded at build time via `go-bindata` so the binary is self-contained and does not need testdata on disk at runtime
+- Fixtures are embedded at build time via `//go:embed` so the binary is self-contained and does not need testdata on disk at runtime

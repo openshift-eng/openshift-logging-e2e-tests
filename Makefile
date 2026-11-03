@@ -3,25 +3,20 @@ BINARY := bin/openshift-logging-e2e-tests-tests-ext
 # Tools
 GOLANGCI_LINT := go tool -modfile=.tools/golangci-lint.mod golangci-lint
 
+.PHONY: build
+build:
+	@echo "Building extension binary..."
+	@mkdir -p bin
 # GOFLAGS is pinned because the OpenShift Go builder images export
 # GOFLAGS=-mod=vendor. This repo has no vendor/ directory, so an inherited
 # value sends the build looking for vendor/modules.txt and fails with
 # "inconsistent vendoring" in CI while still succeeding locally.
-.PHONY: generate
-generate: ## Regenerate testdata bindata.
-	@cd test/e2e && $(MAKE) -f bindata.mk update-bindata
-
-.PHONY: build
-build: generate
-	@echo "Building extension binary..."
-	@mkdir -p bin
 	GOFLAGS=-mod=readonly GOTOOLCHAIN=auto GONOSUMDB="*" go build -o $(BINARY) ./cmd
 	@echo "✅ Binary built: $(BINARY)"
 
 .PHONY: clean
 clean:
 	@rm -f $(BINARY)
-	@cd test/e2e && $(MAKE) -f bindata.mk clean-bindata
 
 # Usage: make run-test TEST="<exact test name>"
 # Example: make run-test TEST="[sig-openshift-logging] LOGGING Logging Author:..."
@@ -50,8 +45,15 @@ run-case:
 	echo "Running: $$NAME"; \
 	$(BINARY) run-test "$$NAME" > /dev/null
 
+# Unit tests that need no cluster. Scoped to the testdata package: importing
+# test/e2e would register every Ginkgo spec. The path has no "..." because Go
+# skips directories named testdata in wildcard patterns.
+.PHONY: test
+test: ## Run cluster-free unit tests.
+	GOFLAGS=-mod=readonly GOTOOLCHAIN=auto GONOSUMDB="*" go test ./test/e2e/testdata
+
 .PHONY: lint
-lint: generate ## Run golangci-lint on source code.
+lint: ## Run golangci-lint on source code.
 	$(GOLANGCI_LINT) config verify
 	$(GOLANGCI_LINT) run --timeout=5m ./...
 
@@ -63,8 +65,8 @@ lint-fix: ## Attempt to automatically fix lint issues in source code.
 help:
 	@echo "Available targets:"
 	@echo "  build       - Build extension binary"
-	@echo "  clean       - Remove binaries and bindata"
-	@echo "  generate    - Regenerate testdata bindata"
+	@echo "  clean       - Remove binaries"
+	@echo "  test        - Run cluster-free unit tests"
 	@echo "  lint        - Run golangci-lint on source code"
 	@echo "  lint-fix    - Attempt to automatically fix lint issues"
 	@echo "  run-test    - Run a test by name (set TEST=<name>)"
