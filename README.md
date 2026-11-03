@@ -36,6 +36,7 @@ openshift-logging-e2e-tests/
 |------|---------|
 | Go | 1.26+ (fetched automatically via `GOTOOLCHAIN=auto`) |
 | `KUBECONFIG` | pointing at a running OpenShift cluster |
+| `jq` | any — used by `make run-case` / `make run-test` to read test results |
 
 > **Note**: `openshift-tests` is only needed if you want to run suites via the OTE runner in CI. For local development, use the extension binary directly (see below).
 
@@ -93,6 +94,8 @@ Use `make run-case` with the case ID — no need to look up the full name:
 export KUBECONFIG=/path/to/kubeconfig
 make run-case CASE=65131
 ```
+
+The target prints whether the test passed, failed or was skipped, and exits non-zero if it failed. This is needed because every test is registered as Informing, so the binary itself exits 0 even on failure.
 
 ### Find tests by case ID or keyword
 
