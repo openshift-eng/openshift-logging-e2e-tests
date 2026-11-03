@@ -6,8 +6,10 @@ Guidance for AI agents working on this repository.
 
 ```bash
 make build
-# Regenerates testdata/bindata.go and compiles the extension binary to bin/openshift-logging-e2e-tests-tests-ext
+# Compiles the extension binary to bin/openshift-logging-e2e-tests-tests-ext (fixtures are embedded via //go:embed)
 ```
+
+Run `make test` after touching `test/e2e/testdata/` or any `FixturePath` / `filepath.Join(loggingBaseDir, ...)` reference. It needs no cluster and fails on references to fixtures that do not exist.
 
 Always rebuild after editing any `.go` file or testdata fixtures before running tests.
 
@@ -50,7 +52,7 @@ Fix: add `oc.SetupProject()` immediately before the first `oc.Namespace()` call 
 
 ### `FixturePath` — no `"testdata"` prefix
 
-`go-bindata` is invoked with `-prefix "testdata"`, so asset names are stored **without** the `testdata/` prefix. Any `FixturePath(...)` call that includes `"testdata"` as the first element will panic with `Asset not found`.
+Fixtures are embedded with `//go:embed all:logging` from inside `test/e2e/testdata`, so paths are relative to that directory and start at `logging`. Any `FixturePath(...)` call that includes `"testdata"` as the first element will panic with `fixture not found`.
 
 Correct:
 ```go
@@ -61,10 +63,6 @@ Wrong:
 ```go
 filePath := []string{"testdata", "logging", "external-log-stores", "rsyslog"}
 ```
-
-### `bindata.go` is tracked in git
-
-`test/e2e/testdata/bindata.go` is a generated file but it **is** committed to the repository. Do not add it to `.gitignore`.
 
 ## Test file conventions
 

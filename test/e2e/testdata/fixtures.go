@@ -1,125 +1,65 @@
 package testdata
 
 import (
+	"embed"
 	"fmt"
-	"io/ioutil"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
-	"sort"
 	"strings"
+	"sync"
 )
+
+//go:embed all:logging
+var fixtures embed.FS
 
 var (
-	fixtureDir string
+	extractOnce sync.Once
+	fixtureDir  string
 )
 
-func init() {
-	var err error
-	fixtureDir, err = ioutil.TempDir("", "testdata-fixtures-")
+// FixturePath returns the on-disk path of an embedded fixture file or directory.
+// Fixtures are extracted to a temporary directory on first use because the tests
+// hand them to external processes (oc, shell scripts) that need real files.
+// It panics if the path does not exist in the embedded tree. Paths are relative
+// to this directory, so they start at "logging".
+func FixturePath(elem ...string) string {
+	rel := path.Join(elem...)
+	if _, err := fs.Stat(fixtures, rel); err != nil {
+		msg := fmt.Sprintf("fixture not found: %q", rel)
+		if strings.HasPrefix(rel, "testdata/") {
+			msg += `: paths are relative to test/e2e/testdata, drop the "testdata" prefix`
+		}
+		panic(msg)
+	}
+
+	extractOnce.Do(extractFixtures)
+	return filepath.Join(fixtureDir, filepath.FromSlash(rel))
+}
+
+func extractFixtures() {
+	dir, err := os.MkdirTemp("", "testdata-fixtures-")
 	if err != nil {
 		panic(fmt.Sprintf("failed to create fixture directory: %v", err))
 	}
-	if err := os.Chmod(fixtureDir, 0755); err != nil {
-		panic(fmt.Sprintf("failed to set fixture directory permissions: %v", err))
-	}
-}
 
-func FixturePath(elem ...string) string {
-	relativePath := filepath.Join(elem...)
-	targetPath := filepath.Join(fixtureDir, relativePath)
-
-	if _, err := os.Stat(targetPath); err == nil {
-		return targetPath
-	}
-
-	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
-		panic(fmt.Sprintf("failed to create directory for %s: %v", relativePath, err))
-	}
-
-	bindataPath := relativePath
-	tempDir, err := os.MkdirTemp("", "bindata-extract-")
-	if err != nil {
-		panic(fmt.Sprintf("failed to create temp directory: %v", err))
-	}
-	defer os.RemoveAll(tempDir)
-
-	if err := RestoreAsset(tempDir, bindataPath); err != nil {
-		if err := RestoreAssets(tempDir, bindataPath); err != nil {
-			panic(fmt.Sprintf("failed to restore fixture %s: %v", relativePath, err))
-		}
-	}
-
-	extractedPath := filepath.Join(tempDir, bindataPath)
-
-	filepath.Walk(extractedPath, func(path string, info os.FileInfo, err error) error {
+	err = fs.WalkDir(fixtures, ".", func(name string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		if info.IsDir() {
-			os.Chmod(path, 0755)
-		} else {
-			os.Chmod(path, 0644)
+		target := filepath.Join(dir, filepath.FromSlash(name))
+		if d.IsDir() {
+			return os.MkdirAll(target, 0o755)
 		}
-		return nil
+		data, err := fixtures.ReadFile(name)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0o644)
 	})
-
-	if err := os.Rename(extractedPath, targetPath); err != nil {
-		panic(fmt.Sprintf("failed to move extracted files: %v", err))
-	}
-
-	if info, err := os.Stat(targetPath); err == nil {
-		if info.IsDir() {
-			os.Chmod(targetPath, 0755)
-		} else {
-			os.Chmod(targetPath, 0644)
-		}
-	}
-
-	return targetPath
-}
-
-func CleanupFixtures() error {
-	if fixtureDir != "" {
-		return os.RemoveAll(fixtureDir)
-	}
-	return nil
-}
-
-func GetFixtureData(elem ...string) ([]byte, error) {
-	relativePath := filepath.Join(elem...)
-	cleanPath := relativePath
-	if len(cleanPath) > 0 && cleanPath[0] == '/' {
-		cleanPath = cleanPath[1:]
-	}
-	return Asset(cleanPath)
-}
-
-func MustGetFixtureData(elem ...string) []byte {
-	data, err := GetFixtureData(elem...)
 	if err != nil {
-		panic(fmt.Sprintf("failed to get fixture data: %v", err))
+		panic(fmt.Sprintf("failed to extract fixtures: %v", err))
 	}
-	return data
-}
-
-func FixtureExists(elem ...string) bool {
-	relativePath := filepath.Join(elem...)
-	cleanPath := relativePath
-	if len(cleanPath) > 0 && cleanPath[0] == '/' {
-		cleanPath = cleanPath[1:]
-	}
-	_, err := Asset(cleanPath)
-	return err == nil
-}
-
-func ListFixtures() []string {
-	names := AssetNames()
-	fixtures := make([]string, 0, len(names))
-	for _, name := range names {
-		if strings.HasPrefix(name, "testdata/") {
-			fixtures = append(fixtures, strings.TrimPrefix(name, "testdata/"))
-		}
-	}
-	sort.Strings(fixtures)
-	return fixtures
+	fixtureDir = dir
 }
