@@ -3,6 +3,12 @@ BINARY := bin/openshift-logging-e2e-tests-tests-ext
 # Tools
 GOLANGCI_LINT := go tool -modfile=.tools/golangci-lint.mod golangci-lint
 
+# Lint timeout. The deadline covers package loading, not just analysis:
+# cold-cache CI containers must download and type-check the full dependency
+# tree (openshift/origin et al.) before any linter runs, which alone can
+# exceed 5 minutes. Overridable: make lint GOLANGCI_LINT_TIMEOUT=30m
+GOLANGCI_LINT_TIMEOUT ?= 7m
+
 .PHONY: build
 build:
 	@echo "Building extension binary..."
@@ -55,11 +61,11 @@ test: ## Run cluster-free unit tests.
 .PHONY: lint
 lint: ## Run golangci-lint on source code.
 	$(GOLANGCI_LINT) config verify
-	$(GOLANGCI_LINT) run --timeout=5m ./...
+	$(GOLANGCI_LINT) run --timeout=$(GOLANGCI_LINT_TIMEOUT) ./...
 
 .PHONY: lint-fix
 lint-fix: ## Attempt to automatically fix lint issues in source code.
-	$(GOLANGCI_LINT) run --fix --timeout=5m ./...
+	$(GOLANGCI_LINT) run --fix --timeout=$(GOLANGCI_LINT_TIMEOUT) ./...
 
 .PHONY: help
 help:

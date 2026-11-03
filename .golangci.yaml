@@ -3,7 +3,7 @@
 version: "2"
 run:
   go: "1.26"
-  timeout: 5m
+  timeout: 15m
   relative-path-mode: cfg
   modules-download-mode: readonly
 linters:
