@@ -117,9 +117,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 			CatalogSource:      source,
 			SkipCaseWhenFailed: true,
 		}
-		defer preCLO.uninstallOperator(oc)
+		deferCleanup(func() { preCLO.uninstallOperator(oc) })
 		preCLO.SubscribeOperator(oc)
-		defer preLO.uninstallOperator(oc)
+		deferCleanup(func() { preLO.uninstallOperator(oc) })
 		preLO.SubscribeOperator(oc)
 
 		g.By("Deploy lokistack")
@@ -135,10 +135,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 			bucketName:    "logging-loki-53407-" + getInfrastructureName(oc),
 			template:      filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml"),
 		}
-		defer ls.removeObjectStorage(oc)
+		deferCleanup(func() { ls.removeObjectStorage(oc) })
 		err = ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ls.removeLokiStack(oc)
+		deferCleanup(func() { ls.removeLokiStack(oc) })
 		err = ls.deployLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
@@ -156,12 +156,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 			waitForPodReady:           true,
 			enableMonitoring:          true,
 		}
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
+		deferCleanup(func() { resource{"secret", clf.secretName, clf.namespace}.clear(oc) })
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
 
 		compat_otp.By("deploy logfilesmetricexporter")
@@ -171,7 +173,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 			template:      filepath.Join(loggingBaseDir, "logfilemetricexporter", "lfme.yaml"),
 			waitPodsReady: true,
 		}
-		defer lfme.delete(oc)
+		deferCleanup(func() { lfme.delete(oc) })
 		lfme.create(oc)
 
 		// get current csv version
@@ -214,7 +216,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 			g.By("checking if the collector can collect logs after upgrading")
 			oc.SetupProject()
 			appProj := oc.Namespace()
-			defer removeClusterRoleFromServiceAccount(oc, appProj, "default", "cluster-admin")
+			deferCleanup(func() { removeClusterRoleFromServiceAccount(oc, appProj, "default", "cluster-admin") })
 			addClusterRoleToServiceAccount(oc, appProj, "default", "cluster-admin")
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
@@ -272,9 +274,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 			CatalogSource:      preSource,
 			SkipCaseWhenFailed: true,
 		}
-		defer preCLO.uninstallOperator(oc)
+		deferCleanup(func() { preCLO.uninstallOperator(oc) })
 		preCLO.SubscribeOperator(oc)
-		defer preLO.uninstallOperator(oc)
+		deferCleanup(func() { preLO.uninstallOperator(oc) })
 		preLO.SubscribeOperator(oc)
 
 		g.By("Deploy lokistack")
@@ -290,10 +292,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 			bucketName:    "logging-loki-53404-" + getInfrastructureName(oc),
 			template:      filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml"),
 		}
-		defer ls.removeObjectStorage(oc)
+		deferCleanup(func() { ls.removeObjectStorage(oc) })
 		err = ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ls.removeLokiStack(oc)
+		deferCleanup(func() { ls.removeLokiStack(oc) })
 		err = ls.deployLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
@@ -305,7 +307,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 			template:      filepath.Join(loggingBaseDir, "logfilemetricexporter", "lfme.yaml"),
 			waitPodsReady: true,
 		}
-		defer lfme.delete(oc)
+		deferCleanup(func() { lfme.delete(oc) })
 		lfme.create(oc)
 
 		compat_otp.By("create a CLF to test forward to lokistack")
@@ -321,12 +323,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 			waitForPodReady:           true,
 			enableMonitoring:          true,
 		}
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
+		deferCleanup(func() { resource{"secret", clf.secretName, clf.namespace}.clear(oc) })
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
 
 		compat_otp.By("Check if the cm/grafana-dashboard-cluster-logging is created or not before upgrading")
@@ -364,7 +368,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 		g.By("checking if the collector can collect logs after upgrading")
 		oc.SetupProject()
 		appProj := oc.Namespace()
-		defer removeClusterRoleFromServiceAccount(oc, appProj, "default", "cluster-admin")
+		deferCleanup(func() { removeClusterRoleFromServiceAccount(oc, appProj, "default", "cluster-admin") })
 		addClusterRoleToServiceAccount(oc, appProj, "default", "cluster-admin")
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
@@ -387,7 +391,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 		compat_otp.AssertWaitPollNoErr(err, "application logs are not found")
 
 		// Creating cluster roles to allow read access from LokiStack
-		defer deleteLokiClusterRolesForReadAccess(oc)
+		deferCleanup(func() { deleteLokiClusterRolesForReadAccess(oc) })
 		createLokiClusterRolesForReadAccess(oc)
 
 		g.By("checking if regular user can view his logs after upgrading")
@@ -521,7 +525,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			template:      template,
 			waitPodsReady: true,
 		}
-		defer lfme.delete(oc)
+		deferCleanup(func() { lfme.delete(oc) })
 		lfme.create(oc)
 		token := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
 
@@ -542,10 +546,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			bucketName:    "logging-loki-64147-" + getInfrastructureName(oc),
 			template:      filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml"),
 		}
-		defer ls.removeObjectStorage(oc)
+		deferCleanup(func() { ls.removeObjectStorage(oc) })
 		err = ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ls.removeLokiStack(oc)
+		deferCleanup(func() { ls.removeLokiStack(oc) })
 		err = ls.deployLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
@@ -565,12 +569,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			enableMonitoring:          true,
 		}
 		clf.createServiceAccount(oc)
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
+		deferCleanup(func() { resource{"secret", clf.secretName, clf.namespace}.clear(oc) })
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
 
 		g.By("Remove clusterlogforwarder")
@@ -588,7 +594,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			name:      "test-lfme-64147",
 			namespace: loggingNS,
 		}
-		defer lfmeInvalidName.clear(oc)
+		deferCleanup(func() { lfmeInvalidName.clear(oc) })
 		err = lfmeInvalidName.applyFromTemplate(oc, "-f", template, "-p", "NAME="+lfmeInvalidName.name, "-p", "NAMESPACE="+lfmeInvalidName.namespace)
 		o.Expect(strings.Contains(err.Error(), "metadata.name: Unsupported value: \""+lfmeInvalidName.name+"\": supported values: \"instance\"")).Should(o.BeTrue())
 
@@ -598,7 +604,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			namespace: oc.Namespace(),
 			template:  filepath.Join(loggingBaseDir, "logfilemetricexporter", "lfme.yaml"),
 		}
-		defer lfmeInvalidNamespace.delete(oc)
+		deferCleanup(func() { lfmeInvalidNamespace.delete(oc) })
 		lfmeInvalidNamespace.create(oc)
 		checkResource(oc, true, false, "validation failed: Invalid namespace name \""+lfmeInvalidNamespace.namespace+"\", instance must be in \"openshift-logging\" namespace", []string{"lfme/" + lfmeInvalidNamespace.name, "-n", lfmeInvalidNamespace.namespace, "-ojsonpath={.status.conditions[*].message}"})
 	})
@@ -614,7 +620,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			serverName: "elasticsearch-server",
 			loggingNS:  clfNS,
 		}
-		defer ees.remove(oc)
+		deferCleanup(func() { ees.remove(oc) })
 		ees.deploy(oc)
 
 		logFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -630,7 +636,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			namespace:    clfNS,
 			templateFile: filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "elasticsearch.yaml"),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "ES_URL=http://"+ees.serverName+"."+ees.namespace+".svc:9200", "ES_VERSION="+ees.version, "SERVICE_ACCOUNT_NAME=logcollector", "INPUT_REFS=[\"application\"]")
 		checkResource(oc, true, false, `ServiceAccount "logcollector" not found`, []string{"clf/" + clf.name, "-n", clf.namespace, "-ojsonpath={.status.conditions[*].message}"})
 
@@ -648,10 +654,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			name:      "logcollector",
 			namespace: clfNS,
 		}
-		defer sa.clear(oc)
+		deferCleanup(func() { sa.clear(oc) })
 		err = createServiceAccount(oc, sa.namespace, sa.name)
 		o.Expect(err).NotTo(o.HaveOccurred(), "get error when creating serviceaccount "+sa.name)
-		defer oc.AsAdmin().WithoutNamespace().Run("policy").Args("remove-role-from-user", "collect-application-logs", fmt.Sprintf("system:serviceaccount:%s:%s", sa.namespace, sa.name), "-n", sa.namespace).Execute()
+		cleanupRecv1 := oc.AsAdmin().WithoutNamespace().Run("policy").Args("remove-role-from-user", "collect-application-logs", fmt.Sprintf("system:serviceaccount:%s:%s", sa.namespace, sa.name), "-n", sa.namespace)
+		deferCleanup(func() { cleanupRecv1.Execute() })
 		err = oc.AsAdmin().WithoutNamespace().Run("policy").Args("add-role-to-user", "collect-application-logs", fmt.Sprintf("system:serviceaccount:%s:%s", sa.namespace, sa.name), "-n", sa.namespace).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		// wait for 2 minutes for CLO to update the status in CLF
@@ -661,7 +668,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		o.Expect(dsErr).NotTo(o.HaveOccurred())
 
 		compat_otp.By("Create clusterrolebinding to bind clusterrole to the serviceaccount")
-		defer removeClusterRoleFromServiceAccount(oc, sa.namespace, sa.name, "collect-application-logs")
+		deferCleanup(func() { removeClusterRoleFromServiceAccount(oc, sa.namespace, sa.name, "collect-application-logs") })
 		addClusterRoleToServiceAccount(oc, sa.namespace, sa.name, "collect-application-logs")
 		// wait for 2 minutes for CLO to update the status in CLF
 		time.Sleep(2 * time.Minute)
@@ -694,7 +701,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 	g.It("Author:qitang-Medium-65408-ClusterLogForwarder validation when roles don't match.[PreMerge][CLO]", func() {
 		clfNS := oc.Namespace()
 		loki := externalLoki{"loki-server", clfNS}
-		defer loki.remove(oc)
+		deferCleanup(func() { loki.remove(oc) })
 		loki.deployLoki(oc)
 
 		compat_otp.By("Create ClusterLogForwarder with a serviceaccount which doesn't have proper clusterroles")
@@ -704,7 +711,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			templateFile:       filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "loki.yaml"),
 			serviceAccountName: "clf-collector",
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "URL=http://"+loki.name+"."+loki.namespace+".svc:3100")
 		checkResource(oc, true, false, `insufficient permissions on service account, not authorized to collect ["application" "audit" "infrastructure"] logs`, []string{"clf/" + clf.name, "-n", clf.namespace, "-ojsonpath={.status.conditions[*].message}"})
 		ds := resource{
@@ -718,7 +725,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		compat_otp.By("Create a new sa and add clusterrole/collect-application-logs to the new sa, then update the CLF to use the new sa")
 		err := oc.AsAdmin().WithoutNamespace().Run("create").Args("sa", "collect-application-logs", "-n", clf.namespace).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, "collect-application-logs", "collect-application-logs")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, "collect-application-logs", "collect-application-logs")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, "collect-application-logs", "collect-application-logs")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clf.update(oc, "", "{\"spec\": {\"serviceAccount\": {\"name\": \"collect-application-logs\"}}}", "--type=merge")
@@ -729,7 +738,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		compat_otp.By("Create a new sa and add clusterrole/collect-infrastructure-logs to the new sa, then update the CLF to use the new sa")
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("sa", "collect-infrastructure-logs", "-n", clf.namespace).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, "collect-infrastructure-logs", "collect-infrastructure-logs")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, "collect-infrastructure-logs", "collect-infrastructure-logs")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, "collect-infrastructure-logs", "collect-infrastructure-logs")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clf.update(oc, "", "{\"spec\": {\"serviceAccount\": {\"name\": \"collect-infrastructure-logs\"}}}", "--type=merge")
@@ -740,7 +751,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		compat_otp.By("Create a new sa and add clusterrole/collect-audit-logs to the new sa, then update the CLF to use the new sa")
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("sa", "collect-audit-logs", "-n", clf.namespace).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, "collect-audit-logs", "collect-audit-logs")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, "collect-audit-logs", "collect-audit-logs")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, "collect-audit-logs", "collect-audit-logs")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clf.update(oc, "", "{\"spec\": {\"serviceAccount\": {\"name\": \"collect-audit-logs\"}}}", "--type=merge")
@@ -753,7 +766,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		o.Expect(err).NotTo(o.HaveOccurred())
 		for _, logType := range []string{"application", "infrastructure", "audit"} {
 			role := "collect-" + logType + "-logs"
-			defer removeClusterRoleFromServiceAccount(oc, clf.namespace, "collect-all-logs", role)
+			cleanupArg1 := role
+			deferCleanup(func() { removeClusterRoleFromServiceAccount(oc, clf.namespace, "collect-all-logs", cleanupArg1) })
 			err = addClusterRoleToServiceAccount(oc, clf.namespace, "collect-all-logs", role)
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
@@ -923,7 +937,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 			secretName: "ees-75632",
 			loggingNS:  clfNS,
 		}
-		defer ees.remove(oc)
+		deferCleanup(func() { ees.remove(oc) })
 		ees.deploy(oc)
 
 		compat_otp.By("Create CLF to forward to ES")
@@ -938,7 +952,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 			collectInfrastructureLogs: true,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
-		defer clfES.delete(oc)
+		deferCleanup(func() { clfES.delete(oc) })
 		clfES.create(oc, "ES_URL=https://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version)
 
 		compat_otp.By("deploy lokistack")
@@ -953,10 +967,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 			bucketName:    "logging-loki-75632-" + getInfrastructureName(oc),
 			template:      lokiStackTemplate,
 		}
-		defer ls.removeObjectStorage(oc)
+		deferCleanup(func() { ls.removeObjectStorage(oc) })
 		err := ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ls.removeLokiStack(oc)
+		deferCleanup(func() { ls.removeLokiStack(oc) })
 		err = ls.deployLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		//ls.waitForLokiStackToBeReady(oc)
@@ -969,7 +983,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 			template:      filepath.Join(loggingBaseDir, "logfilemetricexporter", "lfme.yaml"),
 			waitPodsReady: false,
 		}
-		defer lfme.delete(oc)
+		deferCleanup(func() { lfme.delete(oc) })
 		lfme.create(oc)
 
 		compat_otp.By("create a CLF to test forward to lokistack")
@@ -985,12 +999,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 			waitForPodReady:           false,
 		}
 		clf.createServiceAccount(oc)
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
+		deferCleanup(func() { resource{"secret", clf.secretName, clf.namespace}.clear(oc) })
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
 
 		compat_otp.By("create UIPlugin")
@@ -999,7 +1015,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 		defer os.Remove(file)
 		compat_otp.AssertWaitPollNoErr(err, "Can not process uiPluginTemplate")
 		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", file).Execute()
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("UIPlugin", "logging").Execute()
+		cleanupRecv1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("UIPlugin", "logging")
+		deferCleanup(func() { cleanupRecv1.Execute() })
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		files, err := runLoggingMustGather(oc)
@@ -1067,10 +1084,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			bucketName:    "logging-loki-84892-" + getInfrastructureName(oc),
 			template:      filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml"),
 		}
-		defer ls.removeObjectStorage(oc)
+		deferCleanup(func() { ls.removeObjectStorage(oc) })
 		err := ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ls.removeLokiStack(oc)
+		deferCleanup(func() { ls.removeLokiStack(oc) })
 		err = ls.deployLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
@@ -1082,7 +1099,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			template:      filepath.Join(loggingBaseDir, "logfilemetricexporter", "lfme.yaml"),
 			waitPodsReady: true,
 		}
-		defer lfme.delete(oc)
+		deferCleanup(func() { lfme.delete(oc) })
 		lfme.create(oc)
 
 		compat_otp.By("create a CLF to test forward to lokistack")
@@ -1098,17 +1115,20 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			waitForPodReady:           true,
 		}
 		clf.createServiceAccount(oc)
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
+		deferCleanup(func() { resource{"secret", clf.secretName, clf.namespace}.clear(oc) })
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
 
 		// check logs in loki stack
 		g.By("check logs in loki")
-		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
+		cleanupArg1 := oc.Namespace()
+		deferCleanup(func() { removeClusterRoleFromServiceAccount(oc, cleanupArg1, "default", "cluster-admin") })
 		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		bearerToken := getSAToken(oc, "default", oc.Namespace())
@@ -1214,7 +1234,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			name:      "otel",
 			namespace: oc.Namespace(),
 		}
-		defer otel.clear(oc)
+		deferCleanup(func() { otel.clear(oc) })
 		err = otel.applyFromTemplate(oc, "-f", otelTemplate, "-n", otel.namespace, "-p", "NAMESPACE="+otel.namespace, "-p", "NAME="+otel.name)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		waitForPodReadyWithLabel(oc, otel.namespace, "app.kubernetes.io/component=opentelemetry-collector")
@@ -1231,7 +1251,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			collectInfrastructureLogs: true,
 			enableMonitoring:          true,
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "URL="+svc, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		// exclude logs from  project otel.namespace because the OTEL collector writes received logs to stdout
 		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"excludes": [{"namespace":"` + otel.namespace + `"}]}}]},{"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app", "infrastructure", "audit"]}]`
@@ -1281,7 +1301,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			groupName:       "logging-85456-" + getInfrastructureName(oc) + `.{.log_type||"none-typed-logs"}`,
 			logTypes:        []string{"infrastructure", "audit"},
 		}
-		defer cw.deleteResources(oc)
+		deferCleanup(func() { cw.deleteResources(oc) })
 		cw.init(oc)
 
 		g.By("Create clusterlogforwarder")
@@ -1304,7 +1324,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			serviceAccountName:        cw.collectorSAName,
 			enableMonitoring:          true,
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.createServiceAccount(oc)
 		cw.createClfSecret(oc)
 		clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName)
@@ -1370,7 +1390,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			CollectorNamespace:      clfNS,
 			CollectorServiceAccount: "collector-s3-output",
 		}
-		defer s3.Destroy(oc)
+		deferCleanup(func() { s3.Destroy(oc) })
 		o.Expect(s3.Init(oc)).NotTo(o.HaveOccurred())
 
 		g.By("Create clusterlogforwarder")
@@ -1393,7 +1413,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			serviceAccountName:        s3.CollectorServiceAccount,
 			enableMonitoring:          true,
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.createServiceAccount(oc)
 		clf.create(oc, "REGION="+s3.Region, "KEY_PREFIX="+s3.KeyPrefix, "BUCKET_NAME="+s3.BucketName)
 
@@ -1451,7 +1471,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			projectID: projectID,
 			logName:   getInfrastructureName(oc) + "-85410",
 		}
-		defer gcl.removeLogs()
+		deferCleanup(func() { gcl.removeLogs() })
 
 		g.By("Create log producer")
 		appProj := oc.Namespace()
@@ -1462,7 +1482,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		oc.SetupProject()
 		clfNS := oc.Namespace()
 		gcpSecret := resource{"secret", "gcp-secret-85410", clfNS}
-		defer gcpSecret.clear(oc)
+		deferCleanup(func() { gcpSecret.clear(oc) })
 		err = createSecretForGCL(oc, gcpSecret.name, gcpSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -1478,7 +1498,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			enableMonitoring:          true,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "ID_TYPE=project", "ID_VALUE="+gcl.projectID, "LOG_ID="+gcl.logName, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		clf.checkNetworkPolicy(oc)
 		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"443", "TCP"}}, nil)).NotTo(o.HaveOccurred())
@@ -1523,7 +1543,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			httpSSL:    false,
 			loggingNS:  esProj,
 		}
-		defer ees.remove(oc)
+		deferCleanup(func() { ees.remove(oc) })
 		ees.deploy(oc)
 
 		compat_otp.By("Create project for app logs and deploy the log generator app")
@@ -1545,7 +1565,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			waitForPodReady:           true,
 			enableMonitoring:          true,
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "ES_URL=http://"+getRouteAddress(oc, ees.namespace, ees.serverName), "ES_VERSION="+ees.version, "INDEX=logging-85411.{.log_type||\"none-typed-logs\"}-write", `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		clf.checkNetworkPolicy(oc)
 		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"80", "TCP"}}, nil)).NotTo(o.HaveOccurred())
@@ -1589,7 +1609,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			version:   "9.0",
 		}
 		sp.init()
-		defer sp.destroy(oc)
+		deferCleanup(func() { sp.destroy(oc) })
 		sp.deploy(oc)
 
 		g.By("create CLF to forward logs from http receiver to splunk")
@@ -1599,7 +1619,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			namespace: clfNS,
 			hecToken:  sp.hecToken,
 		}
-		defer clfSecret.delete(oc)
+		deferCleanup(func() { clfSecret.delete(oc) })
 		clfSecret.create(oc)
 		clfHttpserverToSplunk := clusterlogforwarder{
 			name:                      "http-to-splunk-85465",
@@ -1613,7 +1633,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			collectInfrastructureLogs: false,
 			enableMonitoring:          true,
 		}
-		defer clfHttpserverToSplunk.delete(oc)
+		deferCleanup(func() { clfHttpserverToSplunk.delete(oc) })
 		clfHttpserverToSplunk.create(oc, "URL=http://"+sp.serviceURL+":8088", `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		clfHttpserverToSplunk.checkNetworkPolicy(oc)
 		o.Expect(clfHttpserverToSplunk.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"8088", "TCP"}}, []Port{{"8081", "TCP"}, {"8082", "TCP"}, {"8083", "TCP"}})).NotTo(o.HaveOccurred())
@@ -1630,7 +1650,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			serviceAccountName:        "test-clf-" + getRandomString(),
 			enableMonitoring:          true,
 		}
-		defer httpCLF.delete(oc)
+		deferCleanup(func() { httpCLF.delete(oc) })
 		httpCLF.create(oc, "URL_APP=https://"+clfHttpserverToSplunk.name+"-httpserver1."+clfHttpserverToSplunk.namespace+".svc:8081", "SECRET_APP="+clfHttpserverToSplunk.name+"-httpserver1",
 			"URL_INFRA=https://"+clfHttpserverToSplunk.name+"-httpserver2."+clfHttpserverToSplunk.namespace+".svc:8082", "SECRET_INFRA="+clfHttpserverToSplunk.name+"-httpserver2",
 			"URL_AUDIT=https://"+clfHttpserverToSplunk.name+"-httpserver3."+clfHttpserverToSplunk.namespace+".svc:8083", "SECRET_AUDIT="+clfHttpserverToSplunk.name+"-httpserver3",
@@ -1686,10 +1706,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			template:      lokiStackTemplate,
 		}
 
-		defer ls.removeObjectStorage(oc)
+		deferCleanup(func() { ls.removeObjectStorage(oc) })
 		err := ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ls.removeLokiStack(oc)
+		deferCleanup(func() { ls.removeLokiStack(oc) })
 		err = ls.deployLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
@@ -1707,12 +1727,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			waitForPodReady:           true,
 		}
 		lsCLF.createServiceAccount(oc)
-		defer removeClusterRoleFromServiceAccount(oc, lsCLF.namespace, lsCLF.serviceAccountName, "logging-collector-logs-writer")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, lsCLF.namespace, lsCLF.serviceAccountName, "logging-collector-logs-writer")
+		})
 		err = addClusterRoleToServiceAccount(oc, lsCLF.namespace, lsCLF.serviceAccountName, "logging-collector-logs-writer")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer resource{"secret", lsCLF.secretName, lsCLF.namespace}.clear(oc)
+		deferCleanup(func() { resource{"secret", lsCLF.secretName, lsCLF.namespace}.clear(oc) })
 		ls.createSecretFromGateway(oc, lsCLF.secretName, lsCLF.namespace, "")
-		defer lsCLF.delete(oc)
+		deferCleanup(func() { lsCLF.delete(oc) })
 		lsCLF.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		lsCLF.checkNetworkPolicy(oc)
 		o.Expect(lsCLF.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"8080", "TCP"}}, []Port{{"6514", "TCP"}})).NotTo(o.HaveOccurred())
@@ -1739,14 +1761,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", sysCLF.secretName, "-n", sysCLF.namespace, "--from-file=ca-bundle.crt="+tmpDir+"/tls.crt").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer sysCLF.delete(oc)
+		deferCleanup(func() { sysCLF.delete(oc) })
 		sysCLF.create(oc, "URL=tls://"+lsCLF.name+"-syslog."+lsCLF.namespace+".svc:6514", `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		sysCLF.checkNetworkPolicy(oc)
 		o.Expect(sysCLF.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"6514", "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		// check logs in loki stack
 		g.By("check logs in loki")
-		defer removeClusterRoleFromServiceAccount(oc, sysCLF.namespace, "default", "cluster-admin")
+		deferCleanup(func() { removeClusterRoleFromServiceAccount(oc, sysCLF.namespace, "default", "cluster-admin") })
 		err = addClusterRoleToServiceAccount(oc, sysCLF.namespace, "default", "cluster-admin")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		bearerToken := getSAToken(oc, "default", sysCLF.namespace)
@@ -1801,7 +1823,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		g.By("Preprare Azure Log Storage environment")
 		workSpaceName := infraName + "case85496"
 		azLog, err := newAzureLog(oc, location, resourceGroupName, workSpaceName, "case85496")
-		defer azLog.deleteWorkspace()
+		deferCleanup(func() { azLog.deleteWorkspace() })
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Create log producer")
@@ -1812,7 +1834,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 		g.By("Deploy CLF to send logs to Log Analytics")
 		azureSecret := resource{"secret", "azure-secret-85496", clfNS}
-		defer azureSecret.clear(oc)
+		deferCleanup(func() { azureSecret.clear(oc) })
 		err = azLog.createSecret(oc, azureSecret.name, azureSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clf := clusterlogforwarder{
@@ -1827,7 +1849,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			enableMonitoring:          true,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "PREFIX_OR_NAME="+azLog.tPrefixOrName, "CUSTOMER_ID="+azLog.customerID, "RESOURCE_ID="+azLog.workspaceID, "AZURE_HOST="+azLog.host, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		clf.checkNetworkPolicy(oc)
 		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"443", "TCP"}}, nil)).NotTo(o.HaveOccurred())
@@ -1864,7 +1886,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		kafkaNS := "openshift-kafka-" + getRandomString()
-		defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("project", kafkaNS, "--wait=false").Execute()
+		cleanupRecv1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("project", kafkaNS, "--wait=false")
+		deferCleanup(func() { cleanupRecv1.Execute() })
 		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", kafkaNS).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		g.By("Deploy zookeeper")
@@ -1877,10 +1900,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			collectorType:  "vector",
 			loggingNS:      appProj,
 		}
-		defer kafka.removeZookeeper(oc)
+		deferCleanup(func() { kafka.removeZookeeper(oc) })
 		kafka.deployZookeeper(oc)
 		g.By("Deploy kafka")
-		defer kafka.removeKafka(oc)
+		deferCleanup(func() { kafka.removeKafka(oc) })
 		kafka.deployKafka(oc)
 		kafkaEndpoint := "tcp://" + kafka.kafkasvcName + "." + kafka.namespace + ".svc.cluster.local:9092/clo-topic"
 
@@ -1894,7 +1917,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			enableMonitoring:       true,
 			serviceAccountName:     "clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "URL="+kafkaEndpoint, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		// Remove tls configuration from CLF as it is not required for this case
 		patch := `[{"op": "remove", "path": "/spec/outputs/0/tls"}]`

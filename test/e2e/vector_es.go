@@ -58,7 +58,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				secretName: "ees-49390",
 				loggingNS:  esProj,
 			}
-			defer es.remove(oc)
+			deferCleanup(func() { es.remove(oc) })
 			es.deploy(oc)
 
 			g.By("Create ClusterLogForwarder instance")
@@ -71,7 +71,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=https://"+es.serverName+"."+esProj+".svc:9200", "ES_VERSION="+es.version, "INPUT_REFS=[\"infrastructure\"]")
 
 			g.By("Deploy the Event Router")
@@ -80,7 +80,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				namespace: cloNS,
 				template:  filepath.Join(loggingBaseDir, "eventrouter", "eventrouter.yaml"),
 			}
-			defer evt.delete(oc)
+			deferCleanup(func() { evt.delete(oc) })
 			evt.deploy(oc)
 
 			g.By("Check event logs in the Event Router pod")
@@ -116,7 +116,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				secretName: "clf-53995",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			g.By("create clusterlogforwarder")
@@ -131,7 +131,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=https://"+ees.serverName+"."+ees.namespace+".svc:9200", "ES_VERSION="+ees.version)
 
 			g.By("Check audit index in ES pod")
@@ -193,7 +193,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				secretName: "json-log-76073",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 			eesURL := "https://" + ees.serverName + "." + ees.namespace + ".svc:9200"
 
@@ -208,7 +208,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectAuditLogs:          true,
 				serviceAccountName:        "clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL="+eesURL, "ES_VERSION="+ees.version, "INDEX={.kubernetes.container_name||.log_type||\"none\"}")
 			patch := `[{"op": "add", "path": "/spec/filters", "value": [{"name": "parse-json-logs", "type": "parse"}]}, {"op": "add", "path": "/spec/pipelines/0/filterRefs", "value":["parse-json-logs"]}]`
 			clf.update(oc, "", patch, "--type=json")
@@ -280,7 +280,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				secretName: "json-log-52131",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 			eesURL := "https://" + ees.serverName + "." + ees.namespace + ".svc:9200"
 
@@ -294,7 +294,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectApplicationLogs: true,
 				serviceAccountName:     "clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "INDEX={.kubernetes.container_name||\"none-container-logs\"}", "ES_URL="+eesURL, "ES_VERSION="+ees.version, "INPUT_REFS=[\"application\"]")
 
 			g.By("check indices in externale ES")
@@ -318,7 +318,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				serverName: "elasticsearch-server",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			compat_otp.By("Create project for app logs and deploy the log generator app")
@@ -339,7 +339,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				serviceAccountName:        "test-clf-" + getRandomString(),
 				templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "elasticsearch.yaml"),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=http://"+getRouteAddress(oc, ees.namespace, ees.serverName)+":80", "ES_VERSION="+ees.version)
 
 			compat_otp.By("Check logs in ES")
@@ -377,7 +377,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				serverName: "elasticsearch-server",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			g.By("Create project for app logs and deploy the log generator app")
@@ -398,7 +398,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				waitForPodReady:           true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=http://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version)
 
 			g.By("Check logs in external ES")
@@ -432,7 +432,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				httpSSL:    false,
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			g.By("Create project for app logs and deploy the log generator app")
@@ -459,7 +459,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				waitForPodReady:           true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=http://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version)
 
 			g.By("Check logs in external ES")
@@ -501,7 +501,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				secretName: "ees-https",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			g.By("Create project for app logs and deploy the log generator app")
@@ -524,7 +524,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				serviceAccountName:        "test-clf-" + getRandomString(),
 				enableMonitoring:          true,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=https://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version, `SECURITY_PROFILE={"type": "Old"}`)
 
 			g.By("Check logs in external ES")
@@ -559,7 +559,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				secretName: "ees-http",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			g.By("Create project for app logs and deploy the log generator app")
@@ -581,7 +581,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				waitForPodReady:           true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=http://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version)
 
 			g.By("Check logs in external ES")
@@ -608,7 +608,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				secretName: "ees-47755",
 				loggingNS:  clfNS,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			g.By("Create project for app logs and deploy the log generator app")
@@ -631,7 +631,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				serviceAccountName:        "test-clf-" + getRandomString(),
 				enableMonitoring:          true,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=https://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version)
 
 			g.By("Check logs in external ES")
@@ -659,7 +659,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				secretName: "ees-https",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			compat_otp.By("Create project for app logs and deploy the log generator app")
@@ -681,7 +681,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=https://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version)
 
 			compat_otp.By("The Elasticsearch sink in Vector config must use the Custom tlsSecurityProfile")
@@ -747,7 +747,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 				secretName: "ees-https-71000",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			compat_otp.By("Deploy CLF to exclude some logs by setting excludeNamespaces")
@@ -759,7 +759,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 				collectApplicationLogs: true,
 				serviceAccountName:     "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "INPUT_REFS=[\"application\"]", "ES_URL=https://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version)
 			patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"excludes": [{"namespace":"logging-project-71000-2"}]}}]}, {"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app"]}]`
 			clf.update(oc, "", patch, "--type=json")
@@ -769,14 +769,15 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			for i := range 3 {
 				ns := "logging-project-71000-" + strconv.Itoa(i)
-				defer oc.DeleteSpecifiedNamespaceAsAdmin(ns)
+				cleanupArg1 := ns
+				deferCleanup(func() { oc.DeleteSpecifiedNamespaceAsAdmin(cleanupArg1) })
 				oc.CreateSpecifiedNamespaceAsAdmin(ns)
 				err := oc.AsAdmin().WithoutNamespace().Run("new-app").Args("-f", jsonLogFile, "-n", ns).Execute()
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
 
 			appNS := "logging-71000-test-1"
-			defer oc.DeleteSpecifiedNamespaceAsAdmin(appNS)
+			deferCleanup(func() { oc.DeleteSpecifiedNamespaceAsAdmin(appNS) })
 			oc.CreateSpecifiedNamespaceAsAdmin(appNS)
 			err := oc.AsAdmin().WithoutNamespace().Run("new-app").Args("-f", jsonLogFile, "-n", appNS).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -901,7 +902,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			oc.SetupProject()
 			lokiNS := oc.Namespace()
 			loki := externalLoki{"loki-server", lokiNS}
-			defer loki.remove(oc)
+			deferCleanup(func() { loki.remove(oc) })
 			loki.deployLoki(oc)
 
 			g.By("Create external Elasticsearch instance")
@@ -913,7 +914,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 				httpSSL:    false,
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			g.By("Create ClusterLogForwarder")
@@ -924,7 +925,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 				collectApplicationLogs: true,
 				serviceAccountName:     "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=http://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version, "INPUT_REFS=[\"application\"]")
 
 			lokiURL := "http://" + loki.name + "." + lokiNS + ".svc:3100"
@@ -978,7 +979,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 				secretName: "ees-74927",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			compat_otp.By("Create project for app logs and deploy the log generator app")
@@ -999,7 +1000,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=https://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version, "INDEX=logging-74927.{.log_type||\"none-typed-logs\"}-write",
 				`TUNING={"compression": "zlib", "deliveryMode": "AtLeastOnce", "maxRetryDuration": 30, "maxWrite": "20M", "minRetryDuration": 10}`)
 			clf.update(oc, "", `[{"op": "add", "path": "/spec/outputs/0/rateLimit", value: {"maxRecordsPerSecond": 5000}}]`, "--type=json")
@@ -1044,7 +1045,7 @@ retry_max_duration_secs = 30`,
 				secretName: "ees-https",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			g.By("Create project for app and deploy the log generator app")
@@ -1067,7 +1068,7 @@ retry_max_duration_secs = 30`,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 				enableMonitoring:          true,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=https://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version, `INPUT_REFS=["application"]`, `TUNING={"deliveryMode": "AtLeastOnce"}`)
 
 			g.By("Waiting until logs appears")
@@ -1080,7 +1081,7 @@ retry_max_duration_secs = 30`,
 				template:      filepath.Join(loggingBaseDir, "logfilemetricexporter", "lfme.yaml"),
 				waitPodsReady: true,
 			}
-			defer lfme.delete(oc)
+			deferCleanup(func() { lfme.delete(oc) })
 			lfme.create(oc)
 
 			compat_otp.By("verify prometheusrules rules collector is defined")
@@ -1108,7 +1109,7 @@ retry_max_duration_secs = 30`,
 				secretName: "ees-86567",
 				loggingNS:  esProj,
 			}
-			defer ees.remove(oc)
+			deferCleanup(func() { ees.remove(oc) })
 			ees.deploy(oc)
 
 			g.By("Create ClusterLogForwarder")
@@ -1122,7 +1123,7 @@ retry_max_duration_secs = 30`,
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "ES_URL=https://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version, "INDEX=logging-86567.{.log_type||\"none-typed-logs\"}-write")
 			clf.update(oc, "", `[{"op": "add", "path": "/spec/outputs/0/elasticsearch/headers", "value": {"test": "logging", "Accept": "application/json"}}]`, "--type=json")
 			clf.waitForCollectorPodsReady(oc)

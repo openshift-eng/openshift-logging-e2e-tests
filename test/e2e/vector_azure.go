@@ -63,7 +63,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 
 		g.By("Deploy CLF to send logs to Log Analytics")
 		azureSecret := resource{"secret", "azure-secret-71770", clfNS}
-		defer azureSecret.clear(oc)
+		deferCleanup(func() { azureSecret.clear(oc) })
 		err = azLog.createSecret(oc, azureSecret.name, azureSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clf := clusterlogforwarder{
@@ -77,8 +77,8 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			collectInfrastructureLogs: true,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
-		defer azLog.deleteWorkspace()
+		deferCleanup(func() { clf.delete(oc) })
+		deferCleanup(func() { azLog.deleteWorkspace() })
 		clf.create(oc, "PREFIX_OR_NAME="+azLog.tPrefixOrName, "CUSTOMER_ID="+azLog.customerID)
 
 		g.By("Verify the test result")
