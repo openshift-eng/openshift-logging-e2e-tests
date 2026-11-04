@@ -50,7 +50,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			kafkaNS := "openshift-kafka-" + getRandomString()
-			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("project", kafkaNS, "--wait=false").Execute()
+			cleanupRecv1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("project", kafkaNS, "--wait=false")
+			deferCleanup(func() { cleanupRecv1.Execute() })
 			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", kafkaNS).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			kafka := kafka{
@@ -63,10 +64,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				loggingNS:      appProj,
 			}
 			g.By("Deploy zookeeper")
-			defer kafka.removeZookeeper(oc)
+			deferCleanup(func() { kafka.removeZookeeper(oc) })
 			kafka.deployZookeeper(oc)
 			g.By("Deploy kafka")
-			defer kafka.removeKafka(oc)
+			deferCleanup(func() { kafka.removeKafka(oc) })
 			kafka.deployKafka(oc)
 			kafkaEndpoint := "tls://" + kafka.kafkasvcName + "." + kafka.namespace + ".svc.cluster.local:9093/clo-topic"
 
@@ -80,7 +81,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectApplicationLogs: true,
 				serviceAccountName:     "clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL="+kafkaEndpoint)
 
 			g.By("Check app logs in kafka consumer pod")
@@ -105,7 +106,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 
 			kafkaNS := "openshift-kafka-" + getRandomString()
-			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("project", kafkaNS, "--wait=false").Execute()
+			cleanupRecv1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("project", kafkaNS, "--wait=false")
+			deferCleanup(func() { cleanupRecv1.Execute() })
 			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", kafkaNS).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			g.By("Deploy zookeeper")
@@ -118,10 +120,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectorType:  "vector",
 				loggingNS:      appProj,
 			}
-			defer kafka.removeZookeeper(oc)
+			deferCleanup(func() { kafka.removeZookeeper(oc) })
 			kafka.deployZookeeper(oc)
 			g.By("Deploy kafka")
-			defer kafka.removeKafka(oc)
+			deferCleanup(func() { kafka.removeKafka(oc) })
 			kafka.deployKafka(oc)
 			kafkaEndpoint := "tcp://" + kafka.kafkasvcName + "." + kafka.namespace + ".svc.cluster.local:9092/clo-topic"
 
@@ -135,7 +137,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectApplicationLogs: true,
 				serviceAccountName:     "clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL="+kafkaEndpoint)
 
 			// Remove tls configuration from CLF as it is not required for this case
@@ -167,7 +169,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				topicPrefix:  "logging-topic",
 				instanceType: "kafka-sasl-cluster",
 			}
-			defer amqi.destroy(oc)
+			deferCleanup(func() { amqi.destroy(oc) })
 			amqi.deploy(oc)
 			topicName := "logging-topic-52496"
 			consumerPodName := amqi.createTopicAndConsumber(oc, topicName)
@@ -190,7 +192,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: false,
 				serviceAccountName:        "clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			secretName := "secret-for-kafka-52420"
 			oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", secretName, "-n", clf.namespace, "--from-literal=username="+amqi.user, "--from-literal=password="+amqi.password, "--from-literal=ca-bundle.crt="+amqi.routeCA).Execute()
 			// To reduce the logs collected, we only collect app logs from appProj
@@ -220,7 +222,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				topicPrefix:  "topic-logging",
 				instanceType: "kafka-sasl-cluster",
 			}
-			defer amqi.destroy(oc)
+			deferCleanup(func() { amqi.destroy(oc) })
 			amqi.deploy(oc)
 			// topic name are fix value in clf_kafka_multi_topics.yaml
 			consumerAppPodName := amqi.createTopicAndConsumber(oc, amqi.topicPrefix+"-app")
@@ -247,7 +249,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 			secretName := "secret-for-kafka-47036"
 			oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", secretName, "-n", clf.namespace, "--from-literal=username="+amqi.user, "--from-literal=password="+amqi.password, "--from-literal=ca-bundle.crt="+amqi.routeCA).Execute()
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "BOOTSTRAP_SVC="+amqi.service, "NAMESPACE_PATTERN="+appProj, "APP_TOPIC="+amqi.topicPrefix+"-app", "INFRA_TOPIC="+amqi.topicPrefix+"-infra", "AUDIT_TOPIC="+amqi.topicPrefix+"-audit", "SECRET_NAME="+secretName)
 			g.By("check data in kafka")
 			// app logs
@@ -299,10 +301,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				instanceType: "kafka-no-auth-cluster",
 			}
 
-			defer amqi1.destroy(oc)
+			deferCleanup(func() { amqi1.destroy(oc) })
 			amqi1.deploy(oc)
 			amqi1ConsumerPodName := amqi1.createTopicAndConsumber(oc, topicName)
-			defer amqi2.destroy(oc)
+			deferCleanup(func() { amqi2.destroy(oc) })
 			amqi2.deploy(oc)
 			amqi2ConsumerPodName := amqi2.createTopicAndConsumber(oc, topicName)
 
@@ -326,7 +328,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				serviceAccountName:        "clf-" + getRandomString(),
 				enableMonitoring:          true,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			brokers, _ := json.Marshal([]string{"tls://" + amqi1.service, "tls://" + amqi2.service})
 			clf.create(oc, "TOPIC="+topicName, "BROKERS="+string(brokers), "NAMESPACE_PATTERN="+appProj, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 			clf.checkNetworkPolicy(oc)
@@ -379,10 +381,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectorType:  "vector",
 				loggingNS:      loggingNS,
 			}
-			defer kafka.removeZookeeper(oc)
+			deferCleanup(func() { kafka.removeZookeeper(oc) })
 			kafka.deployZookeeper(oc)
 			compat_otp.By("Deploy kafka")
-			defer kafka.removeKafka(oc)
+			deferCleanup(func() { kafka.removeKafka(oc) })
 			kafka.deployKafka(oc)
 			kafkaEndpoint := "tls://" + kafka.kafkasvcName + "." + kafka.namespace + ".svc.cluster.local:9093/clo-topic"
 
@@ -402,7 +404,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectApplicationLogs: true,
 				serviceAccountName:     "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL="+kafkaEndpoint, "TLS_SECRET_NAME="+clf.secretName)
 
 			compat_otp.By("The Kafka sink in Vector config must use the Custom tlsSecurityProfile")
