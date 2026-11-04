@@ -3,10 +3,10 @@ package receivers
 import (
 	exutil "github.com/openshift/origin/test/extended/util"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/receivers/http/vector"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/openshift/openshift-logging-e2e-tests/internal/receivers/http/vector"
 )
 
 var _ = Describe("Receiver factory", func() {

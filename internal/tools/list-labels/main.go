@@ -113,16 +113,36 @@ func isDirWithGo(path string) bool {
 // scanDir parses one package directory and collects labels from Label(...) calls.
 func scanDir(dir string, consts map[string]string, prefixFuncs map[string]string, out map[string]bool) {
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, nil, 0)
+	files, err := parseDirFiles(fset, dir)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "skipping %s: %v\n", dir, err)
 		return
 	}
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Files {
-			scanFile(file, consts, prefixFuncs, out)
-		}
+	for _, file := range files {
+		scanFile(file, consts, prefixFuncs, out)
 	}
+}
+
+// parseDirFiles parses every .go file in dir. It replaces the deprecated
+// parser.ParseDir: this tool wants all files regardless of build tags, so
+// per-file parsing is equivalent.
+func parseDirFiles(fset *token.FileSet, dir string) ([]*ast.File, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var files []*ast.File
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".go") {
+			continue
+		}
+		file, err := parser.ParseFile(fset, filepath.Join(dir, e.Name()), nil, 0)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, file)
+	}
+	return files, nil
 }
 
 func scanFile(file *ast.File, consts map[string]string, prefixFuncs map[string]string, out map[string]bool) {
@@ -219,47 +239,45 @@ func parseLabelsPackage(dir string) (consts map[string]string, prefixFuncs map[s
 	consts = map[string]string{}
 	prefixFuncs = map[string]string{}
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, dir, nil, 0)
+	files, err := parseDirFiles(fset, dir)
 	if err != nil {
 		return nil, nil, err
 	}
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Files {
-			for _, decl := range file.Decls {
-				switch d := decl.(type) {
-				case *ast.GenDecl: // const Name = "value"
-					if d.Tok != token.CONST {
+	for _, file := range files {
+		for _, decl := range file.Decls {
+			switch d := decl.(type) {
+			case *ast.GenDecl: // const Name = "value"
+				if d.Tok != token.CONST {
+					continue
+				}
+				for _, spec := range d.Specs {
+					vs, ok := spec.(*ast.ValueSpec)
+					if !ok || len(vs.Names) != 1 || len(vs.Values) != 1 {
 						continue
 					}
-					for _, spec := range d.Specs {
-						vs, ok := spec.(*ast.ValueSpec)
-						if !ok || len(vs.Names) != 1 || len(vs.Values) != 1 {
-							continue
-						}
-						if v, ok := stringArg(vs.Values[0]); ok {
-							consts[vs.Names[0].Name] = v
-						}
+					if v, ok := stringArg(vs.Values[0]); ok {
+						consts[vs.Names[0].Name] = v
 					}
-				case *ast.FuncDecl: // func X(key string) string { return "prefix" + key }
-					if d.Recv != nil || d.Type.Params == nil || len(d.Type.Params.List) != 1 ||
-						d.Type.Results == nil || len(d.Type.Results.List) != 1 ||
-						len(d.Body.List) != 1 {
-						continue
-					}
-					ret, ok := d.Body.List[0].(*ast.ReturnStmt)
-					if !ok || len(ret.Results) != 1 {
-						continue
-					}
-					bin, ok := ret.Results[0].(*ast.BinaryExpr)
-					if !ok || bin.Op != token.ADD {
-						continue
-					}
-					prefix, ok1 := stringArg(bin.X)
-					param, ok2 := bin.Y.(*ast.Ident)
-					ok3 := len(d.Type.Params.List[0].Names) == 1 && d.Type.Params.List[0].Names[0].Name == param.Name
-					if ok1 && ok2 && ok3 {
-						prefixFuncs[d.Name.Name] = prefix
-					}
+				}
+			case *ast.FuncDecl: // func X(key string) string { return "prefix" + key }
+				if d.Recv != nil || d.Type.Params == nil || len(d.Type.Params.List) != 1 ||
+					d.Type.Results == nil || len(d.Type.Results.List) != 1 ||
+					len(d.Body.List) != 1 {
+					continue
+				}
+				ret, ok := d.Body.List[0].(*ast.ReturnStmt)
+				if !ok || len(ret.Results) != 1 {
+					continue
+				}
+				bin, ok := ret.Results[0].(*ast.BinaryExpr)
+				if !ok || bin.Op != token.ADD {
+					continue
+				}
+				prefix, ok1 := stringArg(bin.X)
+				param, ok2 := bin.Y.(*ast.Ident)
+				ok3 := len(d.Type.Params.List[0].Names) == 1 && d.Type.Params.List[0].Names[0].Name == param.Name
+				if ok1 && ok2 && ok3 {
+					prefixFuncs[d.Name.Name] = prefix
 				}
 			}
 		}
@@ -288,7 +306,7 @@ func selectNames(wanted string) error {
 		return fmt.Errorf("parsing specs JSON: %w", err)
 	}
 	wantedSet := map[string]bool{}
-	for _, l := range strings.Fields(wanted) {
+	for l := range strings.FieldsSeq(wanted) {
 		wantedSet[l] = true
 	}
 	for _, spec := range specs {

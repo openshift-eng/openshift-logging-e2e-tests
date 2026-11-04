@@ -3,8 +3,9 @@ package filters
 import (
 	"fmt"
 
-	. "github.com/onsi/gomega"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/receivers"
+
+	. "github.com/onsi/gomega"
 )
 
 func VerifyNoRecordsOlderThanCutoff(fn func() (bool, error)) error {

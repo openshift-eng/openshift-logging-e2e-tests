@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"time"
 
+	exutil "github.com/openshift/origin/test/extended/util"
+
 	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	librandom "github.com/openshift/openshift-logging-e2e-tests/internal/lib/random"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/receivers"
@@ -13,7 +15,6 @@ import (
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/observability"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
-	exutil "github.com/openshift/origin/test/extended/util"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -27,7 +28,7 @@ var _ = Describe("[sig-openshift-logging] ClusterLogForwarder drop filter",
 			loggingBaseDir string
 		)
 
-		Context("olderThan specd", func() {
+		Context("when has olderThan", func() {
 			BeforeEach(func() {
 				helpers.SkipIfLoggingVersionLessThan(labels.ReleaseLogging67)
 				loggingBaseDir = testdata.FixturePath("logging")
@@ -47,7 +48,7 @@ var _ = Describe("[sig-openshift-logging] ClusterLogForwarder drop filter",
 			// backlog a first-time collector reads (container files, journald and audit inputs) while
 			// forwarding every record written after the cutoff. The filter must keep applying after a
 			// collector restart, including to records retained by checkpoints.
-			It("discards logs retains newer logs of all input types[Slow][CLO]",
+			It("should discards logs before the cutoff and retain newer logs of all input types[Slow][CLO]",
 				Label(labels.ComponentCLO, labels.ExecSlow, labels.Jira("LOG-9876")), func() {
 					oc.SetupProject()
 					receiverProj := oc.Namespace()

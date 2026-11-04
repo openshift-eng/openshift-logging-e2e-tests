@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	. "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,6 +16,8 @@ import (
 	internaltypes "github.com/openshift/openshift-logging-e2e-tests/internal/types"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/apps/deployment"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
+
+	. "github.com/onsi/ginkgo/v2"
 )
 
 const (
