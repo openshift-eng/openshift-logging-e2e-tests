@@ -69,10 +69,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease scheduler", fu
 			bucketName:    "logging-loki-74398-" + getInfrastructureName(oc),
 			template:      lokiStackTemplate,
 		}
-		defer ls.removeObjectStorage(oc)
+		deferCleanup(func() { ls.removeObjectStorage(oc) })
 		err = ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ls.removeLokiStack(oc)
+		deferCleanup(func() { ls.removeLokiStack(oc) })
 		err = ls.deployLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
@@ -90,15 +90,18 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease scheduler", fu
 			waitForPodReady:           true,
 		}
 		clf.createServiceAccount(oc)
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
+		deferCleanup(func() { resource{"secret", clf.secretName, clf.namespace}.clear(oc) })
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
 
-		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
+		cleanupArg1 := oc.Namespace()
+		deferCleanup(func() { removeClusterRoleFromServiceAccount(oc, cleanupArg1, "default", "cluster-admin") })
 		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		bearerToken := getSAToken(oc, "default", oc.Namespace())
@@ -163,7 +166,7 @@ use_apiserver_cache = true
 			tls:        false,
 			loggingNS:  syslogProj,
 		}
-		defer rsyslog.remove(oc)
+		deferCleanup(func() { rsyslog.remove(oc) })
 		rsyslog.deploy(oc)
 
 		g.By("Create clusterlogforwarder/instance")
@@ -177,7 +180,7 @@ use_apiserver_cache = true
 			collectInfrastructureLogs: false,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "URL=udp://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:514", "NAMESPACE_PATTERN="+appProj, "INPUT_REFS=[\"app-input-namespace\"]")
 		clfAffinity := `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"label-1","operator":"Exists"}]},"weight":1},{"preference":{"matchExpressions":[{"key":"label-2","operator":"In","values":["key-2"]}]},"weight":50}],"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/os","operator":"In","values":["linux"]}]},{"matchExpressions":[{"key":"node-role.kubernetes.io/worker","operator":"Exists"}]}]}},"podAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"podAffinityTerm":{"labelSelector":{"matchExpressions":[{"key":"qe-test","operator":"In","values":["value1"]}]},"topologyKey":"kubernetes.io/hostname"},"weight":50}],"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"run","operator":"In","values":["centos-logtest"]}]},"namespaceSelector":{},"topologyKey":"kubernetes.io/hostname"}]},"podAntiAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"podAffinityTerm":{"labelSelector":{"matchExpressions":[{"key":"security","operator":"In","values":["S2"]}]},"topologyKey":"topology.kubernetes.io/zone"},"weight":100}]}}`
 
@@ -215,7 +218,7 @@ use_apiserver_cache = true
 			tls:        false,
 			loggingNS:  syslogProj,
 		}
-		defer rsyslog.remove(oc)
+		deferCleanup(func() { rsyslog.remove(oc) })
 		rsyslog.deploy(oc)
 
 		g.By("Create clusterlogforwarder/instance")
@@ -229,7 +232,7 @@ use_apiserver_cache = true
 			collectInfrastructureLogs: false,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "URL=udp://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:514")
 
 		// Note: Some pods may in pending status as no affinity pod can be found, so we only validate one pod is running here

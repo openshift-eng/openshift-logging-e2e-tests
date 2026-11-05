@@ -17,7 +17,8 @@ import (
 	framework "k8s.io/kubernetes/test/e2e/framework"
 
 	// Import test packages from this module
-	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e"
+	logging "github.com/openshift/openshift-logging-e2e-tests/test/e2e"
+
 	// Import testdata package from this module
 	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
@@ -26,6 +27,11 @@ func main() {
 	// Initialize test framework flags (required for kubeconfig, provider, etc.)
 	util.InitStandardFlags()
 	framework.AfterReadingAllFlags(&framework.TestContext)
+	// Namespaces are deleted by the framework's AfterEach, so it must be told
+	// to keep them for failed specs when resources are kept for inspection.
+	if logging.KeepResourcesOnFailure() {
+		framework.TestContext.DeleteNamespaceOnFailure = false
+	}
 
 	logs.InitLogs()
 	defer logs.FlushLogs()

@@ -77,10 +77,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				bucketName:    "logging-loki-66088-" + getInfrastructureName(oc),
 				template:      lokiStackTemplate,
 			}
-			defer ls.removeObjectStorage(oc)
+			deferCleanup(func() { ls.removeObjectStorage(oc) })
 			err = ls.prepareResourcesForLokiStack(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			defer ls.removeLokiStack(oc)
+			deferCleanup(func() { ls.removeLokiStack(oc) })
 			err = ls.deployLokiStack(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			ls.waitForLokiStackToBeReady(oc)
@@ -209,10 +209,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				bucketName:    "logging-loki-48608-" + getInfrastructureName(oc),
 				template:      lokiStackTemplate,
 			}
-			defer ls.removeObjectStorage(oc)
+			deferCleanup(func() { ls.removeObjectStorage(oc) })
 			err = ls.prepareResourcesForLokiStack(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			defer ls.removeLokiStack(oc)
+			deferCleanup(func() { ls.removeLokiStack(oc) })
 			err = ls.deployLokiStack(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			ls.waitForLokiStackToBeReady(oc)
@@ -290,10 +290,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				bucketName:    "logging-loki-48679-" + getInfrastructureName(oc),
 				template:      lokiStackTemplate,
 			}
-			defer ls.removeObjectStorage(oc)
+			deferCleanup(func() { ls.removeObjectStorage(oc) })
 			err = ls.prepareResourcesForLokiStack(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			defer ls.removeLokiStack(oc)
+			deferCleanup(func() { ls.removeLokiStack(oc) })
 			err = ls.deployLokiStack(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			ls.waitForLokiStackToBeReady(oc)
@@ -391,10 +391,10 @@ spec:
 				bucketName:    "logging-loki-76729-" + getInfrastructureName(oc),
 				template:      lokiStackTemplate,
 			}
-			defer ls.removeObjectStorage(oc)
+			deferCleanup(func() { ls.removeObjectStorage(oc) })
 			err = ls.prepareResourcesForLokiStack(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			defer ls.removeLokiStack(oc)
+			deferCleanup(func() { ls.removeLokiStack(oc) })
 			err = ls.deployLokiStack(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			ls.waitForLokiStackToBeReady(oc)

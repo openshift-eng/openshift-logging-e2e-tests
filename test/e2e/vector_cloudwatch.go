@@ -55,7 +55,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				groupName:       "logging-76074-" + infraName + `.{.kubernetes.namespace_name||.log_type||"none-typed-logs"}`,
 				logTypes:        []string{"infrastructure", "application", "audit"},
 			}
-			defer cw.deleteResources(oc)
+			deferCleanup(func() { cw.deleteResources(oc) })
 			cw.init(oc)
 
 			g.By("Create log producer")
@@ -89,7 +89,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        cw.collectorSAName,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.createServiceAccount(oc)
 			cw.createClfSecret(oc)
 			clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName)
@@ -117,7 +117,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				groupName:       "logging-76075-" + infraName + `.{.kubernetes.namespace_id||.log_type||"none-typed-logs"}`,
 				logTypes:        []string{"infrastructure", "application", "audit"},
 			}
-			defer cw.deleteResources(oc)
+			deferCleanup(func() { cw.deleteResources(oc) })
 			cw.init(oc)
 
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -153,7 +153,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        cw.collectorSAName,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.createServiceAccount(oc)
 			cw.createClfSecret(oc)
 			clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName)
@@ -184,7 +184,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				groupName:       "logging-61600-" + infraName + `.{.log_type||"none-typed-logs"}`,
 				logTypes:        []string{"infrastructure", "application", "audit"},
 			}
-			defer cw.deleteResources(oc)
+			deferCleanup(func() { cw.deleteResources(oc) })
 			cw.init(oc)
 
 			compat_otp.By("create clusterlogforwarder")
@@ -205,7 +205,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        cw.collectorSAName,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.createServiceAccount(oc)
 			cw.createClfSecret(oc)
 			clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName)
@@ -290,7 +290,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 				groupName:       "logging-71778-" + infraName + `.{.log_type||"none-typed-logs"}`,
 				logTypes:        []string{"application"},
 			}
-			defer cw.deleteResources(oc)
+			deferCleanup(func() { cw.deleteResources(oc) })
 			cw.init(oc)
 
 			compat_otp.By("Create projects for app logs and deploy the log generators")
@@ -302,7 +302,8 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			var namespaces []string
 			for i := range 3 {
 				ns := "logging-project-71778-" + strconv.Itoa(i) + "-" + getRandomString()
-				defer oc.DeleteSpecifiedNamespaceAsAdmin(ns)
+				cleanupArg1 := ns
+				deferCleanup(func() { oc.DeleteSpecifiedNamespaceAsAdmin(cleanupArg1) })
 				oc.CreateSpecifiedNamespaceAsAdmin(ns)
 				namespaces = append(namespaces, ns)
 			}
@@ -328,7 +329,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 				collectApplicationLogs: true,
 				serviceAccountName:     cw.collectorSAName,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.createServiceAccount(oc)
 			cw.createClfSecret(oc)
 			clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName, "INPUT_REFS=[\"application\"]")
@@ -352,7 +353,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			newGroupName := "new-logging-71778-" + infraName
 			clf.update(oc, "", `[{"op": "replace", "path": "/spec/outputs/0/cloudwatch/groupName", "value": "`+newGroupName+`"}]`, "--type=json")
 			clf.waitForCollectorPodsReady(oc)
-			defer cw.deleteGroups("logging-71778-" + infraName)
+			deferCleanup(func() { cw.deleteGroups("logging-71778-" + infraName) })
 			cw.setGroupName(newGroupName)
 			cw.selAppNamespaces = []string{namespaces[0]}
 			cw.disAppNamespaces = []string{namespaces[1], namespaces[2], appNS1}
@@ -371,7 +372,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 				groupName:       "logging-71488-" + infraName + `.{.log_type||"none-typed-logs"}`,
 				logTypes:        []string{"infrastructure"},
 			}
-			defer cw.deleteResources(oc)
+			deferCleanup(func() { cw.deleteResources(oc) })
 			cw.init(oc)
 
 			compat_otp.By("Create clusterlogforwarder")
@@ -389,7 +390,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 				collectApplicationLogs: true,
 				serviceAccountName:     cw.collectorSAName,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.createServiceAccount(oc)
 			cw.createClfSecret(oc)
 			clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName, "INPUT_REFS=[\"application\"]")
@@ -401,7 +402,9 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			checkResource(oc, true, false, `insufficient permissions on service account, not authorized to collect ["infrastructure"] logs`, []string{"clusterlogforwarder.observability.openshift.io", clf.name, "-n", clf.namespace, "-ojsonpath={.status.conditions[*].message}"})
 
 			compat_otp.By("Add cluster-role/collect-infrastructure-logs to the serviceaccount")
-			defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-infrastructure-logs")
+			deferCleanup(func() {
+				removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-infrastructure-logs")
+			})
 			err := addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "collect-infrastructure-logs")
 			o.Expect(err).NotTo(o.HaveOccurred())
 			// sleep 2 minutes for CLO to update the CLF
@@ -437,7 +440,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 				groupName:       "logging-75417-" + infraName + `.{.log_type||"none-typed-logs"}`,
 				logTypes:        []string{"application"},
 			}
-			defer cw.deleteResources(oc)
+			deferCleanup(func() { cw.deleteResources(oc) })
 			cw.init(oc)
 
 			fakeCW := cloudwatchSpec{
@@ -447,7 +450,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 				groupName:       "logging-75417-" + infraName + "-logs",
 				logTypes:        []string{"application"},
 			}
-			defer fakeCW.deleteResources(oc)
+			deferCleanup(func() { fakeCW.deleteResources(oc) })
 			fakeCW.init(oc)
 
 			compat_otp.By("Create clusterlogforwarder")
@@ -460,7 +463,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 				waitForPodReady:        true,
 				serviceAccountName:     cw.collectorSAName,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.createServiceAccount(oc)
 			cw.createClfSecret(oc)
 			clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName, "INPUT_REFS=[\"application\"]")
@@ -522,7 +525,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 				waitForPodReady:           true,
 				serviceAccountName:        "multiple-cw-logcollector",
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.createServiceAccount(oc)
 
 			cw1 := cloudwatchSpec{
@@ -532,7 +535,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 				groupName:       "logging-81604-1-" + infraName + `.{.log_type||"none-typed-logs"}`,
 				logTypes:        []string{"application"},
 			}
-			defer cw1.deleteResources(oc)
+			deferCleanup(func() { cw1.deleteResources(oc) })
 			cw1.init(oc)
 			cw1.createClfSecret(oc)
 
@@ -543,7 +546,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 				groupName:       "logging-81604-2-" + infraName + `.{.log_type||"none-typed-logs"}`,
 				logTypes:        []string{"infrastructure", "audit"},
 			}
-			defer cw2.deleteResources(oc)
+			deferCleanup(func() { cw2.deleteResources(oc) })
 			cw2.init(oc)
 			cw2.createClfSecret(oc)
 

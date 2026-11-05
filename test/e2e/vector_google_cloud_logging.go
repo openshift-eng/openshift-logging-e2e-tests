@@ -57,13 +57,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 		logName := getInfrastructureName(oc) + "-53731"
 		logTypes := []string{"infrastructure", "audit", "application"}
 		for _, logType := range logTypes {
-			defer googleCloudLogging{projectID: projectID, logName: logName + "-" + logType}.removeLogs()
+			deferCleanup(func() { googleCloudLogging{projectID: projectID, logName: logName + "-" + logType}.removeLogs() })
 		}
 
 		oc.SetupProject()
 		clfNS := oc.Namespace()
 		gcpSecret := resource{"secret", "gcp-secret-53731", clfNS}
-		defer gcpSecret.clear(oc)
+		deferCleanup(func() { gcpSecret.clear(oc) })
 		err = createSecretForGCL(oc, gcpSecret.name, gcpSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -78,7 +78,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 			collectInfrastructureLogs: true,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "ID_TYPE=project", "ID_VALUE="+projectID, "LOG_ID="+logName)
 
 		for _, logType := range logTypes {
@@ -107,9 +107,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 			projectID: projectID,
 			logName:   getInfrastructureName(oc) + "-71003",
 		}
-		defer gcl.removeLogs()
+		deferCleanup(func() { gcl.removeLogs() })
 		gcpSecret := resource{"secret", "gcp-secret-71003", clfNS}
-		defer gcpSecret.clear(oc)
+		deferCleanup(func() { gcpSecret.clear(oc) })
 		err = createSecretForGCL(oc, gcpSecret.name, gcpSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -122,7 +122,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 			collectApplicationLogs: true,
 			serviceAccountName:     "clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 
 		clf.create(oc, "ID_TYPE=project", "ID_VALUE="+gcl.projectID, "LOG_ID="+gcl.logName, "INPUT_REFS=[\"application\"]")
 		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app","type": "application","application": {"selector": {"matchExpressions": [{"key": "test.logging.io/logging.qe-test-label", "operator": "In", "values": ["logging-71003-test-0", "logging-71003-test-1", "logging-71003-test-2"]},{"key":"test", "operator":"Exists"}]}}}]}, {"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app"]}]`
@@ -134,7 +134,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 		var namespaces []string
 		for i := range 4 {
 			ns := "logging-project-71003-" + strconv.Itoa(i)
-			defer oc.DeleteSpecifiedNamespaceAsAdmin(ns)
+			cleanupArg1 := ns
+			deferCleanup(func() { oc.DeleteSpecifiedNamespaceAsAdmin(cleanupArg1) })
 			oc.CreateSpecifiedNamespaceAsAdmin(ns)
 			namespaces = append(namespaces, ns)
 		}
@@ -224,9 +225,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 			projectID: projectID,
 			logName:   getInfrastructureName(oc) + "-61602",
 		}
-		defer gcl.removeLogs()
+		deferCleanup(func() { gcl.removeLogs() })
 		gcpSecret := resource{"secret", "gcp-secret-61602", clfNS}
-		defer gcpSecret.clear(oc)
+		deferCleanup(func() { gcpSecret.clear(oc) })
 		err = createSecretForGCL(oc, gcpSecret.name, gcpSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -239,7 +240,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 			collectApplicationLogs: true,
 			serviceAccountName:     "test-clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 
 		clf.create(oc, "ID_TYPE=project", "ID_VALUE="+gcl.projectID, "LOG_ID="+gcl.logName, "INPUT_REFS=[\"application\"]")
 
@@ -309,9 +310,9 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			projectID: projectID,
 			logName:   getInfrastructureName(oc) + "-71777",
 		}
-		defer gcl.removeLogs()
+		deferCleanup(func() { gcl.removeLogs() })
 		gcpSecret := resource{"secret", "gcp-secret-71777", clfNS}
-		defer gcpSecret.clear(oc)
+		deferCleanup(func() { gcpSecret.clear(oc) })
 		err = createSecretForGCL(oc, gcpSecret.name, gcpSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -324,7 +325,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			collectApplicationLogs: true,
 			serviceAccountName:     "clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 
 		clf.create(oc, "ID_TYPE=project", "ID_VALUE="+gcl.projectID, "LOG_ID="+gcl.logName, "INPUT_REFS=[\"application\"]")
 		compat_otp.By("exclude logs from specific container in specific namespace")
@@ -337,7 +338,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		namespaces := []string{"logging-log-71777", "logging-data-71777", "e2e-test-log-71777"}
 		containerNames := []string{"log-71777-include", "exclude-log-71777"}
 		for _, ns := range namespaces {
-			defer oc.DeleteSpecifiedNamespaceAsAdmin(ns)
+			deferCleanup(func() { oc.DeleteSpecifiedNamespaceAsAdmin(ns) })
 			oc.CreateSpecifiedNamespaceAsAdmin(ns)
 			for _, container := range containerNames {
 				err := oc.AsAdmin().WithoutNamespace().Run("new-app").Args("-f", jsonLogFile, "-n", ns, "-p", "CONTAINER="+container, "-p", "CONFIGMAP="+container, "-p", "REPLICATIONCONTROLLER="+container).Execute()
@@ -490,9 +491,9 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			projectID: projectID,
 			logName:   getInfrastructureName(oc) + "-71753",
 		}
-		defer gcl.removeLogs()
+		deferCleanup(func() { gcl.removeLogs() })
 		gcpSecret := resource{"secret", "gcp-secret-71753", clfNS}
-		defer gcpSecret.clear(oc)
+		deferCleanup(func() { gcpSecret.clear(oc) })
 		err = createSecretForGCL(oc, gcpSecret.name, gcpSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -506,7 +507,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			collectAuditLogs:          true,
 			serviceAccountName:        "clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 
 		clf.create(oc, "ID_TYPE=project", "ID_VALUE="+gcl.projectID, "LOG_ID="+gcl.logName)
 		compat_otp.By("Add prune filters to CLF")

@@ -41,7 +41,7 @@ build: ## Build extension binary.
 # GOFLAGS=-mod=vendor. This repo has no vendor/ directory, so an inherited
 # value sends the build looking for vendor/modules.txt and fails with
 # "inconsistent vendoring" in CI while still succeeding locally.
-	GOFLAGS=-mod=readonly GOTOOLCHAIN=auto GONOSUMDB="*" go build -o $(BINARY) ./cmd
+	GOFLAGS=-mod=readonly GOTOOLCHAIN=auto go build -o $(BINARY) ./cmd
 	@echo "✅ Binary built: $(BINARY)"
 
 .PHONY: clean
@@ -79,7 +79,7 @@ run-case: ## Run a test by case ID (set CASE=<id>).
 # skips directories named testdata in wildcard patterns.
 .PHONY: test
 test: ## Run cluster-free unit tests.
-	GOFLAGS=-mod=readonly GOTOOLCHAIN=auto GONOSUMDB="*" go test ./test/e2e/testdata
+	GOFLAGS=-mod=readonly GOTOOLCHAIN=auto go test ./test/e2e/testdata
 
 .PHONY: lint
 lint: ## Run golangci-lint on source code.

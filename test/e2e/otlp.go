@@ -80,7 +80,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Otlp output te
 			name:      "otel",
 			namespace: oc.Namespace(),
 		}
-		defer otel.clear(oc)
+		deferCleanup(func() { otel.clear(oc) })
 		err = otel.applyFromTemplate(oc, "-f", otelTemplate, "-n", otel.namespace, "-p", "NAMESPACE="+otel.namespace, "-p", "NAME="+otel.name)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		waitForPodReadyWithLabel(oc, otel.namespace, "app.kubernetes.io/component=opentelemetry-collector")
@@ -96,7 +96,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Otlp output te
 			collectAuditLogs:          true,
 			collectInfrastructureLogs: true,
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "URL="+svc)
 		// exclude logs from  project otel.namespace because the OTEL collector writes received logs to stdout
 		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"excludes": [{"namespace":"` + otel.namespace + `"}]}}]},{"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app", "infrastructure", "audit"]}]`
@@ -194,10 +194,10 @@ type = "opentelemetry"`,
 			bucketName:    "logging-loki-76727-" + getInfrastructureName(oc),
 			template:      lokiStackTemplate,
 		}
-		defer ls.removeObjectStorage(oc)
+		deferCleanup(func() { ls.removeObjectStorage(oc) })
 		err := ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ls.removeLokiStack(oc)
+		deferCleanup(func() { ls.removeLokiStack(oc) })
 		err = ls.deployLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
@@ -217,12 +217,14 @@ type = "opentelemetry"`,
 			waitForPodReady:           true,
 		}
 		clf.createServiceAccount(oc)
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
+		deferCleanup(func() { resource{"secret", clf.secretName, clf.namespace}.clear(oc) })
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "URL="+lokiGatewaySVC)
 
 		compat_otp.By("create some pods to generate multiline errors")
@@ -230,16 +232,19 @@ type = "opentelemetry"`,
 		ioStreams := []string{"stdout", "stderr"}
 		for _, ioStream := range ioStreams {
 			ns := "multiline-log-" + ioStream + "-76727"
-			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("project", ns, "--wait=false").Execute()
+			cleanupRecv1 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("project", ns, "--wait=false")
+			deferCleanup(func() { cleanupRecv1.Execute() })
 			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", ns).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ns, "deploy/multiline-log", "cm/multiline-log").Execute()
+			cleanupRecv2 := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ns, "deploy/multiline-log", "cm/multiline-log")
+			deferCleanup(func() { cleanupRecv2.Execute() })
 			err = oc.AsAdmin().WithoutNamespace().Run("new-app").Args("-n", ns, "-f", multilineLogFile, "-p", "OUT_STREAM="+ioStream, "-p", "RATE=60.00").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
 
 		compat_otp.By("checking app, infra and audit logs in loki")
-		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
+		cleanupArg3 := oc.Namespace()
+		deferCleanup(func() { removeClusterRoleFromServiceAccount(oc, cleanupArg3, "default", "cluster-admin") })
 		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		bearerToken := getSAToken(oc, "default", oc.Namespace())
@@ -277,7 +282,7 @@ type = "opentelemetry"`,
 			collectInfrastructureLogs: true,
 			waitForPodReady:           true,
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "URL=http://fake-otel-collector."+clf.namespace+".svc:4318")
 
 		compat_otp.By("remove the tech-preview annotation from CLF")
