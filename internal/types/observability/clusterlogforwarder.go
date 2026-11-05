@@ -122,13 +122,13 @@ func (clf *ClusterLogForwarder) Delete() {
 	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("clusterlogforwarder/%s in project/%s is not deleted", clf.Name, clf.Namespace))
 	if clf.ServiceAccountName != "" {
 		if clf.CollectApplicationLogs {
-			helpers.LogOnError(serviceaccount.RemoveClusterRole(clf.Oc, clf.Namespace, clf.SecretName, ClusterRoleCollectApplicationLogs))
+			helpers.LogOnError(serviceaccount.RemoveClusterRole(clf.Oc, clf.Namespace, clf.ServiceAccountName, ClusterRoleCollectApplicationLogs))
 		}
 		if clf.CollectInfrastructureLogs {
-			helpers.LogOnError(serviceaccount.RemoveClusterRole(clf.Oc, clf.Namespace, clf.SecretName, ClusterRoleCollectInfrastructureLogs))
+			helpers.LogOnError(serviceaccount.RemoveClusterRole(clf.Oc, clf.Namespace, clf.ServiceAccountName, ClusterRoleCollectInfrastructureLogs))
 		}
 		if clf.CollectAuditLogs {
-			helpers.LogOnError(serviceaccount.RemoveClusterRole(clf.Oc, clf.Namespace, clf.SecretName, ClusterRoleCollectAuditLogs))
+			helpers.LogOnError(serviceaccount.RemoveClusterRole(clf.Oc, clf.Namespace, clf.ServiceAccountName, ClusterRoleCollectAuditLogs))
 		}
 		helpers.LogOnError(types.NewResource(serviceaccount.Kind, clf.ServiceAccountName, clf.Namespace).Clear(clf.Oc))
 	}

@@ -667,7 +667,7 @@ func (clf *clusterlogforwarder) patch(oc *exutil.CLI, patch_string string) (stri
 
 // delete the clusterlogforwarder CR
 func (clf *clusterlogforwarder) delete(oc *exutil.CLI) {
-	observability.NewClusterLogForwarder(oc, clf.name, clf.namespace).Delete()
+	clf.toObservability(oc).Delete()
 }
 
 func (clf *clusterlogforwarder) waitForCollectorPodsReady(oc *exutil.CLI) {
