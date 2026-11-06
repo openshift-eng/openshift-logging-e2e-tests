@@ -1,5 +1,11 @@
 BINARY := bin/openshift-logging-e2e-tests-tests-ext
 
+# Optional: logging version under test, e.g. make run-case CASE=76728 LOGGING_TEST_VERSION=6.5
+# Defaults to empty (no version gating). When set, version-gated tests skip
+# themselves if the value is below their minimum (see README).
+LOGGING_TEST_VERSION ?=
+export LOGGING_TEST_VERSION
+
 # Tools
 GOLANGCI_LINT := go tool -modfile=.tools/golangci-lint.mod golangci-lint
 
@@ -46,20 +52,39 @@ build: ## Build extension binary.
 
 .PHONY: clean
 clean: ## Remove binaries.
-	@rm -f $(BINARY)
+	@rm -f $(BINARY) $(TOOLS_BIN)
 
-# Usage: make run-test TEST="<exact test name>"
+# Usage: make tools
+# Compiles the helper tools under internal/tools/ into bin/.
+TOOLS := $(wildcard internal/tools/*)
+TOOLS_BIN := $(TOOLS:internal/tools/%=bin/%)
+
+.PHONY: tools
+tools: ## Build helper tools under internal/tools/ into bin/.
+	@mkdir -p bin
+	@for dir in $(TOOLS); do \
+		name=$$(basename $$dir); \
+		echo "Building tool: $$name"; \
+		go build -o bin/$$name ./$$dir || exit 1; \
+	done
+
+# Usage: make run-test TEST="<exact test name>" [LOGGING_TEST_VERSION=<version>]
 # Example: make run-test TEST="[sig-openshift-logging] LOGGING Logging Author:..."
 .PHONY: run-test
 run-test: ## Run a test by name (set TEST=<name>).
+	@if [ -n "$(LOGGING_TEST_VERSION)" ]; then \
+		echo "LOGGING_TEST_VERSION=$(LOGGING_TEST_VERSION)"; \
+	fi
 	@$(call run_tests,"$(TEST)")
 
 # Usage: make list-tests GREP="<case-id or keyword>"
+# KUBECONFIG=/dev/null satisfies the origin compat_otp init() that requires the
+# variable to be set; listing never contacts a cluster.
 .PHONY: list-tests
 list-tests: ## List tests, optionally filtered (set GREP=<pattern>).
 	@$(LIST_TESTS) | grep "$(GREP)"
 
-# Usage: make run-case CASE=<case-id>
+# Usage: make run-case CASE=<case-id> [LOGGING_TEST_VERSION=<version>]
 # Example: make run-case CASE=76728
 .PHONY: run-case
 run-case: ## Run a test by case ID (set CASE=<id>).
@@ -74,12 +99,20 @@ run-case: ## Run a test by case ID (set CASE=<id>).
 	echo "Running: $$NAME"; \
 	$(call run_tests,"$$NAME")
 
-# Unit tests that need no cluster. Scoped to the testdata package: importing
-# test/e2e would register every Ginkgo spec. The path has no "..." because Go
-# skips directories named testdata in wildcard patterns.
+# Unit tests that need no cluster. The testdata path has no "..." because Go
+# skips directories named testdata in wildcard patterns; importing test/e2e
+# would register every Ginkgo spec.
 .PHONY: test
 test: ## Run cluster-free unit tests.
-	GOFLAGS=-mod=readonly GOTOOLCHAIN=auto GONOSUMDB="*" go test ./test/e2e/testdata
+	# KUBECONFIG=/dev/null keeps the origin compat_otp init() from exiting the
+	# test binary when the var is unset (it exits 0, silently skipping all specs).
+	# -ginkgo.skip-file excludes specs defined in the module cache: importing
+	# exutil transitively registers thousands of upstream kubernetes e2e specs
+	# that need a cluster; only this repo's specs run.
+	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto GONOSUMDB="*" \
+		go test ./internal/... -args -ginkgo.skip-file='/go/pkg/mod/'
+	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto GONOSUMDB="*" \
+		go test ./test/e2e/testdata
 
 .PHONY: lint
 lint: ## Run golangci-lint on source code.
@@ -90,8 +123,41 @@ lint: ## Run golangci-lint on source code.
 lint-fix: ## Attempt to automatically fix lint issues in source code.
 	$(GOLANGCI_LINT) run --fix --timeout=$(GOLANGCI_LINT_TIMEOUT) ./...
 
+# Usage: make run-labels LABELS="<label or space-separated labels>" [LOGGING_TEST_VERSION=<version>]
+# Example: make run-labels LABELS="LOG-9876"
+#          make run-labels LABELS="CLO Slow"
+# All given labels must match a test (AND semantics).
+# KUBECONFIG=/dev/null satisfies the origin compat_otp init() for the list
+# step; only the test run itself needs a real cluster.
+.PHONY: run-labels
+run-labels: tools build ## Run all tests matching labels (set LABELS="<l1> <l2>...").
+	@if [ -z "$(LABELS)" ]; then \
+		echo "❌ Set LABELS=<label or space-separated labels>, e.g. make run-labels LABELS=\"CLO Slow\""; exit 1; \
+	fi; \
+	NAMES=$$(KUBECONFIG=/dev/null $(BINARY) list -o json 2>/dev/null | bin/list-labels -names "$(LABELS)"); \
+	if [ -z "$$NAMES" ]; then \
+		echo "❌ No tests match labels: $(LABELS)"; \
+		echo "Hint: make list-labels to see available labels"; exit 1; \
+	fi; \
+	echo "Running tests matching labels [$(LABELS)]:"; echo "$$NAMES" | sed 's/^/  /'; \
+	echo "$$NAMES" | while IFS= read -r NAME; do \
+		[ -n "$$NAME" ] || continue; \
+		$(call run_tests,"$$NAME") || exit 1; \
+	done
+
+# Usage: make list-labels [GREP="<substring>"]
+# Lists ginkgo labels in use across all tests (static AST scan, no test run),
+# optionally filtered. Resolves label constants and helpers from internal/labels.
+.PHONY: list-labels
+list-labels: tools ## List labels in use, optionally filtered (set GREP=<pattern>).
+	@bin/list-labels -grep "$(GREP)"
+
+.PHONY: fmt
+fmt: ## Format all Go files with gofmt -w.
+	@gofmt -w $(shell find . -name '*.go' -not -path './vendor/*')
+
 # Lists every target that has a "## description" comment on its rule line.
 .PHONY: help
 help: ## Show this help.
 	@echo "Available targets:"
-	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "  %-12s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*## "} /^[a-zA-Z0-9_-]+:.*## / {printf "%s\t%s\n", $$1, $$2}' $(MAKEFILE_LIST) | sort | awk -F'\t' '{printf "  %-12s %s\n", $$1, $$2}'

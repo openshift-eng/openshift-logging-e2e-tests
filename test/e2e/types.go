@@ -539,58 +539,6 @@ type labelResponse struct {
 	Data         []string `json:"data"`
 }
 
-// prometheusQueryResult the response of querying prometheus APIs
-type prometheusQueryResult struct {
-	Data struct {
-		Result     []metric `json:"result"`
-		ResultType string   `json:"resultType"`
-		Alerts     []alert  `json:"alerts,omitempty"`
-	} `json:"data"`
-	Status string `json:"status"`
-}
-
-// metric the prometheus metric
-type metric struct {
-	Metric struct {
-		Name              string `json:"__name__"`
-		Cluster           string `json:"cluster,omitempty"`
-		Container         string `json:"container,omitempty"`
-		ContainerName     string `json:"containername,omitempty"`
-		Endpoint          string `json:"endpoint,omitempty"`
-		Instance          string `json:"instance,omitempty"`
-		Job               string `json:"job,omitempty"`
-		Namespace         string `json:"namespace,omitempty"`
-		Path              string `json:"path,omitempty"`
-		Pod               string `json:"pod,omitempty"`
-		PodName           string `json:"podname,omitempty"`
-		Service           string `json:"service,omitempty"`
-		ExportedNamespace string `json:"exported_namespace,omitempty"`
-		State             string `json:"state,omitempty"`
-	} `json:"metric"`
-	Value []any `json:"value"`
-}
-
-// alert the pending/firing alert
-type alert struct {
-	Labels struct {
-		AlertName string `json:"alertname,omitempty"`
-		Condition string `json:"condition,omitempty"`
-		Endpoint  string `json:"endpoint,omitempty"`
-		Namespace string `json:"namespace,omitempty"`
-		Pod       string `json:"pod,omitempty"`
-		Instance  string `json:"instance,omitempty"`
-		Severity  string `json:"severity,omitempty"`
-	} `json:"labels,omitzero"`
-	Annotations struct {
-		Message    string `json:"message,omitempty"`
-		RunBookURL string `json:"runbook_url,omitempty"`
-		Summary    string `json:"summary,omitempty"`
-	} `json:"annotations,omitzero"`
-	State    string `json:"state,omitempty"`
-	ActiveAt string `json:"activeAt,omitempty"`
-	Value    string `json:"value,omitempty"`
-}
-
 // The splunkPod search which deploy on same Openshift Server
 type splunkPodServer struct {
 	name          string // The splunk name, default: splunk-s1-standalone

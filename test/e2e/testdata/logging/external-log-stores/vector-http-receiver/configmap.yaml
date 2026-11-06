@@ -1,0 +1,91 @@
+kind: Template
+apiVersion: template.openshift.io/v1
+metadata:
+  name: vector-http-receiver-configmap-template
+objects:
+- apiVersion: v1
+  kind: ConfigMap
+  metadata:
+    name: ${NAME}
+    namespace: ${NAMESPACE}
+    labels:
+      provider: aosqe
+      component: ${NAME}
+  data:
+    vector.toml: |
+      data_dir = "/tmp/vector-data"
+
+      [sources.my_source]
+      type = "http_server"
+      address = "0.0.0.0:8090"
+      decoding.codec = "json"
+      framing.method = "newline_delimited"
+
+      # Records whose timestamp is older than OLDER_THAN (an RFC3339 instant,
+      # parsed with VRL's parse_timestamp so offsets and sub-second precision
+      # compare correctly) are routed to a separate file and excluded from the
+      # per-log-type files. The far-past default disables the split: no record
+      # timestamp can be older than 1970, so every record stays on the normal
+      # routes. The comparison runs in a remap transform with ?? fallbacks
+      # because route conditions must be infallible; records with a missing or
+      # unparseable timestamp count as new. The marker field is stripped from
+      # the sink output.
+      [transforms.tag_old]
+      type = "remap"
+      inputs = ["my_source"]
+      source = '''
+        cutoff = parse_timestamp("${OLDER_THAN}", format: "%+") ?? now()
+        ts = parse_timestamp(to_string(.timestamp) ?? "", format: "%+") ?? now()
+        .internal_older_than = ts < cutoff
+      '''
+
+      [transforms.route_logs]
+      type = "route"
+      inputs = ["tag_old"]
+      route.old = '.internal_older_than == true'
+      route.audit = '.log_type == "audit" && .internal_older_than != true'
+      route.container = 'exists(.kubernetes) && .internal_older_than != true'
+      route.journal = '!exists(.kubernetes) && .internal_older_than != true'
+
+      [sinks.old]
+      inputs = ["route_logs.old"]
+      type = "file"
+      path = "/tmp/old.json"
+
+      [sinks.old.encoding]
+      codec = "json"
+      except_fields = ["internal_older_than"]
+
+      [sinks.container]
+      inputs = ["route_logs.container"]
+      type = "file"
+      path = "/tmp/{{kubernetes.namespace_name}}_{{kubernetes.pod_name}}_{{kubernetes.container_name}}.json"
+
+      [sinks.container.encoding]
+      codec = "json"
+      except_fields = ["internal_older_than"]
+
+      [sinks.out_journal]
+      inputs = ["route_logs.journal"]
+      type = "file"
+      path = "/tmp/journal.json"
+
+      [sinks.out_journal.encoding]
+      codec = "json"
+      except_fields = ["internal_older_than"]
+
+      [sinks.out_audit]
+      inputs = ["route_logs.audit"]
+      type = "file"
+      path = "/tmp/audit.json"
+
+      [sinks.out_audit.encoding]
+      codec = "json"
+      except_fields = ["internal_older_than"]
+parameters:
+- name: NAME
+  value: vector-http-receiver
+- name: NAMESPACE
+  value: openshift-logging
+- name: OLDER_THAN
+  value: "1970-01-01T00:00:00Z"

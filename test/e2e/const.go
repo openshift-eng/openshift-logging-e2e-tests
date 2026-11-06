@@ -1,12 +1,16 @@
 package logging
 
+import (
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/observability"
+)
+
 const (
 	// the namespace where legacy clusterlogging and clusterlogforwarder are in
 	loggingNS = "openshift-logging"
 	// the namespace where cluster-logging-operator is in
-	cloNS = "openshift-logging"
+	cloNS = observability.NamespaceClusterLoggingOperator
 	// the namespace where loki-operator is in
-	loNS = "openshift-operators-redhat"
+	loNS = observability.NamespaceLokiOperator
 
 	apiPath         = "/api/logs/v1/"
 	queryRangePath  = "/loki/api/v1/query_range"
