@@ -104,10 +104,11 @@ objects:
       #https://docs.confluent.io/platform/current/kafka/authentication_sasl/authentication_sasl_plain.html
       #init#broker.id=#init#
       ssl.client.auth=requested
-      ssl.keystore.location=/etc/kafkacert/cluster.jks
+      ssl.keystore.location=/etc/kafkacert/cluster.pkcs12
+      ssl.keystore.type=PKCS12
       ssl.keystore.password=aosqe2021
-      ssl.truststore.location=/etc/kafkacert/ca_bundle.jks
-      ssl.truststore.password=aosqe2021
+      ssl.truststore.location=/etc/kafkacert/ca_bundle.crt
+      ssl.truststore.type=PEM
       sasl.enabled.mechanisms=PLAIN
       sasl.mechanism.inter.broker.protocol=PLAIN
       security.inter.broker.protocol=PLAINTEXT

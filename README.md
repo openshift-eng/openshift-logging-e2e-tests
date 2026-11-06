@@ -210,5 +210,4 @@ All tests follow the OTE annotation conventions:
 
 - `go.mod` declares `go 1.26.0` (minimum)
 - `GOTOOLCHAIN=auto` in the Makefile allows Go to download and use that version automatically if the local Go is older
-- `GONOSUMDB="*"` is required because several OpenShift-internal packages are fetched from private GitHub forks
 - Fixtures are embedded at build time via `//go:embed` so the binary is self-contained and does not need testdata on disk at runtime

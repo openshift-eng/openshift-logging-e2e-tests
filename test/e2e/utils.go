@@ -1622,12 +1622,11 @@ func (k kafka) deployKafka(oc *exutil.CLI) {
 		err := os.MkdirAll(keysPath, 0o755)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		generateCertsSH := filepath.Join(kafkaFilePath, "cert_generation.sh")
-		stdout, err := exec.Command("sh", generateCertsSH, keysPath, k.namespace).Output()
+		out, err := exec.Command("sh", generateCertsSH, keysPath, k.namespace).CombinedOutput()
 		if err != nil {
-			e2e.Logf("error generating certs: %s", string(stdout))
-			e2e.Failf("error generating certs: %v", err)
+			e2e.Failf("error generating certs: %v\n%s", err, string(out))
 		}
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "kafka-cluster-cert", "-n", k.namespace, "--from-file=ca_bundle.jks="+keysPath+"/ca/ca_bundle.jks", "--from-file=cluster.jks="+keysPath+"/cluster/cluster.jks").Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "kafka-cluster-cert", "-n", k.namespace, "--from-file=ca_bundle.crt="+keysPath+"/ca/ca_bundle.crt", "--from-file=cluster.pkcs12="+keysPath+"/cluster/cluster.pkcs12").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 
@@ -1647,7 +1646,7 @@ func (k kafka) deployKafka(oc *exutil.CLI) {
 		}
 	case "sasl-ssl":
 		{
-			cmdClient = append(cmdClient, "--from-file=ca-bundle.jks="+keysPath+"/ca/ca_bundle.jks", "--from-file=ca-bundle.crt="+keysPath+"/ca/ca_bundle.crt", "--from-file=tls.crt="+keysPath+"/client/client.crt", "--from-file=tls.key="+keysPath+"/client/client.key", "--from-literal=username=admin", "--from-literal=password=admin-secret")
+			cmdClient = append(cmdClient, "--from-file=ca-bundle.crt="+keysPath+"/ca/ca_bundle.crt", "--from-file=tls.crt="+keysPath+"/client/client.crt", "--from-file=tls.key="+keysPath+"/client/client.key", "--from-literal=username=admin", "--from-literal=password=admin-secret")
 			cmdPipeline = append(cmdPipeline, "--from-file=ca-bundle.crt="+keysPath+"/ca/ca_bundle.crt", "--from-literal=username=admin", "--from-literal=password=admin-secret")
 			switch k.collectorType {
 			case "fluentd":
@@ -1662,7 +1661,7 @@ func (k kafka) deployKafka(oc *exutil.CLI) {
 		}
 	case "plaintext-ssl":
 		{
-			cmdClient = append(cmdClient, "--from-file=ca-bundle.jks="+keysPath+"/ca/ca_bundle.jks", "--from-file=ca-bundle.crt="+keysPath+"/ca/ca_bundle.crt", "--from-file=tls.crt="+keysPath+"/client/client.crt", "--from-file=tls.key="+keysPath+"/client/client.key")
+			cmdClient = append(cmdClient, "--from-file=ca-bundle.crt="+keysPath+"/ca/ca_bundle.crt", "--from-file=tls.crt="+keysPath+"/client/client.crt", "--from-file=tls.key="+keysPath+"/client/client.key")
 			cmdPipeline = append(cmdPipeline, "--from-file=ca-bundle.crt="+keysPath+"/ca/ca_bundle.crt", "--from-file=tls.crt="+keysPath+"/client/client.crt", "--from-file=tls.key="+keysPath+"/client/client.key")
 		}
 	}

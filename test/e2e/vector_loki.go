@@ -3257,7 +3257,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Audit Policy T
 		time.Sleep(3 * time.Minute)
 		compat_otp.By("generate some audit logs")
 		pod, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pod", "-n", cloNS, "-l", "name=cluster-logging-operator", "-ojsonpath={.items[0].metadata.name}").Output()
-		oc.AsAdmin().NotShowInfo().WithoutNamespace().Run("logs").Args("-n", cloNS, pod).Execute()
+		// The output must be captured, not streamed to stdout: the CLO pod logs
+		// in JSON and the extension runner treats the first JSON-looking line on
+		// stdout as the test result, which makes a passing test fail with
+		// `invalid result type ""`. The oc logs API call itself is what
+		// generates the audit events this step needs.
+		_, err = oc.AsAdmin().NotShowInfo().WithoutNamespace().Run("logs").Args("-n", cloNS, pod).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
 
 		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
 		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")

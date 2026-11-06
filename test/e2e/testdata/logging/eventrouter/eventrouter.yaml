@@ -83,7 +83,7 @@ objects:
 parameters:
   - name: IMAGE
     displayName: Image
-    value: "brew.registry.redhat.io/rh-osbs/openshift-logging-eventrouter-rhel9:v0.4.0"
+    value: "registry.redhat.io/openshift-logging/eventrouter-rhel9:v0.4.0"
   - name: CPU
     displayName: CPU
     value: "100m"

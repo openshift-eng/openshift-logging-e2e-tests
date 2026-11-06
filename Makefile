@@ -47,7 +47,7 @@ build: ## Build extension binary.
 # GOFLAGS=-mod=vendor. This repo has no vendor/ directory, so an inherited
 # value sends the build looking for vendor/modules.txt and fails with
 # "inconsistent vendoring" in CI while still succeeding locally.
-	GOFLAGS=-mod=readonly GOTOOLCHAIN=auto GONOSUMDB="*" go build -o $(BINARY) ./cmd
+	GOFLAGS=-mod=readonly GOTOOLCHAIN=auto go build -o $(BINARY) ./cmd
 	@echo "✅ Binary built: $(BINARY)"
 
 .PHONY: clean
@@ -104,15 +104,15 @@ run-case: ## Run a test by case ID (set CASE=<id>).
 # would register every Ginkgo spec.
 .PHONY: test
 test: ## Run cluster-free unit tests.
-	# KUBECONFIG=/dev/null keeps the origin compat_otp init() from exiting the
-	# test binary when the var is unset (it exits 0, silently skipping all specs).
-	# -ginkgo.skip-file excludes specs defined in the module cache: importing
-	# exutil transitively registers thousands of upstream kubernetes e2e specs
-	# that need a cluster; only this repo's specs run.
-	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto GONOSUMDB="*" \
+# KUBECONFIG=/dev/null keeps the origin compat_otp init() from exiting the
+# test binary when the var is unset (it exits 0, silently skipping all specs).
+# -ginkgo.skip-file excludes specs defined in the module cache: importing
+# exutil transitively registers thousands of upstream kubernetes e2e specs
+# that need a cluster; only this repo's specs run.
+	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto \
 		go test ./internal/... -args -ginkgo.skip-file='/go/pkg/mod/'
-	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto GONOSUMDB="*" \
-		go test ./test/e2e/testdata
+	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto go test ./test/e2e/testdata
+	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto go test ./test/e2e
 
 .PHONY: lint
 lint: ## Run golangci-lint on source code.
