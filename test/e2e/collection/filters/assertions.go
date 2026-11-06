@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/openshift/openshift-logging-e2e-tests/internal/receivers"
-
-	. "github.com/onsi/gomega"
 )
 
 func VerifyNoRecordsOlderThanCutoff(fn func() (bool, error)) error {
@@ -27,12 +25,16 @@ func VerifyPostCutoffRecordsArrived(receiver receivers.Receiver, namespace strin
 	if err != nil {
 		return err
 	}
-	Expect(exist).To(BeTrue(), "journal logs should exist")
+	if !exist {
+		return fmt.Errorf("journal logs should exist") // Eventually retries
+	}
 	exist, err = receiver.HasAuditLogs()
 	if err != nil {
 		return err
 	}
-	Expect(exist).To(BeTrue(), "audit logs should exist")
+	if !exist {
+		return fmt.Errorf("audit logs should exist") // Eventually retries
+	}
 
 	exist, err = receiver.HasContainerLogsWith(namespace, "MERGE_JSON_LOG")
 	if err != nil {
