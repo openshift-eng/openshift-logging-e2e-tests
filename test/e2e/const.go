@@ -180,7 +180,7 @@ runtime.forcegchelper()
 	/usr/local/go/src/runtime/proc.go:238 +0xcc fp=0xc42003e7e0 sp=0xc42003e7a8 pc=0x424e5c
 runtime.goexit()
 	/usr/local/go/src/runtime/asm_amd64.s:2337 +0x1 fp=0xc42003e7e8 sp=0xc42003e7e0 pc=0x44b4d1
-created by runtime.init.4
+created by runtime.Init.4
 	/usr/local/go/src/runtime/proc.go:227 +0x35
 
 goroutine 3 [GC sweep wait]:

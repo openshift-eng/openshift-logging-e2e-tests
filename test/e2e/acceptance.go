@@ -11,8 +11,9 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
 	exutil "github.com/openshift/origin/test/extended/util"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
+	"github.com/openshift/origin/test/extended/util/compat_otp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
@@ -198,22 +199,22 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 	// port=no - 69.1% pass rate (687 runs last 60 days)
 	g.It("Author:qitang-ConnectedOnly-Critical-74926-[InterOps] Forward logs to Cloudwatch.[PreMerge][CLO]", func() {
 		clfNS := oc.Namespace()
-		cw := cloudwatchSpec{
-			collectorSAName: "cloudwatch-" + getRandomString(),
-			groupName:       "logging-74926-" + getInfrastructureName(oc) + `.{.log_type||"none-typed-logs"}`,
-			logTypes:        []string{"infrastructure", "application", "audit"},
-			secretNamespace: clfNS,
-			secretName:      "logging-74926-" + getRandomString(),
+		cw := aws.CloudwatchSpec{
+			CollectorSAName: "cloudwatch-" + getRandomString(),
+			GroupName:       "logging-74926-" + getInfrastructureName(oc) + `.{.log_type||"none-typed-logs"}`,
+			LogTypes:        []string{"infrastructure", "application", "audit"},
+			SecretNamespace: clfNS,
+			SecretName:      "logging-74926-" + getRandomString(),
 		}
-		cw.init(oc)
-		defer cw.deleteResources(oc)
+		cw.Init(oc)
+		defer cw.DeleteResources(oc)
 
 		g.By("Create log producer")
 		appProj := oc.Namespace()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		if !cw.hasMaster {
+		if !cw.HasMaster {
 			nodeName, err := genLinuxAuditLogsOnWorker(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			defer deleteLinuxAuditPolicyFromNode(oc, nodeName)
@@ -221,7 +222,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 
 		g.By("Create clusterlogforwarder")
 		var template string
-		if cw.stsEnabled {
+		if cw.StsEnabled {
 			template = filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "cloudwatch-iamRole.yaml")
 		} else {
 			template = filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "cloudwatch-accessKey.yaml")
@@ -229,26 +230,26 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		clf := clusterlogforwarder{
 			name:                      "clf-74926",
 			namespace:                 clfNS,
-			secretName:                cw.secretName,
+			secretName:                cw.SecretName,
 			templateFile:              template,
 			waitForPodReady:           true,
 			collectApplicationLogs:    true,
 			collectAuditLogs:          true,
 			collectInfrastructureLogs: true,
 			enableMonitoring:          true,
-			serviceAccountName:        cw.collectorSAName,
+			serviceAccountName:        cw.CollectorSAName,
 		}
 		defer clf.delete(oc)
 		clf.createServiceAccount(oc)
-		cw.createClfSecret(oc)
-		clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName, `TUNING={"compression": "snappy", "deliveryMode": "AtMostOnce", "maxRetryDuration": 20, "maxWrite": "1M", "minRetryDuration": 5}`)
+		cw.CreateClfSecret(oc)
+		clf.create(oc, "REGION="+cw.AwsRegion, "GROUP_NAME="+cw.GroupName, `TUNING={"compression": "snappy", "deliveryMode": "AtMostOnce", "maxRetryDuration": 20, "maxWrite": "1M", "minRetryDuration": 5}`)
 
 		nodes, err := clf.getCollectorNodeNames(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		cw.nodes = append(cw.nodes, nodes...)
+		cw.Nodes = append(cw.Nodes, nodes...)
 
 		g.By("Check logs in Cloudwatch")
-		o.Expect(cw.logsFound()).To(o.BeTrue())
+		o.Expect(cw.LogsFound()).To(o.BeTrue())
 
 		compat_otp.By("check tuning in collector configurations")
 		expectedConfigs := []string{

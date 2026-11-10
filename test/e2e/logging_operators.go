@@ -12,6 +12,7 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1272,21 +1273,21 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		if platform != "aws" {
 			g.Skip("Skip for the platform is not AWS.")
 		}
-		g.By("init Cloudwatch test spec")
+		g.By("Init Cloudwatch test spec")
 		clfNS := oc.Namespace()
-		cw := cloudwatchSpec{
-			collectorSAName: "cloudwatch-" + getRandomString(),
-			secretNamespace: clfNS,
-			secretName:      "logging-85456-" + getRandomString(),
-			groupName:       "logging-85456-" + getInfrastructureName(oc) + `.{.log_type||"none-typed-logs"}`,
-			logTypes:        []string{"infrastructure", "audit"},
+		cw := aws.CloudwatchSpec{
+			CollectorSAName: "cloudwatch-" + getRandomString(),
+			SecretNamespace: clfNS,
+			SecretName:      "logging-85456-" + getRandomString(),
+			GroupName:       "logging-85456-" + getInfrastructureName(oc) + `.{.log_type||"none-typed-logs"}`,
+			LogTypes:        []string{"infrastructure", "audit"},
 		}
-		defer cw.deleteResources(oc)
-		cw.init(oc)
+		defer cw.DeleteResources(oc)
+		cw.Init(oc)
 
 		g.By("Create clusterlogforwarder")
 		var template string
-		if cw.stsEnabled {
+		if cw.StsEnabled {
 			template = filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "cloudwatch-iamRole.yaml")
 		} else {
 			template = filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "cloudwatch-accessKey.yaml")
@@ -1296,24 +1297,24 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			name:                      "clf-85456",
 			namespace:                 clfNS,
 			templateFile:              template,
-			secretName:                cw.secretName,
+			secretName:                cw.SecretName,
 			waitForPodReady:           true,
 			collectApplicationLogs:    true,
 			collectAuditLogs:          true,
 			collectInfrastructureLogs: true,
-			serviceAccountName:        cw.collectorSAName,
+			serviceAccountName:        cw.CollectorSAName,
 			enableMonitoring:          true,
 		}
 		defer clf.delete(oc)
 		clf.createServiceAccount(oc)
-		cw.createClfSecret(oc)
-		clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName)
+		cw.CreateClfSecret(oc)
+		clf.create(oc, "REGION="+cw.AwsRegion, "GROUP_NAME="+cw.GroupName)
 		nodes, err := clf.getCollectorNodeNames(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		cw.nodes = append(cw.nodes, nodes...)
+		cw.Nodes = append(cw.Nodes, nodes...)
 
 		g.By("Check logs in Cloudwatch")
-		o.Expect(cw.logsFound()).To(o.BeTrue())
+		o.Expect(cw.LogsFound()).To(o.BeTrue())
 
 		g.By("check network policy, no network policy should be created")
 		np, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", clf.namespace, "-oname").Output()
@@ -1332,7 +1333,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		cw.selAppNamespaces = append(cw.selAppNamespaces, appProj)
+		cw.SelAppNamespaces = append(cw.SelAppNamespaces, appProj)
 
 		g.By("check metrics exposed by collector")
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
@@ -1340,7 +1341,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
 
 		g.By("ensure vector still can send logs to cloudwatch")
-		o.Expect(cw.logsFound()).To(o.BeTrue())
+		o.Expect(cw.LogsFound()).To(o.BeTrue())
 
 		g.By("update network policy to AllowAllIngressEgress")
 		clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
@@ -1361,9 +1362,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		if platform != "aws" {
 			g.Skip("Skip for the platform is not AWS.")
 		}
-		g.By("init S3 bucket test spec")
+		g.By("Init S3 bucket test spec")
 		clfNS := oc.Namespace()
-		s3 := S3Output{
+		s3 := aws.S3Output{
 			BucketName:              "logging-s3-85744-" + getInfrastructureName(oc),
 			KeyPrefix:               `logging-s3-output-{.log_type||"none-typed-logs"}-`,
 			SecretName:              "s3-output",
@@ -1398,7 +1399,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		clf.create(oc, "REGION="+s3.Region, "KEY_PREFIX="+s3.KeyPrefix, "BUCKET_NAME="+s3.BucketName)
 
 		g.By("Check logs in S3 Bucket")
-		validatesIfLogsArePushedToS3Bucket(s3.Client, s3.BucketName, []string{"application", "infrastructure", "audit"})
+		aws.ValidatesIfLogsArePushedToS3Bucket(s3.Client, s3.BucketName, []string{"application", "infrastructure", "audit"})
 
 		g.By("check network policy, no network policy should be created")
 		np, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", clf.namespace, "-oname").Output()
@@ -1424,7 +1425,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
 
 		g.By("ensure vector still can send logs to S3 bucket")
-		validatesIfLogsArePushedToS3Bucket(s3.Client, s3.BucketName, []string{"application"})
+		aws.ValidatesIfLogsArePushedToS3Bucket(s3.Client, s3.BucketName, []string{"application"})
 
 		g.By("update network policy to AllowAllIngressEgress")
 		clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
