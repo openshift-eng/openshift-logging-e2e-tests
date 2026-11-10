@@ -569,7 +569,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 				_, err = e2eoutput.RunHostCmdWithRetries(ovnProj, ovnPods.Items[1].Name, ovnCurl, 3*time.Second, 30*time.Second)
 				o.Expect(err).NotTo(o.HaveOccurred())
 
-				g.By("Check for the generated OVN audit logs on the OpenShift cluster nodes")
+				g.By("Check for the generated OVN audit logs on the OpenShift cluster Nodes")
 				nodeLogs, err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("-n", ovnProj, "node-logs", "-l", "beta.kubernetes.io/os=linux", "--path=/ovn/acl-audit-log.log").Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
 				o.Expect(strings.Contains(nodeLogs, ovnProj)).Should(o.BeTrue(), "The OVN logs doesn't contain logs from project %s", ovnProj)

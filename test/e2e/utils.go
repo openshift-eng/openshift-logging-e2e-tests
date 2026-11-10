@@ -17,7 +17,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"slices"
 	"strings"
 	"time"
 
@@ -25,6 +24,7 @@ import (
 	"cloud.google.com/go/logging/logadmin"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/cluster"
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	"google.golang.org/api/iterator"
@@ -39,6 +39,7 @@ import (
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/env"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/metrics"
 	librandom "github.com/openshift/openshift-logging-e2e-tests/internal/lib/random"
+	libstrings "github.com/openshift/openshift-logging-e2e-tests/internal/lib/strings"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/apps/daemonset"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/apps/deployment"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/core/serviceaccount"
@@ -84,24 +85,8 @@ type CatalogSourceObjects struct {
 
 var getRandomString = librandom.String
 
-// contain checks if b is an elememt of a
-func contain(a []string, b string) bool {
-	return slices.Contains(a, b)
-}
-
-// containSubstring checks if b is a's element's substring
-func containSubstring(a any, b string) bool {
-	switch reflect.TypeOf(a).Kind() {
-	case reflect.Slice, reflect.Array:
-		s := reflect.ValueOf(a)
-		for i := 0; i < s.Len(); i++ {
-			if strings.Contains(fmt.Sprintln(s.Index(i)), b) {
-				return true
-			}
-		}
-	}
-	return false
-}
+var contain = libstrings.AnyContainSubstring
+var containSubstring = libstrings.AnyContainSubstring
 
 var (
 	processTemplate = openshift.ProcessTemplate
@@ -589,7 +574,7 @@ type clusterlogforwarder struct {
 	namespace                 string
 	serviceAccountName        string
 	templateFile              string // the template used to create clusterlogforwarder, no default value
-	secretName                string // optional, if it's specified, when creating CLF, the parameter `"SECRET_NAME="+clf.secretName` will be added automatically
+	secretName                string // optional, if it's specified, when creating CLF, the parameter `"SECRET_NAME="+clf.SecretName` will be added automatically
 	waitForPodReady           bool   // optional, if true, will check daemonset stats
 }
 
@@ -1152,19 +1137,8 @@ func getCurrentCSVFromPackage(oc *exutil.CLI, source, channel, packagemanifest s
 	return currentCSV
 }
 
-func checkNetworkType(oc *exutil.CLI) string {
-	output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("network.operator", "cluster", "-o=jsonpath={.spec.defaultNetwork.type}").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	return strings.ToLower(output)
-}
-
-func getAppDomain(oc *exutil.CLI) (string, error) {
-	subDomain, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ingresses.config/cluster", "-ojsonpath={.spec.domain}").Output()
-	if err != nil {
-		return "", err
-	}
-	return subDomain, nil
-}
+var checkNetworkType = cluster.NetworkType
+var getAppDomain = cluster.Domain
 
 type certsConf struct {
 	serverName string
@@ -1518,11 +1492,7 @@ func (f fluentdServer) checkData(oc *exutil.CLI, expect bool, filename string) {
 }
 
 // return the infrastructureName. For example:  anli922-jglp4
-func getInfrastructureName(oc *exutil.CLI) string {
-	infrastructureName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure/cluster", "-o=jsonpath={.status.infrastructureName}").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	return infrastructureName
-}
+var getInfrastructureName = cluster.InfrastructureName
 
 func getDataFromKafkaConsumerPod(oc *exutil.CLI, kafkaNS, consumerPod string) ([]LogEntity, error) {
 	e2e.Logf("get logs from kakfa consumerPod %s", consumerPod)
@@ -2780,13 +2750,7 @@ func rapidastScan(oc *exutil.CLI, ns, configFile string, scanPolicyFile string, 
 }
 
 // Get OIDC provider for the cluster
-func getOIDC(oc *exutil.CLI) (string, error) {
-	oidc, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("authentication.config", "cluster", "-o=jsonpath={.spec.serviceAccountIssuer}").Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimPrefix(oidc, "https://"), nil
-}
+var getOIDC = cluster.OIDCProvider
 
 func getPoolID(oc *exutil.CLI) (string, error) {
 	// pool_id="$(oc get authentication cluster -o json | jq -r .spec.serviceAccountIssuer | sed 's/.*\/\([^\/]*\)-oidc/\1/')"
@@ -2821,13 +2785,7 @@ func deleteLinuxAuditPolicyFromNode(oc *exutil.CLI, nodeName string) error {
 	return err
 }
 
-func hasMaster(oc *exutil.CLI) bool {
-	masterNodes, err := oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/master="})
-	if err != nil {
-		e2e.Logf("hit error when listing master nodes: %v", err)
-	}
-	return len(masterNodes.Items) > 0
-}
+var hasMaster = cluster.HasMaster
 
 func runLoggingMustGather(oc *exutil.CLI) ([]string, error) {
 	// create a temporary directory
