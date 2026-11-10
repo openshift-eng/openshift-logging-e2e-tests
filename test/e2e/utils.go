@@ -7,13 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -25,6 +23,7 @@ import (
 	"cloud.google.com/go/logging/logadmin"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	libhttp "github.com/openshift/openshift-logging-e2e-tests/internal/lib/net/http"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/networking/networkpolicy"
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
@@ -2427,85 +2426,7 @@ func waitForOperatorsRunning(oc *exutil.CLI) {
 	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("Failed to wait for operators to be running: %v", err))
 }
 
-func doHTTPRequest(header http.Header, address, path, query, method string, quiet bool, attempts int, requestBody io.Reader, expectedStatusCode int) ([]byte, error) {
-	us, err := buildURL(address, path, query)
-	if err != nil {
-		return nil, err
-	}
-	if !quiet {
-		e2e.Logf("the URL is: %s", us)
-	}
-
-	req, err := http.NewRequest(strings.ToUpper(method), us, requestBody)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header = header
-
-	var tr *http.Transport
-	proxy := getProxyFromEnv()
-	if len(proxy) > 0 {
-		proxyURL, err := url.Parse(proxy)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		tr = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			Proxy:           http.ProxyURL(proxyURL),
-		}
-	} else {
-		tr = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-	}
-
-	client := &http.Client{Transport: tr}
-
-	var resp *http.Response
-	success := false
-
-	for attempts > 0 {
-		attempts--
-
-		resp, err = client.Do(req)
-		if err != nil {
-			e2e.Logf("error sending request %v", err)
-			continue
-		}
-		if resp.StatusCode != expectedStatusCode {
-			buf, _ := io.ReadAll(resp.Body)
-			e2e.Logf("Error response from server: %s %s (%v), attempts remaining: %d", resp.Status, string(buf), err, attempts)
-			if err := resp.Body.Close(); err != nil {
-				e2e.Logf("error closing body: %v", err)
-			}
-			// sleep 5 second before doing next request
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		success = true
-		break
-	}
-	if !success {
-		return nil, fmt.Errorf("run out of attempts while querying the server")
-	}
-
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			e2e.Logf("error closing body: %v", err)
-		}
-	}()
-	return io.ReadAll(resp.Body)
-}
-
-// buildURL concats a url `http://foo/bar` with a path `/buzz`.
-func buildURL(u, p, q string) (string, error) {
-	url, err := url.Parse(u)
-	if err != nil {
-		return "", err
-	}
-	url.Path = path.Join(url.Path, p)
-	url.RawQuery = q
-	return url.String(), nil
-}
+var doHTTPRequest = libhttp.DoRequest
 
 // GetIPVersionStackType gets IP-version Stack type of the cluster
 func GetIPVersionStackType(oc *exutil.CLI) (ipvStackType string) {
