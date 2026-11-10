@@ -38,7 +38,7 @@ type ClusterLogForwarder struct {
 func NewClusterLogForwarder(oc *exutil.CLI, name, namespace string, inits ...func(*ClusterLogForwarder)) *ClusterLogForwarder {
 	clf := &ClusterLogForwarder{
 		Oc:       oc,
-		Resource: types.NewResource(ApiGroupClusterLogForwarder, name, namespace),
+		Resource: *types.NewResource(ApiGroupClusterLogForwarder, name, namespace),
 	}
 	for _, f := range inits {
 		f(clf)
