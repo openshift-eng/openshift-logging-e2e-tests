@@ -26,6 +26,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	oauthv1 "github.com/openshift/api/oauth/v1"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/networking/networkpolicy"
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	"google.golang.org/api/iterator"
@@ -717,7 +718,7 @@ func (clf *clusterlogforwarder) checkNetworkPolicy(oc *exutil.CLI) {
 }
 
 func (clf *clusterlogforwarder) validateNetworkPolicy(oc *exutil.CLI, ruleSet string, extraEgressPorts, extraIngressPorts []Port) error {
-	np, err := getNetworkPolicy(oc, clf.namespace, "collector-"+clf.name)
+	np, err := networkpolicy.Get(oc, clf.namespace, "collector-"+clf.name)
 	if err != nil {
 		return err
 	}
@@ -885,7 +886,7 @@ func (lfme *logFileMetricExporter) checkNetworkPolicy(oc *exutil.CLI) {
 }
 
 func (lfme *logFileMetricExporter) validateNetworkPolicy(oc *exutil.CLI, ruleSet string) error {
-	np, err := getNetworkPolicy(oc, lfme.namespace, "lfme-logfilesmetricexporter")
+	np, err := networkpolicy.Get(oc, lfme.namespace, "lfme-logfilesmetricexporter")
 	if err != nil {
 		return err
 	}
@@ -2949,18 +2950,4 @@ func getProxyCaBundle(oc *exutil.CLI) (caBundle string) {
 	caBundle, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", configMapName, "-n", "openshift-config", `-ojsonpath={.data.ca-bundle\.crt}`).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return caBundle
-}
-
-func getNetworkPolicy(oc *exutil.CLI, namespace, name string) (NetworkPolicy, error) {
-	var netpol NetworkPolicy
-	np, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", namespace, name, "-oyaml").Output()
-	if err != nil {
-		return netpol, fmt.Errorf("error getting networkpolicy %s: %w", name, err)
-	}
-
-	err = yaml.Unmarshal([]byte(np), &netpol)
-	if err != nil {
-		return netpol, fmt.Errorf("error unmarshalling YAML: %w", err)
-	}
-	return netpol, nil
 }
