@@ -9,8 +9,8 @@ objects:
       bootstrap.servers=kafka:9093
       #group.id=test-consumer-group
       security.protocol=SSL
-      ssl.truststore.location=/etc/kafkacert/ca-bundle.jks
-      ssl.truststore.password=aosqe2021
+      ssl.truststore.location=/etc/kafkacert/ca-bundle.crt
+      ssl.truststore.type=PEM
   kind: ConfigMap
   metadata:
     name: ${NAME}

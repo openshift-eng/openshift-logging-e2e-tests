@@ -122,10 +122,11 @@ objects:
       #init#broker.id=#init#
       listeners=PLAINTEXT://:9092,SSL://:9093
       ssl.client.auth=requested
-      ssl.keystore.location=/etc/kafkacert/cluster.jks
+      ssl.keystore.location=/etc/kafkacert/cluster.pkcs12
+      ssl.keystore.type=PKCS12
       ssl.keystore.password=aosqe2021
-      ssl.truststore.location=/etc/kafkacert/ca_bundle.jks
-      ssl.truststore.password=aosqe2021
+      ssl.truststore.location=/etc/kafkacert/ca_bundle.crt
+      ssl.truststore.type=PEM
       security.inter.broker.protocol=PLAINTEXT
       num.network.threads=3
       num.io.threads=8

@@ -28,7 +28,7 @@ objects:
       security.protocol=SASL_PLANTEXT
       sasl.mechanism=PLAIN
       sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="admin" password="admin-secret";
-      ssl.truststore.location=/etc/kafkacert/ca-bundle.jks
+      ssl.truststore.location=/etc/kafkacert/ca-bundle.crt
   kind: ConfigMap
   metadata:
     name: ${NAME}

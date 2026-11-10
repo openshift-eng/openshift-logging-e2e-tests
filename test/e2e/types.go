@@ -1,7 +1,9 @@
 package logging
 
 import (
+	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -86,6 +88,28 @@ import (
   }
 }
 */
+// esHitsTotal is the "total" field of the "hits" object in an Elasticsearch
+// search response. ES 6.x reports a plain number, e.g. "total": 63767, while
+// ES 7+ reports an object, e.g. "total": {"value": 63767, "relation": "eq"}.
+type esHitsTotal int64
+
+// UnmarshalJSON accepts both the ES 6 number form and the ES 7+ object form.
+func (t *esHitsTotal) UnmarshalJSON(data []byte) error {
+	var n int64
+	if err := json.Unmarshal(data, &n); err == nil {
+		*t = esHitsTotal(n)
+		return nil
+	}
+	var obj struct {
+		Value int64 `json:"value"`
+	}
+	if err := json.Unmarshal(data, &obj); err != nil {
+		return fmt.Errorf("not a number and not an object with a value field: %w", err)
+	}
+	*t = esHitsTotal(obj.Value)
+	return nil
+}
+
 type SearchResult struct {
 	Took     int64 `json:"took"`
 	TimedOut bool  `json:"timed_out"`
@@ -96,8 +120,8 @@ type SearchResult struct {
 		Failed     int64 `json:"failed"`
 	} `json:"_shards"`
 	Hits struct {
-		Total    int64   `json:"total"`
-		MaxScore float32 `json:"max_score"`
+		Total    esHitsTotal `json:"total"`
+		MaxScore float32     `json:"max_score"`
 		DataHits []struct {
 			Index  string    `json:"_index"`
 			Type   string    `json:"_type"`

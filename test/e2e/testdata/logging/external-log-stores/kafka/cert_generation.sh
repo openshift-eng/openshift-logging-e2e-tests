@@ -4,10 +4,8 @@ set -eou pipefail
 WORKING_DIR=${1:-/tmp/_working_dir}
 NAMESPACE=${2:-openshift-logging}
 CA_PATH=$WORKING_DIR/ca
-cn_name="aosqeca"
 CLIENT_CA_PATH="${WORKING_DIR}/client"
 CLUSTER_CA_PATH="${WORKING_DIR}/cluster"
-REGENERATE_NEEDED=0
 
 function init_cert_files() {
 if [ ! -d $CA_PATH ]; then
@@ -25,9 +23,6 @@ function create_root_ca() {
 #fqdn=my-cluster-kafka-bootstrap.amq-aosqe.svc
 #1)  generate root ca key and and self cert
 openssl req -x509 -new -newkey rsa:4096 -keyout $CA_PATH/root_ca.key -nodes -days 1825 -out $CA_PATH/ca_bundle.crt -subj "/CN=aosqeroot"   -passin pass:aosqe2021 -passout pass:aosqe2021
-
-# Create trustore jks
- /usr/lib/jvm/jre-openjdk/bin/keytool -import -file $CA_PATH/ca_bundle.crt -keystore $CA_PATH/ca_bundle.jks  --srcstorepass aosqe2021 --deststorepass aosqe2021 -noprompt || exit 1
 }
 
 # Create Client CSR
@@ -122,10 +117,6 @@ if [ ! -f $CA_PATH/root_ca.serial.txt ] ; then
     echo "01">$CA_PATH/root_ca.serial.txt
 fi
 openssl ca -in $CLIENT_CA_PATH/client.csr -notext -out $CLIENT_CA_PATH/client.crt -config $CLIENT_CA_PATH/client_sign.conf -batch
-
-# Create Client keystone
-openssl pkcs12 -export -in $CLIENT_CA_PATH/client.crt -inkey $CLIENT_CA_PATH/client.key -out $CLIENT_CA_PATH/client.pkcs12  -passin pass:aosqe2021 -passout pass:aosqe2021
- /usr/lib/jvm/jre-openjdk/bin/keytool -importkeystore -srckeystore $CLIENT_CA_PATH/client.pkcs12 -srcstoretype PKCS12 -destkeystore $CLIENT_CA_PATH/client.jks -deststoretype JKS --srcstorepass aosqe2021 --deststorepass aosqe2021 -noprompt
 }
 
 # Create cluster csr
@@ -241,9 +232,7 @@ if [ ! -f $CA_PATH/root_ca.serial.txt ] ; then
 fi
 openssl ca -in $CLUSTER_CA_PATH/cluster.csr -notext -out $CLUSTER_CA_PATH/cluster.crt -config $CLUSTER_CA_PATH/cluster_sign.conf -batch
 
-#Create keystone
 openssl pkcs12 -export -in $CLUSTER_CA_PATH/cluster.crt -inkey $CLUSTER_CA_PATH/cluster.key -out $CLUSTER_CA_PATH/cluster.pkcs12  -passin pass:aosqe2021 -passout pass:aosqe2021
- /usr/lib/jvm/jre-openjdk/bin/keytool -importkeystore -srckeystore $CLUSTER_CA_PATH/cluster.pkcs12 -srcstoretype PKCS12 -destkeystore $CLUSTER_CA_PATH/cluster.jks -deststoretype JKS  --srcstorepass aosqe2021 --deststorepass aosqe2021 -noprompt
 }
 
 init_cert_files

@@ -13,8 +13,8 @@ objects:
       sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required \
          username="admin" \
          password="admin-secret";
-      ssl.truststore.location=/etc/kafkacert/ca-bundle.jks
-      ssl.truststore.password=aosqe2021
+      ssl.truststore.location=/etc/kafkacert/ca-bundle.crt
+      ssl.truststore.type=PEM
     kafka_client_jaas.conf: |
       KafkaClient {
          org.apache.kafka.common.security.plain.PlainLoginModule required
@@ -30,7 +30,8 @@ objects:
       security.protocol=SASL_SSL
       sasl.mechanism=PLAIN
       sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="admin" password="admin-secret";
-      ssl.truststore.location=/etc/kafkacert/ca-bundle.jks
+      ssl.truststore.location=/etc/kafkacert/ca-bundle.crt
+      ssl.truststore.type=PEM
   kind: ConfigMap
   metadata:
     name: ${NAME}
