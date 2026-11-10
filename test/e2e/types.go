@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/core"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/networking/networkpolicy"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -876,49 +878,10 @@ type amqInstance struct {
 }
 
 // NetworkPolicy defines the complete network policy object
-type NetworkPolicy struct {
-	metav1.ObjectMeta `yaml:"metadata"`
-	Spec              struct {
-		Egress []struct {
-			Ports []Port              `yaml:"ports,omitempty"`
-			To    []NetworkPolicyPeer `yaml:"to,omitempty"`
-		} `yaml:"egress,omitempty"`
-		Ingress []struct {
-			Ports []Port              `yaml:"ports,omitempty"`
-			From  []NetworkPolicyPeer `yaml:"from,omitempty"`
-		} `yaml:"ingress,omitempty"`
-		PodSelector struct {
-			MatchLabels      map[string]string `yaml:"matchLabels,omitempty"`
-			MatchExpressions []struct {
-				Key      string   `yaml:"key"`
-				Operator string   `yaml:"operator"`
-				Values   []string `yaml:"values,omitempty"`
-			} `yaml:"matchExpressions,omitempty"`
-		} `yaml:"podSelector"`
-		PolicyTypes []string `yaml:"policyTypes"`
-	} `yaml:"spec"`
-}
+type NetworkPolicy = networkpolicy.NetworkPolicy
 
-// ports defines a single entry in the 'ports' list under 'egress' and 'ingress'.
-type Port struct {
-	Port     string `yaml:"port"`
-	Protocol string `yaml:"protocol"`
-}
-
-// NetworkPolicyPeer defines the peer in the network policy (for From/To)
-type NetworkPolicyPeer struct {
-	NamespaceSelector *struct {
-		MatchLabels map[string]string `yaml:"matchLabels,omitempty"`
-	} `yaml:"namespaceSelector,omitempty"`
-	PodSelector *struct {
-		MatchLabels      map[string]string `yaml:"matchLabels,omitempty"`
-		MatchExpressions []struct {
-			Key      string   `yaml:"key"`
-			Operator string   `yaml:"operator"`
-			Values   []string `yaml:"values,omitempty"`
-		} `yaml:"matchExpressions,omitempty"`
-	} `yaml:"podSelector,omitempty"`
-}
+// Ports defines a single entry in the 'ports' list under 'egress' and 'ingress'.
+type Port = core.Port
 
 // LokiStackNetworkPolicy defines the expected network policy configuration for a LokiStack instance
 type LokiStackNetworkPolicy struct {
