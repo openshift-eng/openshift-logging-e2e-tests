@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/core"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/networking/networkpolicy"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // SearchResult example

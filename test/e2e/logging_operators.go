@@ -1128,7 +1128,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		o.Expect(clf.updateNetworkPolicyRuleSet(oc, "RestrictIngressEgress")).NotTo(o.HaveOccurred())
 		lfme.checkNetworkPolicy(oc)
 		clf.checkNetworkPolicy(oc)
-		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"8080", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "8080", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 		o.Expect(lfme.validateNetworkPolicy(oc, "AllowIngressMetrics")).NotTo(o.HaveOccurred())
 
 		g.By("sleep 1 minute for network policy to be applied")
@@ -1238,7 +1238,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		clf.update(oc, "", patch, "--type=json")
 		clf.waitForCollectorPodsReady(oc)
 		clf.checkNetworkPolicy(oc)
-		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"4318", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "4318", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		g.By("check log data in OTEL collector")
 		time.Sleep(1 * time.Minute)
@@ -1322,7 +1322,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		g.By("update CLF to enable network policy")
 		o.Expect(clf.updateNetworkPolicyRuleSet(oc, "RestrictIngressEgress")).NotTo(o.HaveOccurred())
 		clf.checkNetworkPolicy(oc)
-		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"443", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "443", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		g.By("sleep 1 minute for network policy to be applied")
 		time.Sleep(1 * time.Minute)
@@ -1407,7 +1407,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		g.By("update CLF to enable network policy")
 		o.Expect(clf.updateNetworkPolicyRuleSet(oc, "RestrictIngressEgress")).NotTo(o.HaveOccurred())
 		clf.checkNetworkPolicy(oc)
-		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"443", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "443", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		g.By("sleep 1 minute for network policy to be applied")
 		time.Sleep(1 * time.Minute)
@@ -1481,7 +1481,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		defer clf.delete(oc)
 		clf.create(oc, "ID_TYPE=project", "ID_VALUE="+gcl.projectID, "LOG_ID="+gcl.logName, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		clf.checkNetworkPolicy(oc)
-		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"443", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "443", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		for _, logType := range []string{"infrastructure", "audit", "application"} {
 			err = wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
@@ -1548,7 +1548,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		defer clf.delete(oc)
 		clf.create(oc, "ES_URL=http://"+getRouteAddress(oc, ees.namespace, ees.serverName), "ES_VERSION="+ees.version, "INDEX=logging-85411.{.log_type||\"none-typed-logs\"}-write", `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		clf.checkNetworkPolicy(oc)
-		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"80", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "80", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		compat_otp.By("Check logs in ES")
 		ees.waitForIndexAppear(oc, "logging-85411.application-write")
@@ -1616,7 +1616,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		defer clfHttpserverToSplunk.delete(oc)
 		clfHttpserverToSplunk.create(oc, "URL=http://"+sp.serviceURL+":8088", `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		clfHttpserverToSplunk.checkNetworkPolicy(oc)
-		o.Expect(clfHttpserverToSplunk.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"8088", "TCP"}}, []Port{{"8081", "TCP"}, {"8082", "TCP"}, {"8083", "TCP"}})).NotTo(o.HaveOccurred())
+		o.Expect(clfHttpserverToSplunk.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "8088", Protocol: "TCP"}}, []Port{{Port: "8081", Protocol: "TCP"}, {Port: "8082", Protocol: "TCP"}, {Port: "8083", Protocol: "TCP"}})).NotTo(o.HaveOccurred())
 
 		g.By("create CLF to forward logs to http server")
 		httpCLF := clusterlogforwarder{
@@ -1636,7 +1636,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			"URL_AUDIT=https://"+clfHttpserverToSplunk.name+"-httpserver3."+clfHttpserverToSplunk.namespace+".svc:8083", "SECRET_AUDIT="+clfHttpserverToSplunk.name+"-httpserver3",
 			"TLS_CA_KEY=tls.crt", `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		httpCLF.checkNetworkPolicy(oc)
-		o.Expect(httpCLF.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"8081", "TCP"}, {"8082", "TCP"}, {"8083", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+		o.Expect(httpCLF.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "8081", Protocol: "TCP"}, {Port: "8082", Protocol: "TCP"}, {Port: "8083", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		g.By("check logs in splunk")
 		o.Expect(sp.auditLogFound()).To(o.BeTrue())
@@ -1715,7 +1715,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		defer lsCLF.delete(oc)
 		lsCLF.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		lsCLF.checkNetworkPolicy(oc)
-		o.Expect(lsCLF.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"8080", "TCP"}}, []Port{{"6514", "TCP"}})).NotTo(o.HaveOccurred())
+		o.Expect(lsCLF.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "8080", Protocol: "TCP"}}, []Port{{Port: "6514", Protocol: "TCP"}})).NotTo(o.HaveOccurred())
 
 		g.By("Create clusterlogforwarder as syslog clinet and forward logs to syslogserver")
 		sysCLF := clusterlogforwarder{
@@ -1742,7 +1742,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		defer sysCLF.delete(oc)
 		sysCLF.create(oc, "URL=tls://"+lsCLF.name+"-syslog."+lsCLF.namespace+".svc:6514", `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		sysCLF.checkNetworkPolicy(oc)
-		o.Expect(sysCLF.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"6514", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+		o.Expect(sysCLF.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "6514", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		// check logs in loki stack
 		g.By("check logs in loki")
@@ -1829,7 +1829,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		defer clf.delete(oc)
 		clf.create(oc, "PREFIX_OR_NAME="+azLog.tPrefixOrName, "CUSTOMER_ID="+azLog.customerID, "RESOURCE_ID="+azLog.workspaceID, "AZURE_HOST="+azLog.host, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		clf.checkNetworkPolicy(oc)
-		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"443", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "443", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		g.By("Ensure vector can send logs to azure monitor when the RestrictIngressEgress network policy is enabled")
 		for _, tableName := range []string{azLog.tPrefixOrName + "infra_log_CL", azLog.tPrefixOrName + "audit_log_CL", azLog.tPrefixOrName + "app_log_CL"} {
@@ -1901,7 +1901,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 
 		clf.checkNetworkPolicy(oc)
-		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"9092", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "9092", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		g.By("Check app logs in kafka consumer pod")
 		consumerPodPodName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-n", kafka.namespace, "-l", "component=kafka-consumer", "-o", "name").Output()
