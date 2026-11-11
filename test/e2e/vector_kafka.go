@@ -330,7 +330,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			brokers, _ := json.Marshal([]string{"tls://" + amqi1.service, "tls://" + amqi2.service})
 			clf.create(oc, "TOPIC="+topicName, "BROKERS="+string(brokers), "NAMESPACE_PATTERN="+appProj, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 			clf.checkNetworkPolicy(oc)
-			o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"9092", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+			o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "9092", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 			g.By("check data in the first broker")
 			amqi1logs, _ := getDataFromKafkaConsumerPod(oc, amqi1.namespace, amqi1ConsumerPodName)
