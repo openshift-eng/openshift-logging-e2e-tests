@@ -23,17 +23,17 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	exutil "github.com/openshift/origin/test/extended/util"
+	"github.com/openshift/origin/test/extended/util/compat_otp"
+	"k8s.io/apimachinery/pkg/util/wait"
+	e2e "k8s.io/kubernetes/test/e2e/framework"
+
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/cluster"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/env"
 	librandom "github.com/openshift/openshift-logging-e2e-tests/internal/lib/random"
 	libstrings "github.com/openshift/openshift-logging-e2e-tests/internal/lib/strings"
 	internaltypes "github.com/openshift/openshift-logging-e2e-tests/internal/types"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/viaq"
-
-	exutil "github.com/openshift/origin/test/extended/util"
-	"github.com/openshift/origin/test/extended/util/compat_otp"
-	"k8s.io/apimachinery/pkg/util/wait"
-	e2e "k8s.io/kubernetes/test/e2e/framework"
 )
 
 func GetAWSCredentials(oc *exutil.CLI) (AWSClientConfig, error) {
@@ -632,7 +632,7 @@ func (cw *CloudwatchSpec) DeleteGroups(groupPrefix string) {
 
 // clean the Cloudwatch resources
 func (cw *CloudwatchSpec) DeleteResources(oc *exutil.CLI) {
-	internaltypes.NewResource("secret", cw.SecretName, cw.SecretNamespace).Clear(oc)
+	_ = internaltypes.NewResource("secret", cw.SecretName, cw.SecretNamespace).Clear(oc)
 	cw.DeleteGroups("")
 	// delete roles when the role is created in case
 	if cw.StsEnabled && os.Getenv("AWS_CLOUDWATCH_ROLE_ARN") == "" {

@@ -18,7 +18,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	aws2 "github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	"google.golang.org/api/cloudresourcemanager/v1"
@@ -31,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	aws2 "github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 

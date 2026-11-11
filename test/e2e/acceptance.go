@@ -11,13 +11,13 @@ import (
 
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
-	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
 	exutil "github.com/openshift/origin/test/extended/util"
 	"github.com/openshift/origin/test/extended/util/compat_otp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 

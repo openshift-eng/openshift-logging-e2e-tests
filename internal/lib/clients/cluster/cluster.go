@@ -4,10 +4,11 @@ import (
 	"context"
 	"strings"
 
-	. "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	. "github.com/onsi/gomega"
 )
 
 // NetworkType retrieves the default network type for the cluster
