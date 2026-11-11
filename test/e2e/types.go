@@ -6,8 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/openshift/openshift-logging-e2e-tests/internal/types/viaq"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/viaq"
 )
 
 // SearchResult example

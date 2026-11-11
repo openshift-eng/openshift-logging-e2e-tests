@@ -25,7 +25,6 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	oauthv1 "github.com/openshift/api/oauth/v1"
-	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/cluster"
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	"google.golang.org/api/iterator"
@@ -37,6 +36,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	e2eoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/cluster"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/env"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/metrics"
 	librandom "github.com/openshift/openshift-logging-e2e-tests/internal/lib/random"
@@ -86,8 +86,10 @@ type CatalogSourceObjects struct {
 
 var getRandomString = librandom.String
 
-var contain = libstrings.AnyContainSubstring
-var containSubstring = libstrings.AnyContainSubstring
+var (
+	contain          = libstrings.AnyContainSubstring
+	containSubstring = libstrings.AnyContainSubstring
+)
 
 var (
 	processTemplate = openshift.ProcessTemplate
@@ -1158,8 +1160,10 @@ func getCurrentCSVFromPackage(oc *exutil.CLI, source, channel, packagemanifest s
 	return currentCSV
 }
 
-var checkNetworkType = cluster.NetworkType
-var getAppDomain = cluster.Domain
+var (
+	checkNetworkType = cluster.NetworkType
+	getAppDomain     = cluster.Domain
+)
 
 type certsConf struct {
 	serverName string
