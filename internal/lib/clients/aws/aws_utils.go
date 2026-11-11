@@ -1,4 +1,4 @@
-package logging
+package aws
 
 import (
 	"context"
@@ -24,12 +24,19 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
+	"github.com/openshift/origin/test/extended/util/compat_otp"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
+
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/cluster"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/env"
+	librandom "github.com/openshift/openshift-logging-e2e-tests/internal/lib/random"
+	libstrings "github.com/openshift/openshift-logging-e2e-tests/internal/lib/strings"
+	internaltypes "github.com/openshift/openshift-logging-e2e-tests/internal/types"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/viaq"
 )
 
-func getAWSCredentials(oc *exutil.CLI) (AWSClientConfig, error) {
+func GetAWSCredentials(oc *exutil.CLI) (AWSClientConfig, error) {
 	var region string
 	platform := compat_otp.CheckPlatform(oc)
 	if platform == "aws" {
@@ -96,7 +103,7 @@ func getAWSCredentials(oc *exutil.CLI) (AWSClientConfig, error) {
 	return AWSClientConfig{}, fmt.Errorf("can't get aws credentials")
 }
 
-func loadAccessKeySecretKeyFromFile(ctx context.Context, cfg *AWSClientConfig) error {
+func LoadAccessKeySecretKeyFromFile(ctx context.Context, cfg *AWSClientConfig) error {
 	if cfg.AccessKey != "" && cfg.SecretKey != "" {
 		e2e.Logf("access key and secret key are already set")
 		return nil
@@ -138,7 +145,7 @@ func NewAWSClientFactory(ctx context.Context, cfg AWSClientConfig) (*AWSClientFa
 		},
 	}
 	if len(cfg.Endpoint) > 0 {
-		proxy := getProxyFromEnv()
+		proxy := env.Proxy()
 		if len(proxy) > 0 {
 			proxyURL, err := url.Parse(proxy)
 			o.Expect(err).NotTo(o.HaveOccurred())
@@ -219,7 +226,7 @@ func (f *AWSClientFactory) STS() *sts.Client {
 	})
 }
 
-func createS3Bucket(client *s3.Client, bucketName, region string) error {
+func CreateS3Bucket(client *s3.Client, bucketName, region string) error {
 	// check if the bucket exists or not
 	// if exists, clear all the objects in the bucket
 	// if not, create the bucket
@@ -234,7 +241,7 @@ func createS3Bucket(client *s3.Client, bucketName, region string) error {
 	}
 	// clear all the objects in the bucket
 	if exist {
-		return emptyS3Bucket(client, bucketName)
+		return EmptyS3Bucket(client, bucketName)
 	}
 
 	/*
@@ -251,9 +258,9 @@ func createS3Bucket(client *s3.Client, bucketName, region string) error {
 	return err
 }
 
-func deleteS3Bucket(client *s3.Client, bucketName string) error {
+func DeleteS3Bucket(client *s3.Client, bucketName string) error {
 	// empty bucket
-	err := emptyS3Bucket(client, bucketName)
+	err := EmptyS3Bucket(client, bucketName)
 	if err != nil {
 		return err
 	}
@@ -262,7 +269,7 @@ func deleteS3Bucket(client *s3.Client, bucketName string) error {
 	return err
 }
 
-func emptyS3Bucket(client *s3.Client, bucketName string) error {
+func EmptyS3Bucket(client *s3.Client, bucketName string) error {
 	// List objects in the bucket
 	objects, err := client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
 		Bucket: &bucketName,
@@ -293,15 +300,15 @@ func emptyS3Bucket(client *s3.Client, bucketName string) error {
 
 	// Check if there are more objects to delete and handle pagination
 	if *objects.IsTruncated {
-		return emptyS3Bucket(client, bucketName)
+		return EmptyS3Bucket(client, bucketName)
 	}
 
 	return nil
 }
 
-// getAwsAccount returns the account ID and the AWS ARN associated with the calling entity.
-func getAwsAccount(stsClient *sts.Client) (string, string) {
-	e2e.Logf("Running getAwsAccount")
+// GetAwsAccount returns the account ID and the AWS ARN associated with the calling entity.
+func GetAwsAccount(stsClient *sts.Client) (string, string) {
+	e2e.Logf("Running GetAwsAccount")
 	result, err := stsClient.GetCallerIdentity(context.TODO(), &sts.GetCallerIdentityInput{})
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return aws.ToString(result.Account), aws.ToString(result.Arn)
@@ -318,8 +325,8 @@ func iamCreateRole(iamClient *iam.Client, trustPolicy string, roleName string) s
 	return aws.ToString(result.Role.Arn)
 }
 
-// iamDeleteRole deletes the role from AWS
-func iamDeleteRole(iamClient *iam.Client, roleName string) {
+// IamDeleteRole deletes the role from AWS
+func IamDeleteRole(iamClient *iam.Client, roleName string) {
 	_, err := iamClient.DeleteRole(context.TODO(), &iam.DeleteRoleInput{
 		RoleName: aws.String(roleName),
 	})
@@ -329,7 +336,7 @@ func iamDeleteRole(iamClient *iam.Client, roleName string) {
 }
 
 // aws iam create-policy
-func iamCreatePolicy(iamClient *iam.Client, mgmtPolicy string, policyName string) string {
+func IamCreatePolicy(iamClient *iam.Client, mgmtPolicy string, policyName string) string {
 	e2e.Logf("Create iam policy %v", policyName)
 	result, err := iamClient.CreatePolicy(context.TODO(), &iam.CreatePolicyInput{
 		PolicyDocument: aws.String(mgmtPolicy),
@@ -340,7 +347,7 @@ func iamCreatePolicy(iamClient *iam.Client, mgmtPolicy string, policyName string
 }
 
 // aws iam delete-policy
-func iamDeletePolicy(iamClient *iam.Client, policyArn string) {
+func IamDeletePolicy(iamClient *iam.Client, policyArn string) {
 	_, err := iamClient.DeletePolicy(context.TODO(), &iam.DeletePolicyInput{
 		PolicyArn: aws.String(policyArn),
 	})
@@ -350,7 +357,7 @@ func iamDeletePolicy(iamClient *iam.Client, policyArn string) {
 }
 
 // This func creates a IAM role, attaches custom trust policy and managed permission policy
-func createIAMRoleOnAWS(iamClient *iam.Client, trustPolicy string, roleName string, policyArn string) string {
+func CreateIAMRoleOnAWS(iamClient *iam.Client, trustPolicy string, roleName string, policyArn string) string {
 	roleArn := iamCreateRole(iamClient, trustPolicy, roleName)
 	// Adding managed permission policy if provided
 	if policyArn != "" {
@@ -364,7 +371,7 @@ func createIAMRoleOnAWS(iamClient *iam.Client, trustPolicy string, roleName stri
 }
 
 // Deletes IAM role and attached policies
-func deleteIAMroleonAWS(iamClient *iam.Client, roleName string) {
+func DeleteIAMroleonAWS(iamClient *iam.Client, roleName string) {
 	// List attached policies of the IAM role
 	listAttachedPoliciesOutput, err := iamClient.ListAttachedRolePolicies(context.TODO(), &iam.ListAttachedRolePoliciesInput{
 		RoleName: aws.String(roleName),
@@ -393,12 +400,12 @@ func deleteIAMroleonAWS(iamClient *iam.Client, roleName string) {
 	}
 
 	// Delete the IAM role
-	iamDeleteRole(iamClient, roleName)
+	IamDeleteRole(iamClient, roleName)
 }
 
-// createIAMRoleForS3Bucket creates role required for s3 bucket on STS clusters and returns the roleArn
-func createIAMRoleForS3Bucket(iamClient *iam.Client, oidcName, awsAccountID, partition, serviceAccountNamespace, serviceAccountName, roleName string) string {
-	e2e.Logf("Running createIAMRoleForS3Bucket")
+// CreateIAMRoleForS3Bucket creates role required for s3 bucket on STS clusters and returns the roleArn
+func CreateIAMRoleForS3Bucket(iamClient *iam.Client, oidcName, awsAccountID, partition, serviceAccountNamespace, serviceAccountName, roleName string) string {
+	e2e.Logf("Running CreateIAMRoleForS3Bucket")
 	policyArn := "arn:" + partition + ":iam::aws:policy/AmazonS3FullAccess"
 
 	s3BucketTrustPolicy := `{
@@ -422,18 +429,18 @@ func createIAMRoleForS3Bucket(iamClient *iam.Client, oidcName, awsAccountID, par
 		]
 	}`
 	s3BucketTrustPolicy = fmt.Sprintf(s3BucketTrustPolicy, partition, awsAccountID, oidcName, oidcName, serviceAccountNamespace, serviceAccountName, serviceAccountNamespace, serviceAccountName)
-	return createIAMRoleOnAWS(iamClient, s3BucketTrustPolicy, roleName, policyArn)
+	return CreateIAMRoleOnAWS(iamClient, s3BucketTrustPolicy, roleName, policyArn)
 }
 
 // Creates Loki object storage secret on AWS STS cluster
-func createObjectStorageSecretOnAWSSTSCluster(oc *exutil.CLI, region, storageSecret, bucketName, namespace string) {
+func CreateObjectStorageSecretOnAWSSTSCluster(oc *exutil.CLI, region, storageSecret, bucketName, namespace string) {
 	err := oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", storageSecret, "--from-literal=region="+region, "--from-literal=bucketnames="+bucketName, "--from-literal=audience=openshift", "-n", namespace).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 // Function to check if tenant logs are present under the S3 bucket.
 // Returns success if any one of the tenants under tenants[] are found.
-func validatesIfLogsArePushedToS3Bucket(s3Client *s3.Client, bucketName string, tenants []string) {
+func ValidatesIfLogsArePushedToS3Bucket(s3Client *s3.Client, bucketName string, tenants []string) {
 	// Poll to check contents of the s3 bucket
 	err := wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 300*time.Second, true, func(context.Context) (done bool, err error) {
 		listObjectsOutput, err := s3Client.ListObjectsV2(context.TODO(), &s3.ListObjectsV2Input{
@@ -458,33 +465,33 @@ func validatesIfLogsArePushedToS3Bucket(s3Client *s3.Client, bucketName string, 
 }
 
 // cloudWatchSpec the basic object which describe all common test options
-type cloudwatchSpec struct {
-	awsRoleName         string
-	awsRoleArn          string
-	awsRegion           string
-	awsPolicyName       string
-	awsPolicyArn        string
-	awsPartition        string // The partition in which the resource is located, valid when the cluster is STS, ref: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html#arns-syntax
-	clusterPlatformType string
-	collectorSAName     string // the service account for collector pod to use
-	cwClient            *cloudwatchlogs.Client
-	groupName           string // the strategy for grouping logstreams, for example: '{.log_type||"none"}'
-	hasMaster           bool   // wether the cluster has master nodes or not
-	iamClient           *iam.Client
-	logTypes            []string // default: "['infrastructure','application', 'audit']"
-	nodes               []string // Cluster Nodes Names, required when checking infrastructure/audit logs and strict=true
-	ovnEnabled          bool     // if ovn is enabled
-	secretName          string   // the name of the secret for the collector to use
-	secretNamespace     string   // the namespace where the collector pods to be deployed
-	stsEnabled          bool     // Is sts enabled on the cluster
-	selAppNamespaces    []string // The app namespaces should be collected and verified
-	selNamespacesID     []string // The UUIDs of all app namespaces should be collected
-	disAppNamespaces    []string // The namespaces should not be collected and verified
+type CloudwatchSpec struct {
+	AwsRoleName         string
+	AwsRoleArn          string
+	AwsRegion           string
+	AwsPolicyName       string
+	AwsPolicyArn        string
+	AwsPartition        string // The partition in which the resource is located, valid when the cluster is STS, ref: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference-arns.html#arns-syntax
+	ClusterPlatformType string
+	CollectorSAName     string // the service account for collector pod to use
+	CwClient            *cloudwatchlogs.Client
+	GroupName           string // the strategy for grouping logstreams, for example: '{.log_type||"none"}'
+	HasMaster           bool   // whether the cluster has master Nodes or not
+	IamClient           *iam.Client
+	LogTypes            []string // default: "['infrastructure','application', 'audit']"
+	Nodes               []string // Cluster Nodes Names, required when checking infrastructure/audit logs and strict=true
+	OvnEnabled          bool     // if ovn is enabled
+	SecretName          string   // the name of the secret for the collector to use
+	SecretNamespace     string   // the namespace where the collector pods to be deployed
+	StsEnabled          bool     // Is sts enabled on the cluster
+	SelAppNamespaces    []string // The app namespaces should be collected and verified
+	SelNamespacesID     []string // The UUIDs of all app namespaces should be collected
+	DisAppNamespaces    []string // The namespaces should not be collected and verified
 }
 
-// Set the default values to the cloudwatchSpec Object, you need to change the default in It if needs
-func (cw *cloudwatchSpec) init(oc *exutil.CLI) {
-	cred, err := getAWSCredentials(oc)
+// Set the default values to the CloudwatchSpec Object, you need to change the default in It if needs
+func (cw *CloudwatchSpec) Init(oc *exutil.CLI) {
+	cred, err := GetAWSCredentials(oc)
 	if err != nil {
 		g.Skip("Skip since no AWS credetials.")
 	}
@@ -492,47 +499,47 @@ func (cw *cloudwatchSpec) init(oc *exutil.CLI) {
 	if err != nil {
 		e2e.Failf("error loading aws config: %v", err)
 	}
-	cw.awsRegion = cred.Region
-	if checkNetworkType(oc) == "ovnkubernetes" {
-		cw.ovnEnabled = true
+	cw.AwsRegion = cred.Region
+	if cluster.NetworkType(oc) == "ovnkubernetes" {
+		cw.OvnEnabled = true
 	}
-	cw.hasMaster = hasMaster(oc)
-	cw.clusterPlatformType = compat_otp.CheckPlatform(oc)
-	if cw.clusterPlatformType == "aws" {
+	cw.HasMaster = cluster.HasMaster(oc)
+	cw.ClusterPlatformType = compat_otp.CheckPlatform(oc)
+	if cw.ClusterPlatformType == "aws" {
 		if compat_otp.IsSTSCluster(oc) {
-			cw.stsEnabled = true
+			cw.StsEnabled = true
 			// Note: AWS China is not added, and the partition is `aws-cn`.
-			if strings.HasPrefix(cw.awsRegion, "us-gov") {
-				cw.awsPartition = "aws-us-gov"
+			if strings.HasPrefix(cw.AwsRegion, "us-gov") {
+				cw.AwsPartition = "aws-us-gov"
 			} else {
-				cw.awsPartition = "aws"
+				cw.AwsPartition = "aws"
 			}
-			cw.iamClient = factory.IAM()
+			cw.IamClient = factory.IAM()
 			stsClient := factory.STS()
-			accountID, _ := getAwsAccount(stsClient)
-			oidcProvider, e := getOIDC(oc)
+			accountID, _ := GetAwsAccount(stsClient)
+			oidcProvider, e := cluster.OIDCProvider(oc)
 			o.Expect(e).NotTo(o.HaveOccurred())
 			// Create IAM roles for cloudwatch
-			cw.createIAMCloudwatchRole(oc, accountID, oidcProvider)
+			cw.CreateIAMCloudwatchRole(oc, accountID, oidcProvider)
 		}
 	}
-	cw.cwClient = factory.CloudWatchLogs()
-	if !cw.stsEnabled {
-		err = loadAccessKeySecretKeyFromFile(context.TODO(), &cred)
+	cw.CwClient = factory.CloudWatchLogs()
+	if !cw.StsEnabled {
+		err = LoadAccessKeySecretKeyFromFile(context.TODO(), &cred)
 		if err != nil {
 			e2e.Failf("can't get aws_access_key_id and aws_secret_access_key: %v", err)
 		}
 		os.Setenv("AWS_ACCESS_KEY_ID", cred.AccessKey)
 		os.Setenv("AWS_SECRET_ACCESS_KEY", cred.SecretKey)
 	}
-	e2e.Logf("Init cloudwatchSpec done")
+	e2e.Logf("Init CloudwatchSpec done")
 }
 
-func (cw *cloudwatchSpec) setGroupName(groupName string) {
-	cw.groupName = groupName
+func (cw *CloudwatchSpec) SetGroupName(groupName string) {
+	cw.GroupName = groupName
 }
 
-func (cw *cloudwatchSpec) newIamRole(accountID, oidcProvider string) {
+func (cw *CloudwatchSpec) NewIamRole(accountID, oidcProvider string) {
 	trustPolicy := `{
 "Version": "2012-10-17",
  "Statement": [
@@ -550,11 +557,11 @@ func (cw *cloudwatchSpec) newIamRole(accountID, oidcProvider string) {
    }
  ]
 }`
-	trustPolicy = fmt.Sprintf(trustPolicy, cw.awsPartition, accountID, oidcProvider, oidcProvider, cw.secretNamespace, cw.collectorSAName)
-	cw.awsRoleArn = iamCreateRole(cw.iamClient, trustPolicy, cw.awsRoleName)
+	trustPolicy = fmt.Sprintf(trustPolicy, cw.AwsPartition, accountID, oidcProvider, oidcProvider, cw.SecretNamespace, cw.CollectorSAName)
+	cw.AwsRoleArn = iamCreateRole(cw.IamClient, trustPolicy, cw.AwsRoleName)
 }
 
-func (cw *cloudwatchSpec) newIamPolicy() {
+func (cw *CloudwatchSpec) NewIamPolicy() {
 	mgmtPolicy := `{
 "Version": "2012-10-17",
 "Statement": [
@@ -572,47 +579,47 @@ func (cw *cloudwatchSpec) newIamPolicy() {
      }
    ]
 }`
-	cw.awsPolicyArn = iamCreatePolicy(cw.iamClient, fmt.Sprintf(mgmtPolicy, cw.awsPartition), cw.awsPolicyName)
+	cw.AwsPolicyArn = IamCreatePolicy(cw.IamClient, fmt.Sprintf(mgmtPolicy, cw.AwsPartition), cw.AwsPolicyName)
 }
 
-func (cw *cloudwatchSpec) createIAMCloudwatchRole(oc *exutil.CLI, accountID, oidcProvider string) {
+func (cw *CloudwatchSpec) CreateIAMCloudwatchRole(oc *exutil.CLI, accountID, oidcProvider string) {
 	if os.Getenv("AWS_CLOUDWATCH_ROLE_ARN") != "" {
-		cw.awsRoleArn = os.Getenv("AWS_CLOUDWATCH_ROLE_ARN")
+		cw.AwsRoleArn = os.Getenv("AWS_CLOUDWATCH_ROLE_ARN")
 		return
 	}
-	cw.awsRoleName = cw.secretName + "-" + getInfrastructureName(oc)
-	cw.awsPolicyName = cw.awsRoleName
-	e2e.Logf("Creating aws iam role: %s", cw.awsRoleName)
-	cw.newIamRole(accountID, oidcProvider)
-	cw.newIamPolicy()
-	_, err := cw.iamClient.AttachRolePolicy(context.TODO(), &iam.AttachRolePolicyInput{
-		PolicyArn: &cw.awsPolicyArn,
-		RoleName:  &cw.awsRoleName,
+	cw.AwsRoleName = cw.SecretName + "-" + cluster.InfrastructureName(oc)
+	cw.AwsPolicyName = cw.AwsRoleName
+	e2e.Logf("Creating aws iam role: %s", cw.AwsRoleName)
+	cw.NewIamRole(accountID, oidcProvider)
+	cw.NewIamPolicy()
+	_, err := cw.IamClient.AttachRolePolicy(context.TODO(), &iam.AttachRolePolicyInput{
+		PolicyArn: &cw.AwsPolicyArn,
+		RoleName:  &cw.AwsRoleName,
 	})
-	o.Expect(err).NotTo(o.HaveOccurred(), "failed to attach policy to iam role "+cw.awsRoleName)
+	o.Expect(err).NotTo(o.HaveOccurred(), "failed to attach policy to iam role "+cw.AwsRoleName)
 }
 
 // Create Cloudwatch Secret. note: use credential files can avoid leak in output
-func (cw *cloudwatchSpec) createClfSecret(oc *exutil.CLI) {
+func (cw *CloudwatchSpec) CreateClfSecret(oc *exutil.CLI) {
 	var err error
-	if cw.stsEnabled {
-		token, _ := oc.AsAdmin().WithoutNamespace().Run("create").Args("token", cw.collectorSAName, "--audience=openshift", "--duration=24h", "-n", cw.secretNamespace).Output()
-		err = oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", cw.secretName, "--from-literal=role_arn="+cw.awsRoleArn, "--from-literal=token="+token, "-n", cw.secretNamespace).Execute()
+	if cw.StsEnabled {
+		token, _ := oc.AsAdmin().WithoutNamespace().Run("create").Args("token", cw.CollectorSAName, "--audience=openshift", "--duration=24h", "-n", cw.SecretNamespace).Output()
+		err = oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", cw.SecretName, "--from-literal=role_arn="+cw.AwsRoleArn, "--from-literal=token="+token, "-n", cw.SecretNamespace).Execute()
 	} else {
-		err = oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", cw.secretName, "--from-literal=aws_access_key_id="+os.Getenv("AWS_ACCESS_KEY_ID"), "--from-literal=aws_secret_access_key="+os.Getenv("AWS_SECRET_ACCESS_KEY"), "-n", cw.secretNamespace).Execute()
+		err = oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", cw.SecretName, "--from-literal=aws_access_key_id="+os.Getenv("AWS_ACCESS_KEY_ID"), "--from-literal=aws_secret_access_key="+os.Getenv("AWS_SECRET_ACCESS_KEY"), "-n", cw.SecretNamespace).Execute()
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
 }
 
 // trigger DeleteLogGroup. sometimes, the api return success, but the resource are still there. now wait up to 3 minutes to make the delete success as more as possible.
-func (cw *cloudwatchSpec) deleteGroups(groupPrefix string) {
+func (cw *CloudwatchSpec) DeleteGroups(groupPrefix string) {
 	wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 90*time.Second, true, func(context.Context) (done bool, err error) {
-		logGroupNames, _ := cw.getLogGroupNames(groupPrefix)
+		logGroupNames, _ := cw.GetLogGroupNames(groupPrefix)
 		if len(logGroupNames) == 0 {
 			return true, nil
 		}
 		for _, name := range logGroupNames {
-			_, err := cw.cwClient.DeleteLogGroup(context.TODO(), &cloudwatchlogs.DeleteLogGroupInput{LogGroupName: &name})
+			_, err := cw.CwClient.DeleteLogGroup(context.TODO(), &cloudwatchlogs.DeleteLogGroupInput{LogGroupName: &name})
 			if err != nil {
 				e2e.Logf("Can't delete log group: %s", name)
 			} else {
@@ -624,27 +631,27 @@ func (cw *cloudwatchSpec) deleteGroups(groupPrefix string) {
 }
 
 // clean the Cloudwatch resources
-func (cw *cloudwatchSpec) deleteResources(oc *exutil.CLI) {
-	resource{"secret", cw.secretName, cw.secretNamespace}.clear(oc)
-	cw.deleteGroups("")
+func (cw *CloudwatchSpec) DeleteResources(oc *exutil.CLI) {
+	_ = internaltypes.NewResource("secret", cw.SecretName, cw.SecretNamespace).Clear(oc)
+	cw.DeleteGroups("")
 	// delete roles when the role is created in case
-	if cw.stsEnabled && os.Getenv("AWS_CLOUDWATCH_ROLE_ARN") == "" {
-		deleteIAMroleonAWS(cw.iamClient, cw.awsRoleName)
-		iamDeletePolicy(cw.iamClient, cw.awsPolicyArn)
+	if cw.StsEnabled && os.Getenv("AWS_CLOUDWATCH_ROLE_ARN") == "" {
+		DeleteIAMroleonAWS(cw.IamClient, cw.AwsRoleName)
+		IamDeletePolicy(cw.IamClient, cw.AwsPolicyArn)
 	}
 }
 
 // Return Cloudwatch GroupNames
-func (cw cloudwatchSpec) getLogGroupNames(groupPrefix string) ([]string, error) {
+func (cw CloudwatchSpec) GetLogGroupNames(groupPrefix string) ([]string, error) {
 	var groupNames []string
 	if groupPrefix == "" {
-		if strings.Contains(cw.groupName, "{") {
-			groupPrefix = strings.Split(cw.groupName, "{")[0]
+		if strings.Contains(cw.GroupName, "{") {
+			groupPrefix = strings.Split(cw.GroupName, "{")[0]
 		} else {
-			groupPrefix = cw.groupName
+			groupPrefix = cw.GroupName
 		}
 	}
-	logGroupDesc, err := cw.cwClient.DescribeLogGroups(context.TODO(), &cloudwatchlogs.DescribeLogGroupsInput{
+	logGroupDesc, err := cw.CwClient.DescribeLogGroups(context.TODO(), &cloudwatchlogs.DescribeLogGroupsInput{
 		LogGroupNamePrefix: &groupPrefix,
 	})
 	if err != nil {
@@ -656,7 +663,7 @@ func (cw cloudwatchSpec) getLogGroupNames(groupPrefix string) ([]string, error) 
 
 	nextToken := logGroupDesc.NextToken
 	for nextToken != nil {
-		logGroupDesc, err = cw.cwClient.DescribeLogGroups(context.TODO(), &cloudwatchlogs.DescribeLogGroupsInput{
+		logGroupDesc, err = cw.CwClient.DescribeLogGroups(context.TODO(), &cloudwatchlogs.DescribeLogGroupsInput{
 			LogGroupNamePrefix: &groupPrefix,
 			NextToken:          nextToken,
 		})
@@ -671,16 +678,16 @@ func (cw cloudwatchSpec) getLogGroupNames(groupPrefix string) ([]string, error) 
 	return groupNames, nil
 }
 
-func (cw *cloudwatchSpec) waitForLogGroupsAppear(groupPrefix, keyword string) error {
+func (cw *CloudwatchSpec) WaitForLogGroupsAppear(groupPrefix, keyword string) error {
 	if groupPrefix == "" {
-		if strings.Contains(cw.groupName, "{") {
-			groupPrefix = strings.Split(cw.groupName, "{")[0]
+		if strings.Contains(cw.GroupName, "{") {
+			groupPrefix = strings.Split(cw.GroupName, "{")[0]
 		} else {
-			groupPrefix = cw.groupName
+			groupPrefix = cw.GroupName
 		}
 	}
 	err := wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 300*time.Second, true, func(context.Context) (done bool, err error) {
-		groups, err := cw.getLogGroupNames(groupPrefix)
+		groups, err := cw.GetLogGroupNames(groupPrefix)
 		if err != nil {
 			e2e.Logf("error getting log groups: %v", err)
 			return false, nil
@@ -690,8 +697,9 @@ func (cw *cloudwatchSpec) waitForLogGroupsAppear(groupPrefix, keyword string) er
 			return false, nil
 		}
 		e2e.Logf("the log group names %v", groups)
+
 		if keyword != "" {
-			return containSubstring(groups, keyword), nil
+			return strings.Contains(strings.Join(groups, ","), keyword), nil
 		}
 		return true, nil
 	})
@@ -701,8 +709,8 @@ func (cw *cloudwatchSpec) waitForLogGroupsAppear(groupPrefix, keyword string) er
 	return nil
 }
 
-// Get Stream names matching the logTypes and project names.
-func (cw *cloudwatchSpec) getLogStreamNames(groupName string, streamPrefix string) ([]string, error) {
+// Get Stream names matching the LogTypes and project names.
+func (cw *CloudwatchSpec) GetLogStreamNames(groupName string, streamPrefix string) ([]string, error) {
 	var (
 		logStreamNames  []string
 		err             error
@@ -720,7 +728,7 @@ func (cw *cloudwatchSpec) getLogStreamNames(groupName string, streamPrefix strin
 			LogStreamNamePrefix: &streamPrefix,
 		}
 	}
-	logStreamDesc, err = cw.cwClient.DescribeLogStreams(context.TODO(), &logStreamsInput)
+	logStreamDesc, err = cw.CwClient.DescribeLogStreams(context.TODO(), &logStreamsInput)
 	if err != nil {
 		return logStreamNames, fmt.Errorf("can't get log streams: %w", err)
 	}
@@ -742,7 +750,7 @@ func (cw *cloudwatchSpec) getLogStreamNames(groupName string, streamPrefix strin
 				NextToken:           nextToken,
 			}
 		}
-		logStreamDesc, err = cw.cwClient.DescribeLogStreams(context.TODO(), &logStreamsInput)
+		logStreamDesc, err = cw.CwClient.DescribeLogStreams(context.TODO(), &logStreamsInput)
 		if err != nil {
 			return logStreamNames, fmt.Errorf("can't get log streams from cloudwatch: %w", err)
 		}
@@ -755,17 +763,17 @@ func (cw *cloudwatchSpec) getLogStreamNames(groupName string, streamPrefix strin
 }
 
 // In this function, verify if the infra container logs are forwarded to Cloudwatch or not
-func (cw *cloudwatchSpec) checkInfraContainerLogs(strict bool) bool {
+func (cw *CloudwatchSpec) CheckInfraContainerLogs(strict bool) bool {
 	var (
 		infraLogGroupNames []string
 		logStreams         []string
 	)
-	logGroupNames, err := cw.getLogGroupNames("")
+	logGroupNames, err := cw.GetLogGroupNames("")
 	o.Expect(err).NotTo(o.HaveOccurred())
 	if len(logGroupNames) == 0 {
 		return false
 	}
-	if strings.Contains(cw.groupName, "{.log_type") {
+	if strings.Contains(cw.GroupName, "{.log_type") {
 		for _, e := range logGroupNames {
 			r, _ := regexp.Compile(`.*\.infrastructure$`)
 			match := r.MatchString(e)
@@ -780,7 +788,7 @@ func (cw *cloudwatchSpec) checkInfraContainerLogs(strict bool) bool {
 
 	// get all the log streams under the log groups
 	for _, group := range infraLogGroupNames {
-		streams, _ := cw.getLogStreamNames(group, "")
+		streams, _ := cw.GetLogStreamNames(group, "")
 		for _, stream := range streams {
 			if strings.Contains(stream, ".openshift-") {
 				logStreams = append(logStreams, stream)
@@ -788,14 +796,14 @@ func (cw *cloudwatchSpec) checkInfraContainerLogs(strict bool) bool {
 		}
 	}
 
-	// when strict=true, return ture if we can find podLogStream for all nodes
+	// when strict=true, return ture if we can find podLogStream for all Nodes
 	if strict {
-		if len(cw.nodes) == 0 {
+		if len(cw.Nodes) == 0 {
 			e2e.Logf("node name is empty, please get node names at first")
 			return false
 		}
-		for _, node := range cw.nodes {
-			if !containSubstring(logStreams, node+".openshift-") {
+		for _, node := range cw.Nodes {
+			if !libstrings.AnyContainSubstring(logStreams, node+".openshift-") {
 				e2e.Logf("can't find log stream %s", node+".openshift-")
 				return false
 			}
@@ -808,16 +816,16 @@ func (cw *cloudwatchSpec) checkInfraContainerLogs(strict bool) bool {
 
 // list streams, check streams, provide the log streams in this function?
 // In this function, verify the system logs present on Cloudwatch
-func (cw *cloudwatchSpec) checkInfraNodeLogs(strict bool) bool {
+func (cw *CloudwatchSpec) CheckInfraNodeLogs(strict bool) bool {
 	var (
 		infraLogGroupNames []string
 		logStreams         []string
 	)
-	logGroupNames, err := cw.getLogGroupNames("")
+	logGroupNames, err := cw.GetLogGroupNames("")
 	if err != nil || len(logGroupNames) == 0 {
 		return false
 	}
-	if strings.Contains(cw.groupName, ".log_type") {
+	if strings.Contains(cw.GroupName, ".log_type") {
 		for _, group := range logGroupNames {
 			r, _ := regexp.Compile(`.*\.infrastructure$`)
 			match := r.MatchString(group)
@@ -832,7 +840,7 @@ func (cw *cloudwatchSpec) checkInfraNodeLogs(strict bool) bool {
 
 	// get all the log streams under the log groups
 	for _, group := range infraLogGroupNames {
-		streams, _ := cw.getLogStreamNames(group, "")
+		streams, _ := cw.GetLogStreamNames(group, "")
 		for _, stream := range streams {
 			if strings.Contains(stream, ".journal.system") {
 				logStreams = append(logStreams, stream)
@@ -840,24 +848,24 @@ func (cw *cloudwatchSpec) checkInfraNodeLogs(strict bool) bool {
 		}
 	}
 	e2e.Logf("the infrastructure node log streams: %v", logStreams)
-	// when strict=true, return ture if we can find log streams from all nodes
+	// when strict=true, return ture if we can find log streams from all Nodes
 	if strict {
 		var expectedStreamNames []string
-		if len(cw.nodes) == 0 {
+		if len(cw.Nodes) == 0 {
 			e2e.Logf("node name is empty, please get node names at first")
 			return false
 		}
 		// stream name: ip-10-0-152-69.journal.system
-		if cw.clusterPlatformType == "aws" {
-			for _, node := range cw.nodes {
+		if cw.ClusterPlatformType == "aws" {
+			for _, node := range cw.Nodes {
 				expectedStreamNames = append(expectedStreamNames, strings.Split(node, ".")[0])
 			}
 		} else {
-			expectedStreamNames = append(expectedStreamNames, cw.nodes...)
+			expectedStreamNames = append(expectedStreamNames, cw.Nodes...)
 		}
 		for _, name := range expectedStreamNames {
 			streamName := name + ".journal.system"
-			if !contain(logStreams, streamName) {
+			if !libstrings.AnyContainSubstring(logStreams, streamName) {
 				e2e.Logf("can't find log stream %s", streamName)
 				return false
 			}
@@ -869,8 +877,8 @@ func (cw *cloudwatchSpec) checkInfraNodeLogs(strict bool) bool {
 }
 
 // In this function, verify the system logs present on Cloudwatch
-func (cw *cloudwatchSpec) infrastructureLogsFound(strict bool) bool {
-	return cw.checkInfraContainerLogs(strict) && cw.checkInfraNodeLogs(strict)
+func (cw *CloudwatchSpec) InfrastructureLogsFound(strict bool) bool {
+	return cw.CheckInfraContainerLogs(strict) && cw.CheckInfraNodeLogs(strict)
 }
 
 /*
@@ -880,22 +888,22 @@ when strict=true,  test pass if any audit log is found.
 stream:
 ip-10-0-90-156.us-east-2.compute.internal
 */
-func (cw *cloudwatchSpec) auditLogsFound(strict bool) bool {
+func (cw *CloudwatchSpec) AuditLogsFound(strict bool) bool {
 	var (
 		auditLogGroupNames []string
 		logStreams         []string
 	)
 
-	if len(cw.nodes) == 0 {
+	if len(cw.Nodes) == 0 {
 		e2e.Logf("node name is empty, please get node names at first")
 		return false
 	}
 
-	logGroupNames, err := cw.getLogGroupNames("")
+	logGroupNames, err := cw.GetLogGroupNames("")
 	if err != nil || len(logGroupNames) == 0 {
 		return false
 	}
-	if strings.Contains(cw.groupName, ".log_type") {
+	if strings.Contains(cw.GroupName, ".log_type") {
 		for _, e := range logGroupNames {
 			r, _ := regexp.Compile(`.*\.audit$`)
 			match := r.MatchString(e)
@@ -911,21 +919,21 @@ func (cw *cloudwatchSpec) auditLogsFound(strict bool) bool {
 	// stream name: ip-10-0-74-46.us-east-2.compute.internal
 	// get all the log streams under the log groups
 	for _, group := range auditLogGroupNames {
-		streams, _ := cw.getLogStreamNames(group, "")
+		streams, _ := cw.GetLogStreamNames(group, "")
 		logStreams = append(logStreams, streams...)
 	}
-	// when strict=true, return ture if we can find podLogStream for all nodes
+	// when strict=true, return ture if we can find podLogStream for all Nodes
 	if strict {
-		for _, node := range cw.nodes {
-			if !containSubstring(logStreams, node) {
+		for _, node := range cw.Nodes {
+			if !libstrings.AnyContainSubstring(logStreams, node) {
 				e2e.Logf("can't find log stream from node: %s", node)
 				return false
 			}
 		}
 		return true
 	} else {
-		for _, node := range cw.nodes {
-			if containSubstring(logStreams, node) {
+		for _, node := range cw.Nodes {
+			if libstrings.AnyContainSubstring(logStreams, node) {
 				return true
 			}
 		}
@@ -934,17 +942,17 @@ func (cw *cloudwatchSpec) auditLogsFound(strict bool) bool {
 }
 
 // check if the container logs are grouped by namespace_id
-func (cw *cloudwatchSpec) checkLogGroupByNamespaceID() bool {
+func (cw *CloudwatchSpec) CheckLogGroupByNamespaceID() bool {
 	var groupPrefix string
 
-	if strings.Contains(cw.groupName, ".kubernetes.namespace_id") {
-		groupPrefix = strings.Split(cw.groupName, "{")[0]
+	if strings.Contains(cw.GroupName, ".kubernetes.namespace_id") {
+		groupPrefix = strings.Split(cw.GroupName, "{")[0]
 	} else {
 		e2e.Logf("the group name doesn't contain .kubernetes.namespace_id, no need to call this function")
 		return false
 	}
-	for _, namespaceID := range cw.selNamespacesID {
-		groupErr := cw.waitForLogGroupsAppear(groupPrefix, namespaceID)
+	for _, namespaceID := range cw.SelNamespacesID {
+		groupErr := cw.WaitForLogGroupsAppear(groupPrefix, namespaceID)
 		if groupErr != nil {
 			e2e.Logf("can't find log group named %s", namespaceID)
 			return false
@@ -954,44 +962,44 @@ func (cw *cloudwatchSpec) checkLogGroupByNamespaceID() bool {
 }
 
 // check if the container logs are grouped by namespace_name
-func (cw *cloudwatchSpec) checkLogGroupByNamespaceName() bool {
+func (cw *CloudwatchSpec) CheckLogGroupByNamespaceName() bool {
 	var groupPrefix string
-	if strings.Contains(cw.groupName, ".kubernetes.namespace_name") {
-		groupPrefix = strings.Split(cw.groupName, "{")[0]
+	if strings.Contains(cw.GroupName, ".kubernetes.namespace_name") {
+		groupPrefix = strings.Split(cw.GroupName, "{")[0]
 	} else {
 		e2e.Logf("the group name doesn't contain .kubernetes.namespace_name, no need to call this function")
 		return false
 	}
-	for _, namespaceName := range cw.selAppNamespaces {
-		groupErr := cw.waitForLogGroupsAppear(groupPrefix, namespaceName)
+	for _, namespaceName := range cw.SelAppNamespaces {
+		groupErr := cw.WaitForLogGroupsAppear(groupPrefix, namespaceName)
 		if groupErr != nil {
 			e2e.Logf("can't find log group named %s", namespaceName)
 			return false
 		}
 	}
-	for _, ns := range cw.disAppNamespaces {
-		groups, err := cw.getLogGroupNames(groupPrefix)
+	for _, ns := range cw.DisAppNamespaces {
+		groups, err := cw.GetLogGroupNames(groupPrefix)
 		if err != nil {
 			return false
 		}
-		if containSubstring(groups, ns) {
+		if libstrings.AnyContainSubstring(groups, ns) {
 			return false
 		}
 	}
 	return true
 }
 
-func (cw *cloudwatchSpec) getApplicationLogStreams() ([]string, error) {
+func (cw *CloudwatchSpec) GetApplicationLogStreams() ([]string, error) {
 	var (
 		appLogGroupNames []string
 		logStreams       []string
 	)
 
-	logGroupNames, err := cw.getLogGroupNames("")
+	logGroupNames, err := cw.GetLogGroupNames("")
 	if err != nil || len(logGroupNames) == 0 {
 		return logStreams, err
 	}
-	if strings.Contains(cw.groupName, "{.log_type") {
+	if strings.Contains(cw.GroupName, "{.log_type") {
 		for _, e := range logGroupNames {
 			r, _ := regexp.Compile(`.*\.application$`)
 			match := r.MatchString(e)
@@ -1005,7 +1013,7 @@ func (cw *cloudwatchSpec) getApplicationLogStreams() ([]string, error) {
 	e2e.Logf("the possible log group names for application logs are %v", appLogGroupNames)
 
 	for _, group := range appLogGroupNames {
-		streams, _ := cw.getLogStreamNames(group, "")
+		streams, _ := cw.GetLogStreamNames(group, "")
 		for _, stream := range streams {
 			if !strings.Contains(stream, "ip-10-0") {
 				logStreams = append(logStreams, stream)
@@ -1021,26 +1029,26 @@ func (cw *cloudwatchSpec) getApplicationLogStreams() ([]string, error) {
 //	logType: anli48022-gwbb4.application
 //	namespaceName:  anli48022-gwbb4.aosqe-log-json-1638788875
 //	namespaceUUID:   anli48022-gwbb4.0471c739-e38c-4590-8a96-fdd5298d47ae,uuid.audit,uuid.infrastructure
-func (cw *cloudwatchSpec) applicationLogsFound() bool {
-	if (len(cw.selAppNamespaces) > 0 || len(cw.disAppNamespaces) > 0) && strings.Contains(cw.groupName, ".kubernetes.namespace_id") {
-		return cw.checkLogGroupByNamespaceName()
+func (cw *CloudwatchSpec) ApplicationLogsFound() bool {
+	if (len(cw.SelAppNamespaces) > 0 || len(cw.DisAppNamespaces) > 0) && strings.Contains(cw.GroupName, ".kubernetes.namespace_id") {
+		return cw.CheckLogGroupByNamespaceName()
 	}
-	if len(cw.selNamespacesID) > 0 {
-		return cw.checkLogGroupByNamespaceID()
+	if len(cw.SelNamespacesID) > 0 {
+		return cw.CheckLogGroupByNamespaceID()
 	}
 
-	logStreams, err := cw.getApplicationLogStreams()
+	logStreams, err := cw.GetApplicationLogStreams()
 	if err != nil || len(logStreams) == 0 {
 		return false
 	}
-	for _, ns := range cw.selAppNamespaces {
-		if !containSubstring(logStreams, ns) {
+	for _, ns := range cw.SelAppNamespaces {
+		if !libstrings.AnyContainSubstring(logStreams, ns) {
 			e2e.Logf("can't find logs from project %s", ns)
 			return false
 		}
 	}
-	for _, ns := range cw.disAppNamespaces {
-		if containSubstring(logStreams, ns) {
+	for _, ns := range cw.DisAppNamespaces {
+		if libstrings.AnyContainSubstring(logStreams, ns) {
 			e2e.Logf("find logs from project %s, this is not expected", ns)
 			return false
 		}
@@ -1048,19 +1056,19 @@ func (cw *cloudwatchSpec) applicationLogsFound() bool {
 	return true
 }
 
-// The common function to verify if logs can be found or not. In general, customized the cloudwatchSpec before call this function
-func (cw *cloudwatchSpec) logsFound() bool {
+// The common function to verify if logs can be found or not. In general, customized the CloudwatchSpec before call this function
+func (cw *CloudwatchSpec) LogsFound() bool {
 	var (
 		appLogSuccess   = true
 		infraLogSuccess = true
 		auditLogSuccess = true
 	)
 
-	for _, logType := range cw.logTypes {
+	for _, logType := range cw.LogTypes {
 		switch logType {
 		case "infrastructure":
 			err := wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
-				return cw.infrastructureLogsFound(true), nil
+				return cw.InfrastructureLogsFound(true), nil
 			})
 			if err != nil {
 				e2e.Logf("can't find infrastructure in given time")
@@ -1068,7 +1076,7 @@ func (cw *cloudwatchSpec) logsFound() bool {
 			}
 		case "audit":
 			err := wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
-				return cw.auditLogsFound(false), nil
+				return cw.AuditLogsFound(false), nil
 			})
 			if err != nil {
 				e2e.Logf("can't find audit logs in given time")
@@ -1076,7 +1084,7 @@ func (cw *cloudwatchSpec) logsFound() bool {
 			}
 		case "application":
 			err := wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
-				return cw.applicationLogsFound(), nil
+				return cw.ApplicationLogsFound(), nil
 			})
 			if err != nil {
 				e2e.Logf("can't find application logs in given time")
@@ -1087,19 +1095,19 @@ func (cw *cloudwatchSpec) logsFound() bool {
 	return infraLogSuccess && auditLogSuccess && appLogSuccess
 }
 
-func (cw *cloudwatchSpec) getLogRecordsByNamespace(limit int32, logGroupName string, namespaceName string) ([]LogEntity, error) {
+func (cw *CloudwatchSpec) GetLogRecordsByNamespace(limit int32, logGroupName string, namespaceName string) ([]viaq.LogEntity, error) {
 	var (
 		output *cloudwatchlogs.FilterLogEventsOutput
-		logs   []LogEntity
+		logs   []viaq.LogEntity
 	)
 
-	streamNames, streamErr := cw.getLogStreamNames(logGroupName, namespaceName)
+	streamNames, streamErr := cw.GetLogStreamNames(logGroupName, namespaceName)
 	if streamErr != nil {
 		return logs, streamErr
 	}
 	e2e.Logf("the log streams: %v", streamNames)
 	err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 300*time.Second, true, func(context.Context) (done bool, err error) {
-		output, err = cw.filterLogEvents(limit, logGroupName, "", streamNames...)
+		output, err = cw.FilterLogEvents(limit, logGroupName, "", streamNames...)
 		if err != nil {
 			e2e.Logf("get error when filter events in cloudwatch, try next time")
 			return false, nil
@@ -1113,7 +1121,7 @@ func (cw *cloudwatchSpec) getLogRecordsByNamespace(limit int32, logGroupName str
 		return nil, fmt.Errorf("the query is not completed in 5 minutes or there is no log record matches the query: %w", err)
 	}
 	for _, event := range output.Events {
-		var log LogEntity
+		var log viaq.LogEntity
 		if err := json.Unmarshal([]byte(*event.Message), &log); err != nil {
 			return nil, fmt.Errorf("can't parse log event from cloudwatch: %w", err)
 		}
@@ -1124,7 +1132,7 @@ func (cw *cloudwatchSpec) getLogRecordsByNamespace(limit int32, logGroupName str
 }
 
 // aws logs filter-log-events --log-group-name logging-47052-qitang-fips-zfpgd.application --log-stream-name-prefix=var.log.pods.e2e-test-logfwd-namespace-x8mzw
-func (cw *cloudwatchSpec) filterLogEvents(limit int32, logGroupName, logStreamNamePrefix string, logStreamNames ...string) (*cloudwatchlogs.FilterLogEventsOutput, error) {
+func (cw *CloudwatchSpec) FilterLogEvents(limit int32, logGroupName, logStreamNamePrefix string, logStreamNames ...string) (*cloudwatchlogs.FilterLogEventsOutput, error) {
 	if len(logStreamNamePrefix) > 0 && len(logStreamNames) > 0 {
 		return nil, fmt.Errorf("invalidParameterException: logStreamNamePrefix and logStreamNames are specified")
 	}
@@ -1134,13 +1142,13 @@ func (cw *cloudwatchSpec) filterLogEvents(limit int32, logGroupName, logStreamNa
 	)
 
 	if len(logStreamNamePrefix) > 0 {
-		output, err = cw.cwClient.FilterLogEvents(context.TODO(), &cloudwatchlogs.FilterLogEventsInput{
+		output, err = cw.CwClient.FilterLogEvents(context.TODO(), &cloudwatchlogs.FilterLogEventsInput{
 			LogGroupName:        &logGroupName,
 			LogStreamNamePrefix: &logStreamNamePrefix,
 			Limit:               &limit,
 		})
 	} else if len(logStreamNames) > 0 {
-		output, err = cw.cwClient.FilterLogEvents(context.TODO(), &cloudwatchlogs.FilterLogEventsInput{
+		output, err = cw.CwClient.FilterLogEvents(context.TODO(), &cloudwatchlogs.FilterLogEventsInput{
 			LogGroupName:   &logGroupName,
 			LogStreamNames: logStreamNames,
 			Limit:          &limit,
@@ -1165,7 +1173,7 @@ type S3Output struct {
 }
 
 func (s3 *S3Output) Init(oc *exutil.CLI) error {
-	cred, err := getAWSCredentials(oc)
+	cred, err := GetAWSCredentials(oc)
 	if err != nil {
 		g.Skip("Skip since no AWS credetials.")
 	}
@@ -1185,13 +1193,13 @@ func (s3 *S3Output) Init(oc *exutil.CLI) error {
 			}
 			s3.IAMClient = factory.IAM()
 			s3.STSClient = factory.STS()
-			awsAccountID, _ := getAwsAccount(s3.STSClient)
-			oidcName, err := getOIDC(oc)
+			awsAccountID, _ := GetAwsAccount(s3.STSClient)
+			oidcName, err := cluster.OIDCProvider(oc)
 			if err != nil {
 				return err
 			}
-			s3.RoleName = s3.BucketName + "-" + getRandomString()
-			s3.RoleArn = createIAMRoleForS3Bucket(s3.IAMClient, oidcName, awsAccountID, partition, s3.CollectorNamespace, s3.CollectorServiceAccount, s3.RoleName)
+			s3.RoleName = s3.BucketName + "-" + librandom.String()
+			s3.RoleArn = CreateIAMRoleForS3Bucket(s3.IAMClient, oidcName, awsAccountID, partition, s3.CollectorNamespace, s3.CollectorServiceAccount, s3.RoleName)
 			//token, _ := oc.AsAdmin().WithoutNamespace().Run("create").Args("token", s3.CollectorServiceAccount, "--audience=openshift", "--duration=24h", "-n", s3.CollectorNamespace).Output()
 			//err = oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", s3.SecretName, "--from-literal=role_arn="+s3.RoleArn, "--from-literal=token="+token, "-n", s3.CollectorNamespace).Execute()
 			err = oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", s3.SecretName, "--from-literal=role_arn="+s3.RoleArn, "-n", s3.CollectorNamespace).Execute()
@@ -1201,12 +1209,12 @@ func (s3 *S3Output) Init(oc *exutil.CLI) error {
 		}
 	}
 	s3.Client = factory.S3()
-	err = createS3Bucket(s3.Client, s3.BucketName, s3.Region)
+	err = CreateS3Bucket(s3.Client, s3.BucketName, s3.Region)
 	if err != nil {
 		return err
 	}
 	if !s3.StsEnabled {
-		err = loadAccessKeySecretKeyFromFile(context.TODO(), &cred)
+		err = LoadAccessKeySecretKeyFromFile(context.TODO(), &cred)
 		if err != nil {
 			return fmt.Errorf("can't get aws_access_key_id and aws_secret_access_key: %w", err)
 		}
@@ -1220,8 +1228,8 @@ func (s3 *S3Output) Init(oc *exutil.CLI) error {
 
 func (s3 *S3Output) Destroy(oc *exutil.CLI) {
 	if s3.StsEnabled {
-		deleteIAMroleonAWS(s3.IAMClient, s3.RoleName)
+		DeleteIAMroleonAWS(s3.IAMClient, s3.RoleName)
 	}
-	o.Expect(deleteS3Bucket(s3.Client, s3.BucketName)).NotTo(o.HaveOccurred())
+	o.Expect(DeleteS3Bucket(s3.Client, s3.BucketName)).NotTo(o.HaveOccurred())
 	oc.AsAdmin().WithoutNamespace().Run("delete").Args("secret", s3.SecretName, "-n", s3.CollectorNamespace).Execute()
 }
