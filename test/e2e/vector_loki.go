@@ -4345,6 +4345,7 @@ resource_attributes:
 		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 
 		compat_otp.By("Validate log streams are pushed to external storage bucket/container")
+		ls.shutdownLokiStackToFlushStorage(oc)
 		ls.validateExternalObjectStorageForLogs(oc, []string{"application", "audit", "infrastructure"})
 	})
 
@@ -4697,6 +4698,7 @@ resource_attributes:
 		e2e.Logf("Dropped attributes validation success for tenant: audit")
 
 		compat_otp.By("Validate log streams are pushed to external storage bucket/container")
+		ls.shutdownLokiStackToFlushStorage(oc)
 		ls.validateExternalObjectStorageForLogs(oc, []string{"application", "audit", "infrastructure"})
 	})
 
@@ -5243,6 +5245,7 @@ spec:
 			lc.waitForLogsAppearByKey(logType, "openshift_log_type", logType)
 			e2e.Logf("Logs found for tenant %s", logType)
 		}
+		ls.shutdownLokiStackToFlushStorage(oc)
 		ls.validateExternalObjectStorageForLogs(oc, []string{"application", "audit", "infrastructure"})
 	})
 })
