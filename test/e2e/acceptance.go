@@ -149,8 +149,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		}
 		journalLog, err := lc.searchLogsInLoki("infrastructure", `{log_type = "infrastructure", kubernetes_namespace_name !~ ".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		journalLogs := extractLogEntities(journalLog)
-		o.Expect(journalLogs).ShouldNot(o.BeEmpty(), "can't find journal logs in lokistack")
+		o.Expect(journalLog.Data.Result).ShouldNot(o.BeEmpty(), "can't find journal logs in lokistack")
 		e2e.Logf("find journal logs")
 		lc.waitForLogsAppearByProject("application", appProj)
 
@@ -161,12 +160,10 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		// For Infra tenant
 		logs, err := lc.searchLogsInLoki("infrastructure", `{openshift_log_type = "infrastructure", k8s_namespace_name=~".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs := extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		journalLog, err = lc.searchLogsInLoki("infrastructure", `{openshift_log_type = "infrastructure", k8s_namespace_name !~ ".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		journalLogs = extractLogEntities(journalLog)
-		o.Expect(journalLogs).ShouldNot(o.BeEmpty())
+		o.Expect(journalLog.Data.Result).ShouldNot(o.BeEmpty())
 		// For Audit tenant
 		lc.waitForLogsAppearByKey("audit", "openshift_log_type", "audit")
 		e2e.Logf("Otel semantic convention labels found!")
@@ -514,8 +511,7 @@ retry_max_duration_secs = 20`,
 		}
 		journalLog, err := lc.searchLogsInLoki("infrastructure", `{log_type = "infrastructure", kubernetes_namespace_name !~ ".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		journalLogs := extractLogEntities(journalLog)
-		o.Expect(journalLogs).ShouldNot(o.BeEmpty(), "can't find journal logs in lokistack")
+		o.Expect(journalLog.Data.Result).ShouldNot(o.BeEmpty(), "can't find journal logs in lokistack")
 		e2e.Logf("find journal logs")
 		lc.waitForLogsAppearByProject("application", appProj)
 

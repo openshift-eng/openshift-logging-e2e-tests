@@ -1033,8 +1033,7 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 			lc.waitForLogsAppearByKey("infrastructure", "log_type", "infrastructure")
 			sysLog, err := lc.searchLogsInLoki("infrastructure", `{log_type = "infrastructure"}|json|facility = "local0"`)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			sysLogs := extractLogEntities(sysLog)
-			o.Expect(sysLogs).ShouldNot(o.BeEmpty(), "can't find logs from syslog in lokistack")
+			o.Expect(sysLog.Data.Result).ShouldNot(o.BeEmpty(), "can't find logs from syslog in lokistack")
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
@@ -3970,32 +3969,26 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 		// Query with key 'kubernetes_namespace_name' - should yield an empty response
 		logs, err = lc.searchByKey("application", "kubernetes_namespace_name", appProj)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		logs, err = lc.searchByKey("application", "k8s_namespace_name", appProj) // Otel semantic convention
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		// Query with key 'kubernetes_pod_name' - should yield an empty response
 		podList, err := oc.AdminKubeClient().CoreV1().Pods(appProj).List(context.Background(), metav1.ListOptions{LabelSelector: "run=centos-logtest"})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		logs, err = lc.searchByKey("application", "kubernetes_pod_name", podList.Items[0].Name)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		logs, err = lc.searchByKey("application", "k8s_pod_name", podList.Items[0].Name) // Otel semantic convention
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		// Query with key 'kubernetes_container_name' - should yield a NON empty response
 		logs, err = lc.searchByKey("application", "kubernetes_container_name", "logging-centos-logtest")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		logs, err = lc.searchByKey("application", "k8s_container_name", "logging-centos-logtest") // Otel semantic convention
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		e2e.Logf("Validation with application labelKeys is success")
 
 		compat_otp.By("Validating infrastructure log streams with labelKeys")
@@ -4005,33 +3998,27 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 		// Query with key 'log_type' - should yield an empty response
 		logs, err = lc.searchByKey("infrastructure", "log_type", "infrastructure")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		logs, err = lc.searchByKey("infrastructure", "openshift_log_type", "infrastructure") // Otel semantic convention
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		// Query with key 'kubernetes_pod_name' - should yield an empty response
 		for _, pod := range infraLogPodNames {
 			logs, err = lc.searchByKey("infrastructure", "kubernetes_pod_name", pod)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			extractedLogs = extractLogEntities(logs)
-			o.Expect(extractedLogs).Should(o.BeEmpty())
+			o.Expect(logs.Data.Result).Should(o.BeEmpty())
 			logs, err = lc.searchByKey("infrastructure", "k8s_pod_name", pod) // Otel semantic convention
 			o.Expect(err).NotTo(o.HaveOccurred())
-			extractedLogs = extractLogEntities(logs)
-			o.Expect(extractedLogs).Should(o.BeEmpty())
+			o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		}
 		// Query with key 'kubernetes_container_name' - should yield a empty response
 		for _, container := range infraLogContainerNames {
 			logs, err := lc.searchByKey("infrastructure", "kubernetes_container_name", container)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			extractedLogs = extractLogEntities(logs)
-			o.Expect(extractedLogs).Should(o.BeEmpty())
+			o.Expect(logs.Data.Result).Should(o.BeEmpty())
 			logs, err = lc.searchByKey("infrastructure", "k8s_container_name", container) // Otel semantic convention
 			o.Expect(err).NotTo(o.HaveOccurred())
-			extractedLogs = extractLogEntities(logs)
-			o.Expect(extractedLogs).Should(o.BeEmpty())
+			o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		}
 		e2e.Logf("Validation with infrastructure labelKeys is success")
 	})
@@ -4133,37 +4120,30 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 		// Query with key 'kubernetes_namespace_name' - should yield a NON empty response
 		logs, err = lc.searchByKey("application", "kubernetes_namespace_name", appProj)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		logs, err = lc.searchByKey("application", "k8s_namespace_name", appProj) // Otel semantic convention
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		// Query with key 'kubernetes_pod_name' - should yield a NON empty response
 		podList, err := oc.AdminKubeClient().CoreV1().Pods(appProj).List(context.Background(), metav1.ListOptions{LabelSelector: "run=centos-logtest"})
 		o.Expect(err).NotTo(o.HaveOccurred())
 		logs, err = lc.searchByKey("application", "kubernetes_pod_name", podList.Items[0].Name)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		logs, err = lc.searchByKey("application", "k8s_pod_name", podList.Items[0].Name) // Otel semantic convention
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		// Query with key 'kubernetes_container_name' - should yield a NON empty response
 		logs, err = lc.searchByKey("application", "kubernetes_container_name", "logging-centos-logtest")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		logs, err = lc.searchByKey("application", "k8s_container_name", "logging-centos-logtest") // Otel semantic convention
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		// Query with key 'kubernetes.labels.test' - should yield a NON empty response
 		logs, err = lc.searchByKey("application", "kubernetes_labels_test", "centos-logtest")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		e2e.Logf("Validation with application labelKeys is success")
 
 		compat_otp.By("Validating infrastructure log streams with labelKeys")
@@ -4173,29 +4153,24 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 		// Query with key 'log_type' - should yield an empty response
 		logs, err = lc.searchByKey("infrastructure", "log_type", "infrastructure")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		// Query with key 'kubernetes_pod_name' - should yield an empty response
 		for _, pod := range infraLogPodNames {
 			logs, err = lc.searchByKey("infrastructure", "kubernetes_pod_name", pod)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			extractedLogs = extractLogEntities(logs)
-			o.Expect(extractedLogs).Should(o.BeEmpty())
+			o.Expect(logs.Data.Result).Should(o.BeEmpty())
 			logs, err = lc.searchByKey("infrastructure", "k8s_pod_name", pod) // Otel semantic convention
 			o.Expect(err).NotTo(o.HaveOccurred())
-			extractedLogs = extractLogEntities(logs)
-			o.Expect(extractedLogs).Should(o.BeEmpty())
+			o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		}
 		// Query with key 'kubernetes_container_name' - should yield a empty response
 		for _, container := range infraLogContainerNames {
 			logs, err := lc.searchByKey("infrastructure", "kubernetes_container_name", container)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			extractedLogs = extractLogEntities(logs)
-			o.Expect(extractedLogs).Should(o.BeEmpty())
+			o.Expect(logs.Data.Result).Should(o.BeEmpty())
 			logs, err = lc.searchByKey("infrastructure", "k8s_container_name", container) // Otel semantic convention
 			o.Expect(err).NotTo(o.HaveOccurred())
-			extractedLogs = extractLogEntities(logs)
-			o.Expect(extractedLogs).Should(o.BeEmpty())
+			o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		}
 		e2e.Logf("Validation with infrastructure labelKeys is success")
 	})
@@ -4364,12 +4339,10 @@ resource_attributes:
 		lc.waitForLogsAppearByKey("application", "k8s_namespace_name", appProj)
 		logs, err := lc.searchLogsInLoki("application", `{ openshift_log_type="application"} | json | k8s_container_name="logging-centos-logtest"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs := extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		logs, err = lc.searchLogsInLoki("infrastructure", `{k8s_namespace_name=~".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 
 		compat_otp.By("Validate log streams are pushed to external storage bucket/container")
 		ls.validateExternalObjectStorageForLogs(oc, []string{"application", "audit", "infrastructure"})
@@ -4686,17 +4659,14 @@ resource_attributes:
 		// Below should return no response/logs since the querying attributes 'k8s.pod.uid' and 'k8s.pod.labels.*' are dropped
 		logs, err := lc.searchLogsInLoki("application", `{ openshift_log_type="application"} | json | k8s_pod_uid=~".+"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs := extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		logs, err = lc.searchLogsInLoki("application", `{ openshift_log_type="application"} | json | k8s_pod_label_test="centos-logtest"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		// the openshiftLabels filter is NOT dropped under application tenant, so below should return log records
 		logs, err = lc.searchLogsInLoki("application", `{ openshift_log_type="application"} | json | openshift_label_isOtelDataModel="true"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		e2e.Logf("Dropped attributes validation success for tenant: application")
 
 		// for Infrastructure tenant
@@ -4704,22 +4674,18 @@ resource_attributes:
 		//lc.waitForLogsAppearByKey("infrastructure", "k8s_namespace_name", "")
 		logs, err = lc.searchLogsInLoki("infrastructure", `{k8s_namespace_name=~".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		// Below should return no response/logs since the querying attributes 'k8s.pod.uid' and 'log.iostream' are dropped
 		logs, err = lc.searchLogsInLoki("infrastructure", `{ openshift_log_type="infrastructure", log_source="container"} | json | k8s_pod_uid=~".+"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		logs, err = lc.searchLogsInLoki("infrastructure", `{ openshift_log_type="infrastructure"} | json | log_iostream=~".+"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		// the openshiftLabels filter is NOT dropped under infrastructure tenant, so below should return log records
 		logs, err = lc.searchLogsInLoki("infrastructure", `{ openshift_log_type="infrastructure"} | json | openshift_label_isOtelDataModel="true"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).ShouldNot(o.BeEmpty())
+		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 		e2e.Logf("Dropped attributes validation success for tenant: infrastructure")
 
 		// for Audit tenant
@@ -4727,8 +4693,7 @@ resource_attributes:
 		// the openshiftLabels filter is dropped under audit tenant, so below should NOT return log records
 		logs, err = lc.searchLogsInLoki("audit", `{ openshift_log_type="audit"} | json | openshift_label_isOtelDataModel="true"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		extractedLogs = extractLogEntities(logs)
-		o.Expect(extractedLogs).Should(o.BeEmpty())
+		o.Expect(logs.Data.Result).Should(o.BeEmpty())
 		e2e.Logf("Dropped attributes validation success for tenant: audit")
 
 		compat_otp.By("Validate log streams are pushed to external storage bucket/container")
