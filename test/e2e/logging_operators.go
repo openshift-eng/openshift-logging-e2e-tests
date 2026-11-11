@@ -1755,8 +1755,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		lc.waitForLogsAppearByKey("infrastructure", "log_type", "infrastructure")
 		sysLog, err := lc.searchLogsInLoki("infrastructure", `{log_type = "infrastructure"}|json|facility = "local0"`)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		sysLogs := extractLogEntities(sysLog)
-		o.Expect(sysLogs).ShouldNot(o.BeEmpty(), "can't find logs from syslog in lokistack")
+		o.Expect(sysLog.Data.Result).ShouldNot(o.BeEmpty(), "can't find logs from syslog in lokistack")
 
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
 		for _, clf := range []clusterlogforwarder{lsCLF, sysCLF} {
