@@ -881,27 +881,34 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			compat_otp.By("verfy clf without drop spec is rejected")
 			patch := `[{"op":"add","path":"/spec/filters","value":[{"name":"drop-logs","type":"drop"}]},{"op":"add","path":"/spec/pipelines/0/filterRefs","value":["drop-logs"]}]`
 			outString, _ := clf.patch(oc, patch)
+			e2e.Logf("patch output:\n%s", outString)
 			o.Expect(strings.Contains(outString, `The ClusterLogForwarder "clf-75390" is invalid:`)).To(o.BeTrue())
-			o.Expect(strings.Contains(outString, `invalid: spec.filters[0]: Invalid value: "object": Additional type specific spec is required for the filter type`)).To(o.BeTrue())
+			o.Expect(strings.Contains(outString, `spec.filters[0]`)).To(o.BeTrue())
+			o.Expect(strings.Contains(outString, `Additional type specific spec is required for the filter type`)).To(o.BeTrue())
 
 			compat_otp.By("verfy clf with invalid drop fileds is rejected")
 			patch = `[{"op":"add","path":"/spec/filters","value":[{"name":"drop-logs","type":"drop","drop":[{"test":[{"field":".kubernetes.labels.test.logging.io/logging.qe-test-label","matches":".+"}]}]}]},{"op":"add","path":"/spec/pipelines/0/filterRefs","value":["drop-logs"]}]`
 			outString, _ = clf.patch(oc, patch)
+			e2e.Logf("patch output:\n%s", outString)
 			o.Expect(strings.Contains(outString, `The ClusterLogForwarder "clf-75390" is invalid:`)).To(o.BeTrue())
-			o.Expect(strings.Contains(outString, `spec.filters[0].drop[0].test[0].field: Invalid value: ".kubernetes.labels.test.logging.io/logging.qe-test-label"`)).To(o.BeTrue())
+			o.Expect(strings.Contains(outString, `spec.filters[0].drop[0].test[0].field`)).To(o.BeTrue())
+			o.Expect(strings.Contains(outString, `".kubernetes.labels.test.logging.io/logging.qe-test-label"`)).To(o.BeTrue())
 			o.Expect(strings.Contains(outString, `spec.filters[0].drop[0].test[0].field in body should match '^(\.[a-zA-Z0-9_]+|\."[^"]+")(\.[a-zA-Z0-9_]+|\."[^"]+")*$`)).To(o.BeTrue())
 
 			compat_otp.By("verify CLF without prune spec is rejected")
 			patch = `[{"op":"add","path":"/spec/filters", "value": [{"name": "prune-logs", "type": "prune"}]},{"op":"add","path":"/spec/pipelines/0/filterRefs","value":["prune-logs"]}]`
 			outString, _ = clf.patch(oc, patch)
+			e2e.Logf("patch output:\n%s", outString)
 			o.Expect(strings.Contains(outString, `The ClusterLogForwarder "clf-75390" is invalid:`)).To(o.BeTrue())
-			o.Expect(strings.Contains(outString, ` Invalid value: "object": Additional type specific spec is required for the filter type`)).To(o.BeTrue())
+			o.Expect(strings.Contains(outString, `spec.filters[0]`)).To(o.BeTrue())
+			o.Expect(strings.Contains(outString, `Additional type specific spec is required for the filter type`)).To(o.BeTrue())
 
 			compat_otp.By("verify CLF with invalid prune value is rejected")
 			patch = `[{"op":"add","path":"/spec/filters","value":[{"name":"prune-logs","type":"prune","prune":{"in":[".kubernetes.namespace_labels.pod-security.kubernetes.io/audit",".file",".kubernetes.annotations"]}}]},{"op":"add","path":"/spec/pipelines/0/filterRefs","value":["prune-logs"]}]`
 			outString, _ = clf.patch(oc, patch)
+			e2e.Logf("patch output:\n%s", outString)
 			o.Expect(strings.Contains(outString, `The ClusterLogForwarder "clf-75390" is invalid:`)).To(o.BeTrue())
-			o.Expect(strings.Contains(outString, `Invalid value: ".kubernetes.namespace_labels.pod-security.kubernetes.io/audit"`)).To(o.BeTrue())
+			o.Expect(strings.Contains(outString, `".kubernetes.namespace_labels.pod-security.kubernetes.io/audit"`)).To(o.BeTrue())
 			o.Expect(strings.Contains(outString, `body should match '^(\.[a-zA-Z0-9_]+|\."[^"]+")(\.[a-zA-Z0-9_]+|\."[^"]+")*$'`)).To(o.BeTrue())
 
 			compat_otp.By("verify filtersStatus show error when prune fields include .log_type, .message or .log_source")

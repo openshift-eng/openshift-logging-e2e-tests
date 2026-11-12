@@ -5075,9 +5075,8 @@ max_bytes = 3145728`,
 type = "opentelemetry"`,
 			`max_events = 1`,
 		}
-		result, err := checkCollectorConfiguration(oc, clf.namespace, clf.name+"-config", expectedConfigs...)
+		err = waitForCollectorConfiguration(oc, clf.namespace, clf.name+"-config", 2*time.Minute, expectedConfigs...)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(result).To(o.BeTrue(), "some of the configuration is not in vector.toml")
 		// TODO: add a step to check vector request size
 
 		compat_otp.By("Update the lokistack tuning configurations")
@@ -5106,9 +5105,8 @@ type = "disk"
 when_full = "block"
 max_size = 268435488`,
 		}
-		result, err = checkCollectorConfiguration(oc, clf.namespace, clf.name+"-config", newConfigs...)
+		err = waitForCollectorConfiguration(oc, clf.namespace, clf.name+"-config", 2*time.Minute, newConfigs...)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(result).To(o.BeTrue(), "some of the configuration is not in vector.toml")
 		// TODO: add a step to check vector request size
 	})
 })

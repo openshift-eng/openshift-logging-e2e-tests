@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -938,7 +937,9 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			dataInES := ees.searchDocByQuery(oc, "app", "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+app+"\"}}}")
 			k8sLabelsInES := dataInES.Hits.DataHits[0].Source.Kubernetes.Lables
 			o.Expect(k8sLabelsInES).ShouldNot(o.BeEmpty())
-			o.Expect(reflect.DeepEqual(processedLabels, k8sLabelsInES)).Should(o.BeTrue())
+			// compare with o.Equal instead of reflect.DeepEqual so that a
+			// mismatch reports the actual labels stored in ES
+			o.Expect(k8sLabelsInES).Should(o.Equal(processedLabels))
 
 			g.By("check data in Loki")
 			route := "http://" + getRouteAddress(oc, loki.namespace, loki.name)
@@ -957,7 +958,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			dataInLoki, _ := lc.searchByNamespace("", app)
 			lokiLog := extractLogEntities(dataInLoki)
 			k8sLabelsInLoki := lokiLog[0].Kubernetes.Lables
-			o.Expect(reflect.DeepEqual(processedLabels, k8sLabelsInLoki)).Should(o.BeTrue())
+			o.Expect(k8sLabelsInLoki).Should(o.Equal(processedLabels))
 			flatLabelsInLoki := lokiLog[0].Kubernetes.FlatLabels
 			o.Expect(flatLabelsInLoki).Should(o.BeEmpty())
 		})
