@@ -62,7 +62,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				loggingNS:                  clfNS,
 				inPluginType:               "http",
 			}
-			defer fluentdS.remove(oc)
+			deferCleanup(func() { fluentdS.remove(oc) })
 			fluentdS.deploy(oc)
 
 			g.By("create clusterlogforwarder/instance")
@@ -77,7 +77,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				waitForPodReady:           true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=https://"+fluentdS.serverName+"."+fluentdS.namespace+".svc:24224")
 
 			g.By("check logs in fluentd server")
@@ -106,7 +106,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				loggingNS:    fluentdProj,
 				inPluginType: "http",
 			}
-			defer fluentdS.remove(oc)
+			deferCleanup(func() { fluentdS.remove(oc) })
 			fluentdS.deploy(oc)
 
 			g.By("create clusterlogforwarder/instance")
@@ -121,7 +121,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				waitForPodReady:           true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=https://"+fluentdS.serverName+"."+fluentdS.namespace+".svc:24224")
 
 			g.By("check logs in fluentd server")
@@ -149,7 +149,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				loggingNS:    fluentdProj,
 				inPluginType: "http",
 			}
-			defer fluentdS.remove(oc)
+			deferCleanup(func() { fluentdS.remove(oc) })
 			fluentdS.deploy(oc)
 
 			g.By("create clusterlogforwarder/instance")
@@ -163,7 +163,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				waitForPodReady:           true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+fluentdS.serverName+"."+fluentdS.namespace+".svc:24224")
 
 			g.By("check logs in fluentd server")
@@ -192,12 +192,12 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				loggingNS:    fluentdProj,
 				inPluginType: "http",
 			}
-			defer fluentdS.remove(oc)
+			deferCleanup(func() { fluentdS.remove(oc) })
 			fluentdS.deploy(oc)
 
 			// Create a fake secret from root ca which is used for TLSSkipVerify
 			fakeSecret := resource{"secret", "fake-bundle-60936", fluentdProj}
-			defer fakeSecret.clear(oc)
+			deferCleanup(func() { fakeSecret.clear(oc) })
 			dirname := "/tmp/60936-keys"
 			defer os.RemoveAll(dirname)
 			err = os.MkdirAll(dirname, 0o777)
@@ -219,7 +219,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				waitForPodReady:           true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=https://"+fluentdS.serverName+"."+fluentdS.namespace+".svc:24224")
 
 			g.By("check logs in fluentd server")
@@ -254,7 +254,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				loggingNS:    fluentdProj,
 				inPluginType: "http",
 			}
-			defer fluentdS.remove(oc)
+			deferCleanup(func() { fluentdS.remove(oc) })
 			fluentdS.deploy(oc)
 
 			compat_otp.By("create clusterlogforwarder/instance")
@@ -269,7 +269,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=https://"+fluentdS.serverName+"."+fluentdS.namespace+".svc:24224")
 
 			compat_otp.By("The HTTP sink in Vector config must use the Old tlsSecurityProfile")
@@ -332,7 +332,7 @@ ca_file = "/var/run/ocp-collector/secrets/to-fluentd-60933/ca-bundle.crt"`
 				loggingNS:                  clfNS,
 				inPluginType:               "http",
 			}
-			defer fluentdS.remove(oc)
+			deferCleanup(func() { fluentdS.remove(oc) })
 			fluentdS.deploy(oc)
 
 			g.By("create clusterlogforwarder/instance")
@@ -345,7 +345,7 @@ ca_file = "/var/run/ocp-collector/secrets/to-fluentd-60933/ca-bundle.crt"`
 				collectAuditLogs:   false,
 				waitForPodReady:    true,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=https://"+fluentdS.serverName+"."+fluentdS.namespace+".svc:24224")
 
 			g.By("send two records to httpserver")

@@ -80,13 +80,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			josnLogTemplate := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 
 			g.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			g.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX=main")
 
 			g.By("create log producer")
@@ -140,7 +140,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			cert.generateCerts(oc, keysPath)
 
 			g.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			g.By("create clusterlogforwarder")
@@ -154,9 +154,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "clf-" + getRandomString(),
 			}
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=https://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "SKIP_VERIFY=true")
 
 			g.By("create log producer")
@@ -206,7 +206,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			cert.generateCerts(oc, keysPath)
 
 			g.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			g.By("create clusterlogforwarder")
@@ -220,9 +220,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "clf-" + getRandomString(),
 			}
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=https://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name)
 
 			g.By("create log producer")
@@ -282,13 +282,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			cert.generateCerts(oc, keysPath)
 
 			g.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			g.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=https://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name)
 
 			g.By("create log producer")
@@ -348,13 +348,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			cert.generateCerts(oc, keysPath)
 
 			g.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			g.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=https://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name)
 
 			g.By("create log producer")
@@ -400,7 +400,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			sp.init()
 			indexName := "custom-index-" + getRandomString()
 			compat_otp.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 			errIndex := sp.createIndexes(oc, indexName)
 			o.Expect(errIndex).NotTo(o.HaveOccurred())
@@ -429,9 +429,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 
 			compat_otp.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX="+indexName)
 
 			compat_otp.By("check logs in splunk")
@@ -463,7 +463,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			sp.init()
 
 			compat_otp.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 			var indexes []string
 			namespaces, err := oc.AdminKubeClient().CoreV1().Namespaces().List(context.Background(), metav1.ListOptions{})
@@ -493,9 +493,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 
 			compat_otp.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX={.kubernetes.namespace_name||\"\"}")
 
 			compat_otp.By("check logs in splunk")
@@ -536,7 +536,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			sp.init()
 
 			compat_otp.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			index := "multi_splunk-indexes_71031"
@@ -559,9 +559,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 
 			compat_otp.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX={.openshift.labels.test||\"\"}")
 			patch := `[{"op": "add", "path": "/spec/filters", "value": [{"name": "labels", "type": "openshiftLabels", "openshiftLabels": {"test": "` + index + `"}}]}, {"op": "add", "path": "/spec/pipelines/0/filterRefs", "value": ["labels"]}]`
 			clf.update(oc, "", patch, "--type=json")
@@ -601,7 +601,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			sp.init()
 
 			compat_otp.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			index := "logging-OCP_71035"
@@ -625,9 +625,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 
 			compat_otp.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX={.kubernetes.labels.\"test.logging.io/logging.qe-test-label\"||\"\"}")
 
 			compat_otp.By("check logs in splunk")
@@ -668,7 +668,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			sp.init()
 
 			compat_otp.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 			o.Expect(sp.createIndexes(oc, appProj)).NotTo(o.HaveOccurred())
 			o.Expect(sp.createIndexes(oc, "openshift-operator-lifecycle-manager")).NotTo(o.HaveOccurred())
@@ -690,9 +690,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 
 			compat_otp.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX={.kubernetes.namespace_name||\"main\"}")
 
 			compat_otp.By("verify logs can are found in namespace_name index")
@@ -736,7 +736,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 			sp.init()
 
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			g.By("create clusterlogforwarder/instance")
@@ -750,7 +750,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				certFile:   "",
 				passphrase: "",
 			}
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
 			clf := clusterlogforwarder{
 				name:                      "http-to-splunk",
@@ -763,7 +763,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectApplicationLogs:    false,
 				collectInfrastructureLogs: false,
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088")
 
 			g.By("send data to httpservers")
@@ -788,7 +788,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			sp.init()
 
 			compat_otp.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			clfSecret := toSplunkSecret{
@@ -808,9 +808,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 
 			compat_otp.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX={.kubernetes.non_existing.key||\"\"}")
 
 			compat_otp.By("update CLF to set invalid glob for namespace")
@@ -853,7 +853,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			sp.init()
 
 			compat_otp.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			clfSecret := toSplunkSecret{
@@ -873,9 +873,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 
 			compat_otp.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name)
 
 			compat_otp.By("verfy clf without drop spec is rejected")
@@ -955,13 +955,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			josnLogTemplate := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 
 			g.By("Deploy splunk")
-			defer sp.destroy(oc)
+			deferCleanup(func() { sp.destroy(oc) })
 			sp.deploy(oc)
 
 			g.By("create clusterlogforwarder")
-			defer clfSecret.delete(oc)
+			deferCleanup(func() { clfSecret.delete(oc) })
 			clfSecret.create(oc)
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX=main")
 
 			g.By("create log producer")

@@ -63,6 +63,24 @@ var (
 	upgradeFromChannel = channelFromEnv("LOGGING_UPGRADE_FROM_VERSION")
 )
 
+// KeepResourcesOnFailure reports whether LOGGING_E2E_KEEP_ON_FAILURE=true, which
+// leaves the resources of a failed spec in the cluster for inspection.
+func KeepResourcesOnFailure() bool {
+	return os.Getenv("LOGGING_E2E_KEEP_ON_FAILURE") == "true"
+}
+
+// deferCleanup runs f after the spec, like a Go defer, except that it is skipped
+// when KeepResourcesOnFailure is set and the spec failed. Go defers cannot make
+// this decision because they run before Ginkgo records the failure.
+func deferCleanup(f func()) {
+	g.DeferCleanup(func() {
+		if KeepResourcesOnFailure() && g.CurrentSpecReport().Failed() {
+			return
+		}
+		f()
+	})
+}
+
 // SubscriptionObjects objects are used to create operators via OLM
 type SubscriptionObjects struct {
 	OperatorName       string

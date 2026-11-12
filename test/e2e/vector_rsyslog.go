@@ -58,7 +58,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				tls:        false,
 				loggingNS:  syslogProj,
 			}
-			defer rsyslog.remove(oc)
+			deferCleanup(func() { rsyslog.remove(oc) })
 			rsyslog.deploy(oc)
 
 			g.By("Create clusterlogforwarder/instance")
@@ -72,7 +72,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "RFC=RFC3164", "URL=udp://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:514", "NAMESPACE_PATTERN="+appProj)
 
 			g.By("Check logs in rsyslog server")
@@ -146,7 +146,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				tls:        false,
 				loggingNS:  syslogProj,
 			}
-			defer rsyslog.remove(oc)
+			deferCleanup(func() { rsyslog.remove(oc) })
 			rsyslog.deploy(oc)
 
 			g.By("Create clusterlogforwarder/instance")
@@ -160,7 +160,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "RFC=RFC5424", "URL=udp://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:514", "LOG_LEVEL=debug", "NAMESPACE_PATTERN="+appProj)
 
 			g.By("Check logs in rsyslog server")
@@ -228,7 +228,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				tls:        false,
 				loggingNS:  syslogProj,
 			}
-			defer rsyslog.remove(oc)
+			deferCleanup(func() { rsyslog.remove(oc) })
 			rsyslog.deploy(oc)
 
 			g.By("Create clusterlogforwarder/instance")
@@ -242,7 +242,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "RFC=RFC5424", "URL=udp://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:514", "LOG_LEVEL=debug", "NAMESPACE_PATTERN="+appProj)
 
 			g.By("Check logs in rsyslog server")
@@ -305,7 +305,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				secretName: "rsyslog-tls",
 				loggingNS:  syslogProj,
 			}
-			defer rsyslog.remove(oc)
+			deferCleanup(func() { rsyslog.remove(oc) })
 			rsyslog.deploy(oc)
 
 			g.By("Create clusterlogforwarder/clf-61479")
@@ -320,7 +320,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "RFC=RFC5424", "URL=tls://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:6514", "NAMESPACE_PATTERN="+appProj)
 			g.By("Check logs in rsyslog server")
 			rsyslog.checkData(oc, true, "app-container.log")
@@ -351,7 +351,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				clientKeyPassphrase: "test-rsyslog-mtls",
 				secretName:          "rsyslog-mtls",
 			}
-			defer rsyslog.remove(oc)
+			deferCleanup(func() { rsyslog.remove(oc) })
 			rsyslog.deploy(oc)
 
 			g.By("Create clusterlogforwarder/instance")
@@ -366,7 +366,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=tls://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:6514")
 			g.By("Check logs in rsyslog server")
 			rsyslog.checkData(oc, true, "app-container.log")
@@ -405,7 +405,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-mtls/ca-bundle.crt"`
 				secretName: "rsyslog-tls",
 				loggingNS:  syslogProj,
 			}
-			defer rsyslog.remove(oc)
+			deferCleanup(func() { rsyslog.remove(oc) })
 			rsyslog.deploy(oc)
 
 			compat_otp.By("Create clusterlogforwarder")
@@ -420,7 +420,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-mtls/ca-bundle.crt"`
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=tls://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:6514")
 
 			compat_otp.By("The Syslog sink in Vector config must use the Custom tlsSecurityProfile")
@@ -484,7 +484,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 				secretName: "rsyslog-tls",
 				loggingNS:  syslogProj,
 			}
-			defer rsyslog.remove(oc)
+			deferCleanup(func() { rsyslog.remove(oc) })
 			rsyslog.deploy(oc)
 
 			compat_otp.By("Create clusterlogforwarder")
@@ -497,7 +497,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 				collectAuditLogs:   true,
 				serviceAccountName: "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			clf.create(oc, "URL=tls://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:6514", "INPUTREFS=[\"audit\"]")
 
 			compat_otp.By("Check logs in rsyslog server")
@@ -618,7 +618,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 				secretName: "rsyslog-tls",
 				loggingNS:  syslogProj,
 			}
-			defer rsyslog.remove(oc)
+			deferCleanup(func() { rsyslog.remove(oc) })
 			rsyslog.deploy(oc)
 
 			g.By("Create clusterlogforwarder/instance")
@@ -633,7 +633,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 				collectInfrastructureLogs: false,
 				serviceAccountName:        "test-clf-" + getRandomString(),
 			}
-			defer clf.delete(oc)
+			deferCleanup(func() { clf.delete(oc) })
 			// PAYLOAD_KEY can be .message; .a.b.c and etc
 			clf.create(oc, "URL=tls://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:6514", "LOG_LEVEL=off", "NAMESPACE_PATTERN="+appProj, "PAYLOAD_KEY=.message")
 

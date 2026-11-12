@@ -106,6 +106,10 @@ make run-case CASE=65131
 
 The target prints whether the test passed, failed or was skipped, and exits non-zero if it failed. This is needed because every test is registered as Informing, so the binary itself exits 0 even on failure.
 
+To inspect the cluster state of a failed test, set `LOGGING_E2E_KEEP_ON_FAILURE=true`. The resources a failed spec created are then left in place: its namespaces (named `e2e-test-<suite>-<suffix>`, find them with `oc get ns | grep e2e-test`), the forwarder, the Loki stack, and also cluster-scoped objects such as role bindings. Delete the namespaces by hand (`oc delete project <ns>`) when you are done, and check for leftover cluster-scoped objects. Use it with `run-case` or `run-test`, not a whole suite, so kept resources don't affect other tests.
+
+Cleanup is registered with `deferCleanup(func() { ... })` instead of `defer`; use it for anything the test creates in the cluster. Keep a plain `defer` for local clean-up (temp files, `Close`) and for restoring shared cluster state the test changed but did not create (for example the API server TLS profile or node audit rules), because that must run even when resources are kept. `deferCleanup` runs after the namespaces start deleting, so don't wait on namespaced resources that are expected to still exist.
+
 ### Find tests by case ID or keyword
 
 ```bash

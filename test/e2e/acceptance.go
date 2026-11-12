@@ -87,10 +87,10 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			bucketName:    "logging-loki-74397-" + getInfrastructureName(oc),
 			template:      lokiStackTemplate,
 		}
-		defer ls.removeObjectStorage(oc)
+		deferCleanup(func() { ls.removeObjectStorage(oc) })
 		err = ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ls.removeLokiStack(oc)
+		deferCleanup(func() { ls.removeLokiStack(oc) })
 		err = ls.deployLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
@@ -102,7 +102,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			template:      filepath.Join(loggingBaseDir, "logfilemetricexporter", "lfme.yaml"),
 			waitPodsReady: true,
 		}
-		defer lfme.delete(oc)
+		deferCleanup(func() { lfme.delete(oc) })
 		lfme.create(oc)
 
 		compat_otp.By("create a CLF to test forward to lokistack")
@@ -119,12 +119,14 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			enableMonitoring:          true,
 		}
 		clf.createServiceAccount(oc)
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
+		deferCleanup(func() { resource{"secret", clf.secretName, clf.namespace}.clear(oc) })
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
 
 		compat_otp.By("Validate thanos objstore client is enabled")
@@ -135,7 +137,8 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 
 		// check logs in loki stack
 		g.By("check logs in loki")
-		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
+		cleanupArg1 := oc.Namespace()
+		deferCleanup(func() { removeClusterRoleFromServiceAccount(oc, cleanupArg1, "default", "cluster-admin") })
 		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		bearerToken := getSAToken(oc, "default", oc.Namespace())
@@ -206,7 +209,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			secretName:      "logging-74926-" + getRandomString(),
 		}
 		cw.init(oc)
-		defer cw.deleteResources(oc)
+		deferCleanup(func() { cw.deleteResources(oc) })
 
 		g.By("Create log producer")
 		appProj := oc.Namespace()
@@ -238,7 +241,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			enableMonitoring:          true,
 			serviceAccountName:        cw.collectorSAName,
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.createServiceAccount(oc)
 		cw.createClfSecret(oc)
 		clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName, `TUNING={"compression": "snappy", "deliveryMode": "AtMostOnce", "maxRetryDuration": 20, "maxWrite": "1M", "minRetryDuration": 5}`)
@@ -275,7 +278,7 @@ retry_max_duration_secs = 20`,
 			projectID: projectID,
 			logName:   getInfrastructureName(oc) + "-74924",
 		}
-		defer gcl.removeLogs()
+		deferCleanup(func() { gcl.removeLogs() })
 
 		g.By("Create log producer")
 		appProj := oc.Namespace()
@@ -286,7 +289,7 @@ retry_max_duration_secs = 20`,
 		oc.SetupProject()
 		clfNS := oc.Namespace()
 		gcpSecret := resource{"secret", "gcp-secret-74924", clfNS}
-		defer gcpSecret.clear(oc)
+		deferCleanup(func() { gcpSecret.clear(oc) })
 		err = createSecretForGCL(oc, gcpSecret.name, gcpSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -301,7 +304,7 @@ retry_max_duration_secs = 20`,
 			collectInfrastructureLogs: true,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "ID_TYPE=project", "ID_VALUE="+gcl.projectID, "LOG_ID="+gcl.logName)
 
 		for _, logType := range []string{"infrastructure", "audit", "application"} {
@@ -346,7 +349,8 @@ retry_max_duration_secs = 20`,
 			location = "westus" // TODO: define default location
 
 			_, err := createAzureResourceGroup(resourceGroupName, azureSubscriptionID, location, cred)
-			defer deleteAzureResourceGroup(resourceGroupName, azureSubscriptionID, cred)
+			cleanupArg1 := resourceGroupName
+			deferCleanup(func() { _ = deleteAzureResourceGroup(cleanupArg1, azureSubscriptionID, cred) })
 			if err != nil {
 				g.Skip("Failed to create azure resource group: " + err.Error() + ", skip the case.")
 			}
@@ -362,7 +366,7 @@ retry_max_duration_secs = 20`,
 		g.By("Prepre Azure Log Storage Env")
 		workSpaceName := infraName + "case71772"
 		azLog, err := newAzureLog(oc, location, resourceGroupName, workSpaceName, "case71772")
-		defer azLog.deleteWorkspace()
+		deferCleanup(func() { azLog.deleteWorkspace() })
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Create log producer")
@@ -373,7 +377,7 @@ retry_max_duration_secs = 20`,
 
 		g.By("Deploy CLF to send logs to Log Analytics")
 		azureSecret := resource{"secret", "azure-secret-71772", clfNS}
-		defer azureSecret.clear(oc)
+		deferCleanup(func() { azureSecret.clear(oc) })
 		err = azLog.createSecret(oc, azureSecret.name, azureSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clf := clusterlogforwarder{
@@ -387,7 +391,7 @@ retry_max_duration_secs = 20`,
 			collectInfrastructureLogs: true,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "PREFIX_OR_NAME="+azLog.tPrefixOrName, "CUSTOMER_ID="+azLog.customerID, "RESOURCE_ID="+azLog.workspaceID, "AZURE_HOST="+azLog.host)
 
 		g.By("Verify the test result")
@@ -435,10 +439,10 @@ retry_max_duration_secs = 20`,
 			bucketName:    "logging-loki-85642-" + getInfrastructureName(oc),
 			template:      lokiStackTemplate,
 		}
-		defer ls.removeObjectStorage(oc)
+		deferCleanup(func() { ls.removeObjectStorage(oc) })
 		err = ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer ls.removeLokiStack(oc)
+		deferCleanup(func() { ls.removeLokiStack(oc) })
 		// Deploy with network policies enabled (ruleSet is set to RestrictIngressEgress)
 		err = ls.deployLokiStack(oc, "LOKISTACK_NETWORK_POLICIES_RULESET=RestrictIngressEgress")
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -447,7 +451,7 @@ retry_max_duration_secs = 20`,
 		compat_otp.By("Create Loki Alerting Rule for application logs")
 		alertingTemplate := filepath.Join(loggingBaseDir, "loki-log-alerts", "loki-app-alerting-rule-template.yaml")
 		alertRule := resource{"alertingrule", "my-app-workload-alert", appProj}
-		defer alertRule.clear(oc)
+		deferCleanup(func() { alertRule.clear(oc) })
 		err = alertRule.applyFromTemplate(oc, "-n", alertRule.namespace, "-f", alertingTemplate, "-p", "NAMESPACE="+appProj, "-p", "ALERT_LOGQL_EXPR=count_over_time({k8s_namespace_name=\""+appProj+"\"}[1m]) > 10")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
@@ -464,7 +468,7 @@ retry_max_duration_secs = 20`,
 			template:      filepath.Join(loggingBaseDir, "logfilemetricexporter", "lfme.yaml"),
 			waitPodsReady: true,
 		}
-		defer lfme.delete(oc)
+		deferCleanup(func() { lfme.delete(oc) })
 		lfme.create(oc)
 
 		compat_otp.By("create a CLF to test forward to lokistack")
@@ -481,12 +485,14 @@ retry_max_duration_secs = 20`,
 			enableMonitoring:          true,
 		}
 		clf.createServiceAccount(oc)
-		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		deferCleanup(func() {
+			removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
+		})
 		err = addClusterRoleToServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
 		o.Expect(err).NotTo(o.HaveOccurred())
-		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
+		deferCleanup(func() { resource{"secret", clf.secretName, clf.namespace}.clear(oc) })
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
-		defer clf.delete(oc)
+		deferCleanup(func() { clf.delete(oc) })
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
 
 		compat_otp.By("Validate thanos objstore client is enabled")
@@ -497,7 +503,8 @@ retry_max_duration_secs = 20`,
 
 		// check logs in loki stack
 		compat_otp.By("Check logs in LokiStack")
-		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
+		cleanupArg1 := oc.Namespace()
+		deferCleanup(func() { removeClusterRoleFromServiceAccount(oc, cleanupArg1, "default", "cluster-admin") })
 		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
 		o.Expect(err).NotTo(o.HaveOccurred())
 		bearerToken := getSAToken(oc, "default", oc.Namespace())
