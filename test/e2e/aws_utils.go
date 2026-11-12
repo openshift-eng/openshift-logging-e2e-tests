@@ -170,6 +170,8 @@ func NewAWSClientFactory(ctx context.Context, cfg AWSClientConfig) (*AWSClientFa
 		}))
 	*/
 
+	loadOptions = append(loadOptions, config.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired))
+
 	// Load the SDK Configuration
 	awsCfg, err := config.LoadDefaultConfig(ctx, loadOptions...)
 	if err != nil {

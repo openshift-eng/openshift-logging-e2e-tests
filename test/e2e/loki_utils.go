@@ -776,6 +776,30 @@ func (l lokiStack) removeLokiStack(oc *exutil.CLI) {
 	_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("configmap", "-n", l.namespace, l.name+"-proxy-ca").Execute()
 }
 
+// shutdownLokiStackToFlushStorage removes the LokiStack and waits for its
+// ingester pods to terminate so that ingesters flush their in-memory chunks.
+// TODO(LOG-10369): on 6.5 and below ingesters do not flush on shutdown, so
+// the storage validation stays unreliable there. We might need to address this as a follow up
+func (l lokiStack) shutdownLokiStackToFlushStorage(oc *exutil.CLI) {
+	err := resource{"lokistack", l.name, l.namespace}.clear(oc)
+	o.Expect(err).NotTo(o.HaveOccurred())
+	err = wait.PollUntilContextTimeout(context.Background(), 15*time.Second, 660*time.Second, true, func(context.Context) (done bool, err error) {
+		pods, err := oc.AdminKubeClient().CoreV1().Pods(l.namespace).List(context.Background(), metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/component=ingester,app.kubernetes.io/instance=" + l.name,
+		})
+		if err != nil {
+			return false, err
+		}
+		if len(pods.Items) == 0 {
+			e2e.Logf("all ingester pods of lokistack %s terminated", l.name)
+			return true, nil
+		}
+		e2e.Logf("waiting for %d ingester pods of lokistack %s to terminate", len(pods.Items), l.name)
+		return false, nil
+	})
+	o.Expect(err).NotTo(o.HaveOccurred())
+}
+
 func (l lokiStack) removeObjectStorage(oc *exutil.CLI) {
 	e2e.Logf("Remove Object Storage")
 	resource{"secret", l.storageSecret, l.namespace}.clear(oc)

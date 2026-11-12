@@ -3,6 +3,7 @@ package logging
 import (
 	"context"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -173,15 +174,30 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			if err != nil || len(dataPods.Items) < 1 {
 				e2e.Failf("failed to get pods by label test=centos-logtest")
 			}
-			rsyslog.checkDataContent(oc, true, "app-container.log", "namespace_name="+appProj+", container_name=logging-centos-logtest, pod_name="+dataPods.Items[0].Name)
+			// the data pods can be recreated while the test runs, so accept any
+			// of them instead of only the first one listed
+			var dataPodNames []string
+			for _, pod := range dataPods.Items {
+				dataPodNames = append(dataPodNames, pod.Name)
+			}
+			var quotedDataPodNames []string
+			for _, podName := range dataPodNames {
+				quotedDataPodNames = append(quotedDataPodNames, regexp.QuoteMeta(podName))
+			}
+			anyDataPodName := "(" + strings.Join(quotedDataPodNames, "|") + ")"
+			rsyslog.checkDataContent(oc, true, "app-container.log", "namespace_name="+appProj+", container_name=logging-centos-logtest, pod_name="+anyDataPodName)
 			rsyslog.checkDataContent(oc, true, "infra-container.log", "namespace_name=.*container_name=.*pod_name=")
 			rsyslog.checkDataContent(oc, false, "infra.log", "namespace_name=.*container_name=.*pod_name=")
 			rsyslog.checkDataContent(oc, false, "audit.log", "namespace_name=.*container_name=.*pod_name=")
 
 			g.By("Verify the syslog RFC5424 default fields")
 			// RFC5424 Format: <PRI> VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID [STRUCTURED-DATA] MESSAGE
-			// app_name=namespace_podname_container_name[pod_id]
-			appName := appProj + "_" + dataPods.Items[0].Name + `_logging-centos-logtest\[[0-9a-f-]+\]`
+			// app_name=namespace_podname_container_name and proc_id=pod_id,
+			// rsyslog renders the tag as "app_name[proc_id]" in its default
+			// file template. vector truncates the APP-NAME to 48 characters
+			// (the RFC 5424 limit), so match the truncated tag of any of the
+			// data pods.
+			appName := syslogAppNamePattern(appProj, dataPodNames, "logging-centos-logtest")
 			rsyslog.checkDataContent(oc, true, "app-container.log", " "+appName+" ")
 			rsyslog.checkDataContent(oc, true, "infra.log", ` (crio|systemd|kubenswrapper|ovs-vswitchd)\[\d+\] `)
 

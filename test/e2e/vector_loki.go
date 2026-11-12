@@ -4345,6 +4345,7 @@ resource_attributes:
 		o.Expect(logs.Data.Result).ShouldNot(o.BeEmpty())
 
 		compat_otp.By("Validate log streams are pushed to external storage bucket/container")
+		ls.shutdownLokiStackToFlushStorage(oc)
 		ls.validateExternalObjectStorageForLogs(oc, []string{"application", "audit", "infrastructure"})
 	})
 
@@ -4697,6 +4698,7 @@ resource_attributes:
 		e2e.Logf("Dropped attributes validation success for tenant: audit")
 
 		compat_otp.By("Validate log streams are pushed to external storage bucket/container")
+		ls.shutdownLokiStackToFlushStorage(oc)
 		ls.validateExternalObjectStorageForLogs(oc, []string{"application", "audit", "infrastructure"})
 	})
 
@@ -5073,9 +5075,8 @@ max_bytes = 3145728`,
 type = "opentelemetry"`,
 			`max_events = 1`,
 		}
-		result, err := checkCollectorConfiguration(oc, clf.namespace, clf.name+"-config", expectedConfigs...)
+		err = waitForCollectorConfiguration(oc, clf.namespace, clf.name+"-config", 2*time.Minute, expectedConfigs...)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(result).To(o.BeTrue(), "some of the configuration is not in vector.toml")
 		// TODO: add a step to check vector request size
 
 		compat_otp.By("Update the lokistack tuning configurations")
@@ -5104,9 +5105,8 @@ type = "disk"
 when_full = "block"
 max_size = 268435488`,
 		}
-		result, err = checkCollectorConfiguration(oc, clf.namespace, clf.name+"-config", newConfigs...)
+		err = waitForCollectorConfiguration(oc, clf.namespace, clf.name+"-config", 2*time.Minute, newConfigs...)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(result).To(o.BeTrue(), "some of the configuration is not in vector.toml")
 		// TODO: add a step to check vector request size
 	})
 })
@@ -5243,6 +5243,7 @@ spec:
 			lc.waitForLogsAppearByKey(logType, "openshift_log_type", logType)
 			e2e.Logf("Logs found for tenant %s", logType)
 		}
+		ls.shutdownLokiStackToFlushStorage(oc)
 		ls.validateExternalObjectStorageForLogs(oc, []string{"application", "audit", "infrastructure"})
 	})
 })

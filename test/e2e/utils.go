@@ -1356,6 +1356,25 @@ func (r rsyslog) checkDataContent(oc *exutil.CLI, expect bool, filename string, 
 	}
 }
 
+// syslogAppNamePattern builds a regex matching the RFC5424 syslog tag
+// (APP-NAME followed by PROCID in brackets) as rsyslog renders it in its
+// default file template. The tag is built from
+// "<namespace>_<pod>_<container>" and the pod id. vector truncates the
+// APP-NAME to 48 characters (the RFC 5424 limit), so the pattern matches the
+// truncated tag of any of the given pods, which covers pods recreated while
+// the test runs.
+func syslogAppNamePattern(namespace string, podNames []string, containerName string) string {
+	var quoted []string
+	for _, podName := range podNames {
+		appName := namespace + "_" + podName + "_" + containerName
+		if len(appName) > 48 {
+			appName = appName[:48]
+		}
+		quoted = append(quoted, regexp.QuoteMeta(appName))
+	}
+	return "(" + strings.Join(quoted, "|") + `)\[[0-9a-f-]+\]`
+}
+
 type fluentdServer struct {
 	serverName                 string // the name of the fluentd server, it's also used to name the svc/cm/sa/secret
 	namespace                  string // the namespace where the fluentd server deployed in
@@ -2360,39 +2379,60 @@ func checkTLSProfile(oc *exutil.CLI, profile string, algo string, server string,
 	return true
 }
 
+// readCollectorConfiguration returns the vector.toml content of the given
+// collector configmap.
+func readCollectorConfiguration(oc *exutil.CLI, ns, cmName string) (string, error) {
+	cm, err := oc.AdminKubeClient().CoreV1().ConfigMaps(ns).Get(context.Background(), cmName, metav1.GetOptions{})
+	if err != nil {
+		return "", err
+	}
+	content, ok := cm.Data["vector.toml"]
+	if !ok {
+		return "", fmt.Errorf("configmap %s/%s does not contain a vector.toml key", ns, cmName)
+	}
+	return content, nil
+}
+
 func checkCollectorConfiguration(oc *exutil.CLI, ns, cmName string, searchStrings ...string) (bool, error) {
-	// Parse the vector.toml file
-	dirname := "/tmp/" + oc.Namespace() + "-vectortoml"
-	defer os.RemoveAll(dirname)
-	err := os.MkdirAll(dirname, 0o777)
+	content, err := readCollectorConfiguration(oc, ns, cmName)
 	if err != nil {
 		return false, err
 	}
 
-	_, err = oc.AsAdmin().WithoutNamespace().Run("extract").Args("configmap/"+cmName, "-n", ns, "--confirm", "--to="+dirname).Output()
-	if err != nil {
-		return false, err
-	}
-
-	filename := filepath.Join(dirname, "vector.toml")
-	file, err := os.Open(filename)
-	if err != nil {
-		return false, err
-	}
-	defer file.Close()
-
-	content, err := os.ReadFile(filename)
-	if err != nil {
-		return false, err
-	}
-
+	found := true
 	for _, s := range searchStrings {
-		if !strings.Contains(string(content), s) {
+		if !strings.Contains(content, s) {
 			e2e.Logf("can't find %s in vector.toml", s)
-			return false, nil
+			found = false
 		}
 	}
-	return true, nil
+	return found, nil
+}
+
+// waitForCollectorConfiguration waits until the collector configuration
+// contains all the expected strings. The operator regenerates vector.toml
+// after a CLF update, so a single read can race that update. When the timeout
+// expires, the returned error lists the configurations still missing so the
+// failure is diagnosable from the junit output alone.
+func waitForCollectorConfiguration(oc *exutil.CLI, ns, cmName string, timeout time.Duration, searchStrings ...string) error {
+	var missing []string
+	err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, timeout, true, func(context.Context) (done bool, err error) {
+		content, err := readCollectorConfiguration(oc, ns, cmName)
+		if err != nil {
+			return false, err
+		}
+		missing = nil
+		for _, s := range searchStrings {
+			if !strings.Contains(content, s) {
+				missing = append(missing, s)
+			}
+		}
+		return len(missing) == 0, nil
+	})
+	if err != nil {
+		return fmt.Errorf("configmap %s/%s does not contain the following configurations: %v", ns, cmName, missing)
+	}
+	return nil
 }
 
 func checkOperatorsRunning(oc *exutil.CLI) (bool, error) {
