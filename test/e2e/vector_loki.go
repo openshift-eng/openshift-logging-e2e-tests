@@ -1291,7 +1291,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer clf.delete(oc)
 			clf.create(oc, "LOKI_URL="+lokiURL, "INPUTREFS=[\"application\"]", `TUNING={"compression": "snappy", "deliveryMode": "AtLeastOnce", "maxWrite": "10M"}`, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 			clf.checkNetworkPolicy(oc)
-			o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"443", "TCP"}}, nil)).NotTo(o.HaveOccurred())
+			o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "443", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 			compat_otp.By("check logs in grafana loki")
 			lc := newLokiClient(lokiURL).withBasicAuth(lokiUsername, lokiPassword).retry(5)

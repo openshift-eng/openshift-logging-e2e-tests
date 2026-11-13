@@ -7,13 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -39,10 +37,12 @@ import (
 
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/env"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/metrics"
+	libhttp "github.com/openshift/openshift-logging-e2e-tests/internal/lib/net/http"
 	librandom "github.com/openshift/openshift-logging-e2e-tests/internal/lib/random"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/apps/daemonset"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/apps/deployment"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/core/serviceaccount"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/types/networking/networkpolicy"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/observability"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/openshift"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
@@ -717,7 +717,7 @@ func (clf *clusterlogforwarder) checkNetworkPolicy(oc *exutil.CLI) {
 }
 
 func (clf *clusterlogforwarder) validateNetworkPolicy(oc *exutil.CLI, ruleSet string, extraEgressPorts, extraIngressPorts []Port) error {
-	np, err := getNetworkPolicy(oc, clf.namespace, "collector-"+clf.name)
+	np, err := networkpolicy.Get(oc, clf.namespace, "collector-"+clf.name)
 	if err != nil {
 		return err
 	}
@@ -885,7 +885,7 @@ func (lfme *logFileMetricExporter) checkNetworkPolicy(oc *exutil.CLI) {
 }
 
 func (lfme *logFileMetricExporter) validateNetworkPolicy(oc *exutil.CLI, ruleSet string) error {
-	np, err := getNetworkPolicy(oc, lfme.namespace, "lfme-logfilesmetricexporter")
+	np, err := networkpolicy.Get(oc, lfme.namespace, "lfme-logfilesmetricexporter")
 	if err != nil {
 		return err
 	}
@@ -2487,85 +2487,7 @@ func waitForOperatorsRunning(oc *exutil.CLI) {
 	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("Failed to wait for operators to be running: %v", err))
 }
 
-func doHTTPRequest(header http.Header, address, path, query, method string, quiet bool, attempts int, requestBody io.Reader, expectedStatusCode int) ([]byte, error) {
-	us, err := buildURL(address, path, query)
-	if err != nil {
-		return nil, err
-	}
-	if !quiet {
-		e2e.Logf("the URL is: %s", us)
-	}
-
-	req, err := http.NewRequest(strings.ToUpper(method), us, requestBody)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header = header
-
-	var tr *http.Transport
-	proxy := getProxyFromEnv()
-	if len(proxy) > 0 {
-		proxyURL, err := url.Parse(proxy)
-		o.Expect(err).NotTo(o.HaveOccurred())
-		tr = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-			Proxy:           http.ProxyURL(proxyURL),
-		}
-	} else {
-		tr = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-	}
-
-	client := &http.Client{Transport: tr}
-
-	var resp *http.Response
-	success := false
-
-	for attempts > 0 {
-		attempts--
-
-		resp, err = client.Do(req)
-		if err != nil {
-			e2e.Logf("error sending request %v", err)
-			continue
-		}
-		if resp.StatusCode != expectedStatusCode {
-			buf, _ := io.ReadAll(resp.Body)
-			e2e.Logf("Error response from server: %s %s (%v), attempts remaining: %d", resp.Status, string(buf), err, attempts)
-			if err := resp.Body.Close(); err != nil {
-				e2e.Logf("error closing body: %v", err)
-			}
-			// sleep 5 second before doing next request
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		success = true
-		break
-	}
-	if !success {
-		return nil, fmt.Errorf("run out of attempts while querying the server")
-	}
-
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			e2e.Logf("error closing body: %v", err)
-		}
-	}()
-	return io.ReadAll(resp.Body)
-}
-
-// buildURL concats a url `http://foo/bar` with a path `/buzz`.
-func buildURL(u, p, q string) (string, error) {
-	url, err := url.Parse(u)
-	if err != nil {
-		return "", err
-	}
-	url.Path = path.Join(url.Path, p)
-	url.RawQuery = q
-	return url.String(), nil
-}
+var doHTTPRequest = libhttp.DoRequest
 
 // GetIPVersionStackType gets IP-version Stack type of the cluster
 func GetIPVersionStackType(oc *exutil.CLI) (ipvStackType string) {
@@ -2949,18 +2871,4 @@ func getProxyCaBundle(oc *exutil.CLI) (caBundle string) {
 	caBundle, err = oc.AsAdmin().WithoutNamespace().Run("get").Args("configmap", configMapName, "-n", "openshift-config", `-ojsonpath={.data.ca-bundle\.crt}`).Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	return caBundle
-}
-
-func getNetworkPolicy(oc *exutil.CLI, namespace, name string) (NetworkPolicy, error) {
-	var netpol NetworkPolicy
-	np, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", namespace, name, "-oyaml").Output()
-	if err != nil {
-		return netpol, fmt.Errorf("error getting networkpolicy %s: %w", name, err)
-	}
-
-	err = yaml.Unmarshal([]byte(np), &netpol)
-	if err != nil {
-		return netpol, fmt.Errorf("error unmarshalling YAML: %w", err)
-	}
-	return netpol, nil
 }

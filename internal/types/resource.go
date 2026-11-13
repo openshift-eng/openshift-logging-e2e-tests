@@ -21,15 +21,15 @@ type Resource struct {
 	Namespace string
 }
 
-func NewResource(kind string, name string, namespace string) Resource {
-	return Resource{
+func NewResource(kind string, name string, namespace string) *Resource {
+	return &Resource{
 		Kind:      kind,
 		Name:      name,
 		Namespace: namespace,
 	}
 }
 
-func (r Resource) WaitUntilResourceIsGone(oc *exutil.CLI) error {
+func (r *Resource) WaitUntilResourceIsGone(oc *exutil.CLI) error {
 	err := wait.PollUntilContextTimeout(context.Background(), 3*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
 		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", r.Namespace, r.Kind, r.Name).Output()
 		if err != nil {
@@ -47,7 +47,7 @@ func (r Resource) WaitUntilResourceIsGone(oc *exutil.CLI) error {
 	return nil
 }
 
-func (r Resource) ApplyFromTemplate(oc *exutil.CLI, parameters ...string) error {
+func (r *Resource) ApplyFromTemplate(oc *exutil.CLI, parameters ...string) error {
 	parameters = append(parameters, "-n", r.Namespace)
 	file, err := libopenshift.ProcessTemplate(oc, parameters...)
 	defer os.Remove(file)
@@ -60,7 +60,7 @@ func (r Resource) ApplyFromTemplate(oc *exutil.CLI, parameters ...string) error 
 	return nil
 }
 
-func (r Resource) WaitForResourceToAppear(oc *exutil.CLI) {
+func (r *Resource) WaitForResourceToAppear(oc *exutil.CLI) {
 	err := wait.PollUntilContextTimeout(context.Background(), 3*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
 		e2e.Logf("wait %s %s ready ... ", r.Kind, r.Name)
 		output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", r.Namespace, r.Kind, r.Name).Output()
@@ -78,7 +78,7 @@ func (r Resource) WaitForResourceToAppear(oc *exutil.CLI) {
 }
 
 // Clear delete the objects in the cluster
-func (r Resource) Clear(oc *exutil.CLI) error {
+func (r *Resource) Clear(oc *exutil.CLI) error {
 	msg, err := oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", r.Namespace, r.Kind, r.Name).Output()
 	if err != nil {
 		errstring := fmt.Sprintf("%v", msg)
