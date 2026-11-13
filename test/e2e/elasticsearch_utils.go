@@ -16,6 +16,7 @@ import (
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
+	e2e "k8s.io/kubernetes/test/e2e/framework"
 	e2eoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
 
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
@@ -140,6 +141,7 @@ func (es externalES) deploy(oc *exutil.CLI) {
 	err = deploy.applyFromTemplate(oc, "-f", deployFile, "-n", es.namespace, "-p", "NAMESPACE="+es.namespace, "-p", "NAME="+es.serverName)
 	o.Expect(err).NotTo(o.HaveOccurred())
 	WaitForDeploymentPodsToBeReady(oc, es.namespace, es.serverName)
+	es.waitForServer(oc)
 	err = oc.AsAdmin().WithoutNamespace().Run("expose").Args("-n", es.namespace, "deployment", es.serverName, "--name="+es.serverName).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -151,6 +153,22 @@ func (es externalES) deploy(oc *exutil.CLI) {
 		err = oc.AsAdmin().WithoutNamespace().Run("expose").Args("svc/"+es.serverName, "-n", es.namespace, "--port=9200").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
+}
+
+// waitForServer waits until Elasticsearch accepts connections on port 9200.
+// The readiness probe of the deployment only runs add-user.sh, so a ready pod
+// can still be starting its JVM: curl then fails with exit code 7 (connection
+// refused), which would abort the polls in waitForIndexAppear and friends.
+func (es externalES) waitForServer(oc *exutil.CLI) {
+	podName := es.getPodName(oc)
+	err := wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 180*time.Second, true, func(context.Context) (bool, error) {
+		if _, err := e2eoutput.RunHostCmd(es.namespace, podName, es.baseCurlString()+"_cluster/health"); err != nil {
+			e2e.Logf("elasticsearch %s is not accepting connections yet: %v", es.serverName, err)
+			return false, nil
+		}
+		return true, nil
+	})
+	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("Elasticsearch %s didn't accept connections in last 3 minutes", es.serverName))
 }
 
 func (es externalES) remove(oc *exutil.CLI) {

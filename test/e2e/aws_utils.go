@@ -273,20 +273,12 @@ func emptyS3Bucket(client *s3.Client, bucketName string) error {
 		return err
 	}
 
-	// Delete objects in the bucket
-	if len(objects.Contents) > 0 {
-		objectIdentifiers := make([]types.ObjectIdentifier, len(objects.Contents))
-		for i, object := range objects.Contents {
-			objectIdentifiers[i] = types.ObjectIdentifier{Key: object.Key}
-		}
-
-		quiet := true
-		_, err = client.DeleteObjects(context.TODO(), &s3.DeleteObjectsInput{
+	// Delete objects one by one. DeleteObjects needs a checksum header, and some MinIO versions
+	// reject the CRC32 checksum that the SDK sends (MissingContentMD5).
+	for _, object := range objects.Contents {
+		_, err = client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
 			Bucket: &bucketName,
-			Delete: &types.Delete{
-				Objects: objectIdentifiers,
-				Quiet:   &quiet,
-			},
+			Key:    object.Key,
 		})
 		if err != nil {
 			return err

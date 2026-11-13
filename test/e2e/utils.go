@@ -25,6 +25,7 @@ import (
 	"cloud.google.com/go/logging/logadmin"
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
+	oauthv1 "github.com/openshift/api/oauth/v1"
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	"google.golang.org/api/iterator"
@@ -1013,6 +1014,26 @@ func getRouteAddress(oc *exutil.CLI, ns, routeName string) string {
 }
 
 var getSAToken = serviceaccount.Token
+
+// newUserToken creates a new OAuth access token for an existing user. A token that was used
+// before a group change can keep the old groups for minutes, because kube-apiserver and the
+// LokiStack gateway cache TokenReview results. Take the token after you change the groups.
+func newUserToken(oc *exutil.CLI, username string) string {
+	user, err := oc.AdminUserClient().UserV1().Users().Get(context.Background(), username, metav1.GetOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	privToken, pubToken := exutil.GenerateOAuthTokenPair()
+	_, err = oc.AdminOAuthClient().OauthV1().OAuthAccessTokens().Create(context.Background(), &oauthv1.OAuthAccessToken{
+		ObjectMeta:  metav1.ObjectMeta{Name: pubToken},
+		ClientName:  "openshift-challenging-client",
+		UserName:    user.Name,
+		UserUID:     string(user.UID),
+		Scopes:      []string{"user:full"},
+		RedirectURI: "https://localhost:8443/oauth/token/implicit",
+		ExpiresIn:   3600,
+	}, metav1.CreateOptions{})
+	o.Expect(err).NotTo(o.HaveOccurred())
+	return privToken
+}
 
 var (
 	queryPrometheus = metrics.QueryPrometheus

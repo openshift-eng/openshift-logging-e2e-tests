@@ -25,6 +25,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.32.1
 	github.com/onsi/gomega v1.42.1
 	github.com/openshift-eng/openshift-tests-extension v0.0.0-20261005190041-64972ccf1568
+	github.com/openshift/api v0.0.0-20260715165912-72066cc9718b
 	github.com/openshift/origin v1.5.0-alpha.3.0.20260728161326-203a39d60791
 	github.com/spf13/cobra v1.10.2
 	google.golang.org/api v0.247.0
@@ -242,7 +243,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/opencontainers/runtime-spec v1.3.0 // indirect
 	github.com/opencontainers/selinux v1.13.1 // indirect
-	github.com/openshift/api v0.0.0-20260715165912-72066cc9718b // indirect
 	github.com/openshift/apiserver-library-go v0.0.0-20260715200723-42e5e402ca43 // indirect
 	github.com/openshift/client-go v0.0.0-20260715172546-dac61734e0ec // indirect
 	github.com/openshift/library-go v0.0.0-20260716164659-7926d144f96a // indirect
