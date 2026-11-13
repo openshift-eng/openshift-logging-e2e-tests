@@ -888,6 +888,17 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 				"run":                          "test-51740",
 				"test":                         "test-logging-51740",
 			}
+			// The platform can add its own pod labels (e.g. topology.kubernetes.io/zone since
+			// Kubernetes 1.35), so check that the test labels are present and that every key is converted.
+			checkProcessedLabels := func(got map[string]string) {
+				for k, v := range processedLabels {
+					o.Expect(got).To(o.HaveKeyWithValue(k, v))
+				}
+				for k := range got {
+					o.Expect(k).NotTo(o.ContainSubstring("."), "label key %q is not converted", k)
+					o.Expect(k).NotTo(o.ContainSubstring("/"), "label key %q is not converted", k)
+				}
+			}
 			labelJSON, _ := json.Marshal(labels)
 			labelStr := string(labelJSON)
 			app := oc.Namespace()
@@ -937,9 +948,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			dataInES := ees.searchDocByQuery(oc, "app", "{\"size\": 1, \"sort\": [{\"@timestamp\": {\"order\":\"desc\"}}], \"query\": {\"match_phrase\": {\"kubernetes.namespace_name\": \""+app+"\"}}}")
 			k8sLabelsInES := dataInES.Hits.DataHits[0].Source.Kubernetes.Lables
 			o.Expect(k8sLabelsInES).ShouldNot(o.BeEmpty())
-			// compare with o.Equal instead of reflect.DeepEqual so that a
-			// mismatch reports the actual labels stored in ES
-			o.Expect(k8sLabelsInES).Should(o.Equal(processedLabels))
+			checkProcessedLabels(k8sLabelsInES)
 
 			g.By("check data in Loki")
 			route := "http://" + getRouteAddress(oc, loki.namespace, loki.name)
@@ -958,7 +967,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 			dataInLoki, _ := lc.searchByNamespace("", app)
 			lokiLog := extractLogEntities(dataInLoki)
 			k8sLabelsInLoki := lokiLog[0].Kubernetes.Lables
-			o.Expect(k8sLabelsInLoki).Should(o.Equal(processedLabels))
+			checkProcessedLabels(k8sLabelsInLoki)
 			flatLabelsInLoki := lokiLog[0].Kubernetes.FlatLabels
 			o.Expect(flatLabelsInLoki).Should(o.BeEmpty())
 		})

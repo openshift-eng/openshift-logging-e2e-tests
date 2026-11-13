@@ -747,7 +747,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				err = wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 300*time.Second, true, func(context.Context) (done bool, err error) {
 					appLogs, err := lc.searchByNamespace("application", "multiline-log-"+k+"-74945")
 					if err != nil {
-						return false, err
+						// the gateway can return 403 for a while after cluster-admin is granted
+						e2e.Logf("query failed, try next round: %v", err)
+						return false, nil
 					}
 					if appLogs.Status == "success" && len(appLogs.Data.Result) > 0 {
 						return true, nil
@@ -2772,39 +2774,50 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		clf.update(oc, "", patch, "--type=json")
 		clf.waitForCollectorPodsReady(oc)
 
-		// sleep 3 minutes for the log to be collected
-		time.Sleep(3 * time.Minute)
+		// Grant SA access for query
+		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
+		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		// The checks below read the penultimate 1-minute count. Wait 2 minutes so that this minute is
+		// fully after the collector started to send logs.
+		time.Sleep(2 * time.Minute)
 
 		compat_otp.By("check data in user-managed loki, the count of logs from each node in one minute should be ~10*60")
 		route := "http://" + getRouteAddress(oc, loki.namespace, loki.name)
 		lc := newLokiClient(route)
 		lc.waitForLogsAppearByProject("", appProj)
-		res, _ := lc.query("", "sum by(kubernetes_host)(count_over_time({log_type=~\".+\"}[1m]))", 30, false, time.Now())
+		res, err := lc.query("", "sum by(kubernetes_host)(count_over_time({log_type=~\".+\"}[1m]))", 30, false, time.Now())
+		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
 		for _, r := range res.Data.Result {
 			// check the penultimate value
+			o.Expect(len(r.Values)).To(o.BeNumerically(">=", 2), "need at least two data points")
 			v := r.Values[len(r.Values)-2]
 			c := convertInterfaceToArray(v)[1]
-			count, _ := strconv.Atoi(c)
+			count, err := strconv.Atoi(c)
+			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(count).To(o.BeNumerically("<=", 650), fmt.Sprintf("the count is %d, however the expect value is 600", count))
 		}
 
 		compat_otp.By("check data in lokistack, there should not have rate limitation")
-		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
-		err = addClusterRoleToServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
-		o.Expect(err).NotTo(o.HaveOccurred())
-		bearerToken := getSAToken(oc, "default", oc.Namespace())
 		routeLokiStack := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
+		bearerToken := getSAToken(oc, "default", oc.Namespace())
 		lokistackClient := newLokiClient(routeLokiStack).withToken(bearerToken).retry(5)
 		for _, nodeName := range nodeNames {
 			// only check app logs, because for infra and audit logs, we don't know how many logs the OCP generates in one minute
-			res, _ := lokistackClient.query("application", "sum by(kubernetes_host)(count_over_time({kubernetes_host=\""+nodeName+"\"}[1m]))", 30, false, time.Now())
+			res, err := lokistackClient.query("application", "sum by(kubernetes_host)(count_over_time({kubernetes_host=\""+nodeName+"\"}[1m]))", 30, false, time.Now())
+			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
 			for _, r := range res.Data.Result {
+				o.Expect(len(r.Values)).To(o.BeNumerically(">=", 2), "need at least two data points")
 				v := r.Values[len(r.Values)-2]
 				c := convertInterfaceToArray(v)[1]
-				count, _ := strconv.Atoi(c)
-				o.Expect(count).Should(o.BeNumerically(">=", 2900))
+				count, err := strconv.Atoi(c)
+				o.Expect(err).NotTo(o.HaveOccurred())
+				// Each pod writes ~3000 logs per minute. Require 3 times the rate limit of the other
+				// output, so that a throttled output that slows down this one makes the test fail.
+				o.Expect(count).Should(o.BeNumerically(">=", 1800), "the count is %d on node %s, the rate limit of the other output must not slow down this output", count, nodeName)
 			}
 		}
 	})
@@ -3448,9 +3461,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 		g.By("Create Groups with users")
 		oc.SetupProject()
 		user1 := oc.Username()
-		user1Token, err := oc.Run("whoami").Args("-t").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("groups", "new", "infra-admin-group-67643").Execute()
+		err := oc.AsAdmin().WithoutNamespace().Run("adm").Args("groups", "new", "infra-admin-group-67643").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.AsAdmin().Run("delete").Args("group", "infra-admin-group-67643").Execute()
 		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("groups", "add-users", "infra-admin-group-67643", user1).Execute()
@@ -3458,8 +3469,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 
 		oc.SetupProject()
 		user2 := oc.Username()
-		user2Token, err := oc.Run("whoami").Args("-t").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
 		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("groups", "new", "audit-admin-group-67643").Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		defer oc.AsAdmin().Run("delete").Args("group", "audit-admin-group-67643").Execute()
@@ -3523,8 +3532,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 
 		g.By("Check Logs Access with users from AdminGroups")
 		route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
+		user1Token := newUserToken(oc, user1)
 		lc := newLokiClient(route).withToken(user1Token).retry(5)
 		lc.waitForLogsAppearByKey("infrastructure", "log_type", "infrastructure")
+		user2Token := newUserToken(oc, user2)
 		lc = newLokiClient(route).withToken(user2Token).retry(5)
 		lc.waitForLogsAppearByKey("audit", "log_type", "audit")
 	})
@@ -3880,9 +3891,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 		oc.SetupProject()
 		user1 := oc.Username()
 		appProj := oc.Namespace()
-		userToken, err := oc.Run("whoami").Args("-t").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", loglabeltemplate).Execute()
+		err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", loglabeltemplate).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		compat_otp.By("Create a group and role bindings to access loki logs")
@@ -3946,6 +3955,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 
 		compat_otp.By("Check that logs are forwarded to LokiStack")
 		route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
+		userToken := newUserToken(oc, user1)
 		lc := newLokiClient(route).withToken(userToken).retry(5)
 		lc.waitForLogsAppearByKey("audit", "openshift_log_type ", "audit")
 		lc.waitForLogsAppearByKey("infrastructure", "kubernetes_namespace_name", "openshift-monitoring")
@@ -4031,9 +4041,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 		oc.SetupProject()
 		user1 := oc.Username()
 		appProj := oc.Namespace()
-		userToken, err := oc.Run("whoami").Args("-t").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", loglabeltemplate).Execute()
+		err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", loglabeltemplate).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		compat_otp.By("Create a group and role bindings to access loki logs")
@@ -4097,6 +4105,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 
 		compat_otp.By("Check that logs are forwarded to LokiStack")
 		route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
+		userToken := newUserToken(oc, user1)
 		lc := newLokiClient(route).withToken(userToken).retry(5)
 		lc.waitForLogsAppearByKey("audit", "log_type", "audit")
 		lc.waitForLogsAppearByKey("application", "log_type", "application")
@@ -4223,9 +4232,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack wi
 		oc.SetupProject()
 		user1 := oc.Username()
 		appProj := oc.Namespace()
-		userToken, err := oc.Run("whoami").Args("-t").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", loglabeltemplate).Execute()
+		err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", loglabeltemplate).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		compat_otp.By("Create a group and role bindings to access loki logs")
@@ -4332,6 +4339,7 @@ resource_attributes:
 		// check logs in loki stack by quering with OTEL semantic attributes
 		compat_otp.By("Check logs are received with OTLP semantic convention attributes in loki")
 		route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
+		userToken := newUserToken(oc, user1)
 		lc := newLokiClient(route).withToken(userToken).retry(5)
 		for _, logType := range []string{"application", "infrastructure", "audit"} {
 			lc.waitForLogsAppearByKey(logType, "openshift_log_type", logType)
@@ -4357,9 +4365,7 @@ resource_attributes:
 		oc.SetupProject()
 		user1 := oc.Username()
 		appProj := oc.Namespace()
-		userToken, err := oc.Run("whoami").Args("-t").Output()
-		o.Expect(err).NotTo(o.HaveOccurred())
-		err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", loglabeltemplate).Execute()
+		err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", loglabeltemplate).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		compat_otp.By("Create a group and role bindings to access loki logs")
@@ -4649,6 +4655,7 @@ resource_attributes:
 
 		compat_otp.By("Check logs are received with OTLP semantic convention attributes in loki")
 		route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
+		userToken := newUserToken(oc, user1)
 		lc := newLokiClient(route).withToken(userToken).retry(5)
 		for _, logType := range []string{"application", "infrastructure", "audit"} {
 			lc.waitForLogsAppearByKey(logType, "openshift_log_type", logType)
