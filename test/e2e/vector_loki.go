@@ -702,14 +702,12 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			compat_otp.By("create a CLF to test forward to lokistack")
 			clf := clusterlogforwarder{
-				name:                      "instance-74945",
-				namespace:                 loggingNS,
-				serviceAccountName:        "logcollector-74945",
-				templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-				secretName:                "lokistack-secret-74945",
-				collectApplicationLogs:    true,
-				collectAuditLogs:          true,
-				collectInfrastructureLogs: true,
+				name:                   "instance-74945",
+				namespace:              loggingNS,
+				serviceAccountName:     "logcollector-74945",
+				templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+				secretName:             "lokistack-secret-74945",
+				collectApplicationLogs: true,
 			}
 			clf.createServiceAccount(oc)
 			defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -718,7 +716,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 			ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 			defer clf.delete(oc)
-			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`)
 			patch := `[{"op": "add", "path": "/spec/filters", "value": [{"name": "detectmultiline", "type": "detectMultilineException"}]}, {"op": "add", "path": "/spec/pipelines/0/filterRefs", "value":["detectmultiline"]}]`
 			clf.update(oc, "", patch, "--type=json")
 			clf.waitForCollectorPodsReady(oc)
@@ -1007,8 +1005,6 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 				templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "rsyslog-serverAuth.yaml"),
 				secretName:                "clf-syslog-secret",
 				waitForPodReady:           true,
-				collectApplicationLogs:    true,
-				collectAuditLogs:          true,
 				collectInfrastructureLogs: true,
 				serviceAccountName:        "clf-" + getRandomString(),
 			}
@@ -1022,7 +1018,7 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", sysCLF.secretName, "-n", sysCLF.namespace, "--from-file=ca-bundle.crt="+tmpDir+"/tls.crt").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 			defer sysCLF.delete(oc)
-			sysCLF.create(oc, "URL=tls://"+clf.name+"-syslog."+clf.namespace+".svc:6514")
+			sysCLF.create(oc, "URL=tls://"+clf.name+"-syslog."+clf.namespace+".svc:6514", `INPUTREFS=["infrastructure"]`)
 
 			// check logs in loki stack
 			g.By("check logs in loki")
@@ -1092,14 +1088,12 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 
 			compat_otp.By("create a CLF to forward logs to lokistack")
 			clf := clusterlogforwarder{
-				name:                      "instance-76727",
-				namespace:                 loggingNS,
-				serviceAccountName:        "logcollector-76727",
-				templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-				secretName:                "lokistack-secret-76727",
-				collectApplicationLogs:    true,
-				collectAuditLogs:          true,
-				collectInfrastructureLogs: true,
+				name:                   "instance-76727",
+				namespace:              loggingNS,
+				serviceAccountName:     "logcollector-76727",
+				templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+				secretName:             "lokistack-secret-76727",
+				collectApplicationLogs: true,
 			}
 			clf.createServiceAccount(oc)
 			defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -1108,7 +1102,7 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 			defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 			ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 			defer clf.delete(oc)
-			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`)
 			patch := `[{"op": "add", "path": "/spec/filters", "value": [{"name": "detectmultiline", "type": "detectMultilineException"}]}, {"op": "add", "path": "/spec/pipelines/0/filterRefs", "value":["detectmultiline"]}]`
 			clf.update(oc, "", patch, "--type=json")
 			clf.waitForCollectorPodsReady(oc)
@@ -2264,16 +2258,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			compat_otp.By("create a CLF to test forward to lokistack")
 			clf := clusterlogforwarder{
-				name:                      "instance-52779",
-				namespace:                 loggingNS,
-				serviceAccountName:        "logcollector-52779",
-				templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-				secretName:                "lokistack-secret-52779",
-				collectApplicationLogs:    true,
-				collectAuditLogs:          true,
-				collectInfrastructureLogs: true,
-				waitForPodReady:           true,
-				enableMonitoring:          true,
+				name:                   "instance-52779",
+				namespace:              loggingNS,
+				serviceAccountName:     "logcollector-52779",
+				templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+				secretName:             "lokistack-secret-52779",
+				collectApplicationLogs: true,
+				waitForPodReady:        true,
+				enableMonitoring:       true,
 			}
 			clf.createServiceAccount(oc)
 			defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -2282,7 +2274,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 			ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 			defer clf.delete(oc)
-			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`)
 
 			g.By("Validating loki rules configmap")
 			expectedRules := []string{appProj + "-my-app-workload-alert", appProj + "-my-app-workload-record", loNS + "-my-infra-workload-alert", loNS + "-my-infra-workload-record"}
@@ -2356,16 +2348,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			compat_otp.By("create a CLF to test forward to lokistack")
 			clf := clusterlogforwarder{
-				name:                      "instance-55415",
-				namespace:                 loggingNS,
-				serviceAccountName:        "logcollector-55415",
-				templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-				secretName:                "lokistack-secret-55415",
-				collectApplicationLogs:    true,
-				collectAuditLogs:          true,
-				collectInfrastructureLogs: true,
-				waitForPodReady:           true,
-				enableMonitoring:          true,
+				name:                   "instance-55415",
+				namespace:              loggingNS,
+				serviceAccountName:     "logcollector-55415",
+				templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+				secretName:             "lokistack-secret-55415",
+				collectApplicationLogs: true,
+				waitForPodReady:        true,
+				enableMonitoring:       true,
 			}
 			clf.createServiceAccount(oc)
 			defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -2374,7 +2364,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 			ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 			defer clf.delete(oc)
-			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`)
 
 			g.By("Create Loki Alert and recording rules")
 			alertingTemplate := filepath.Join(loggingBaseDir, "loki-log-alerts", "loki-app-alerting-rule-template.yaml")
@@ -2462,16 +2452,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			compat_otp.By("create a CLF to test forward to lokistack")
 			clf := clusterlogforwarder{
-				name:                      "instance-61435",
-				namespace:                 loggingNS,
-				serviceAccountName:        "logcollector-61435",
-				templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-				secretName:                "lokistack-secret-61435",
-				collectApplicationLogs:    true,
-				collectAuditLogs:          true,
-				collectInfrastructureLogs: true,
-				waitForPodReady:           true,
-				enableMonitoring:          true,
+				name:                   "instance-61435",
+				namespace:              loggingNS,
+				serviceAccountName:     "logcollector-61435",
+				templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+				secretName:             "lokistack-secret-61435",
+				collectApplicationLogs: true,
+				waitForPodReady:        true,
+				enableMonitoring:       true,
 			}
 			clf.createServiceAccount(oc)
 			defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -2480,7 +2468,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 			ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 			defer clf.delete(oc)
-			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`)
 
 			g.By("Create Loki Alert and recording rules")
 			alertingTemplate := filepath.Join(loggingBaseDir, "loki-log-alerts", "loki-app-alerting-rule-template.yaml")
@@ -2629,15 +2617,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 
 		compat_otp.By("create a CLF to test forward to lokistack")
 		clf := clusterlogforwarder{
-			name:                      "instance-76114",
-			namespace:                 loggingNS,
-			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-			serviceAccountName:        "logcollector-76114",
-			secretName:                "lokistack-secret-76114",
-			collectApplicationLogs:    true,
-			collectAuditLogs:          true,
-			collectInfrastructureLogs: true,
-			waitForPodReady:           true,
+			name:                   "instance-76114",
+			namespace:              loggingNS,
+			templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+			serviceAccountName:     "logcollector-76114",
+			secretName:             "lokistack-secret-76114",
+			collectApplicationLogs: true,
+			waitForPodReady:        true,
 		}
 		clf.createServiceAccount(oc)
 		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -2753,14 +2739,12 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 
 		compat_otp.By("create a CLF to test forward to lokistack")
 		clf := clusterlogforwarder{
-			name:                      "instance-76115",
-			namespace:                 loggingNS,
-			serviceAccountName:        "logcollector-76115",
-			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-			secretName:                "lokistack-secret-76115",
-			collectApplicationLogs:    true,
-			collectAuditLogs:          true,
-			collectInfrastructureLogs: true,
+			name:                   "instance-76115",
+			namespace:              loggingNS,
+			serviceAccountName:     "logcollector-76115",
+			templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+			secretName:             "lokistack-secret-76115",
+			collectApplicationLogs: true,
 		}
 		clf.createServiceAccount(oc)
 		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -2769,7 +2753,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`)
 		patch := `[{"op": "add", "path": "/spec/outputs/-", "value": {"name":"loki-server","type":"loki", "loki": {"url":"http://` + loki.name + `.` + loki.namespace + `.svc:3100"}, "rateLimit": {"maxRecordsPerSecond": 10}}}, {"op": "add", "path": "/spec/pipelines/0/outputRefs/-", "value": "loki-server"}]`
 		clf.update(oc, "", patch, "--type=json")
 		clf.waitForCollectorPodsReady(oc)
@@ -2992,16 +2976,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Audit Policy T
 
 		compat_otp.By("create a CLF to test forward to lokistack")
 		clf := clusterlogforwarder{
-			name:                      "instance-75841",
-			namespace:                 loggingNS,
-			serviceAccountName:        "logcollector-75841",
-			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "audit-policy.yaml"),
-			secretName:                "lokistack-secret-75841",
-			collectApplicationLogs:    true,
-			collectAuditLogs:          true,
-			collectInfrastructureLogs: true,
-			waitForPodReady:           true,
-			enableMonitoring:          true,
+			name:               "instance-75841",
+			namespace:          loggingNS,
+			serviceAccountName: "logcollector-75841",
+			templateFile:       filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "audit-policy.yaml"),
+			secretName:         "lokistack-secret-75841",
+			collectAuditLogs:   true,
+			waitForPodReady:    true,
+			enableMonitoring:   true,
 		}
 		clf.createServiceAccount(oc)
 		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -3010,7 +2992,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Audit Policy T
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["audit"]`)
 
 		compat_otp.By("wait for audit logs to be collected")
 		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
@@ -3389,16 +3371,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 
 		compat_otp.By("create a CLF to test forward to lokistack")
 		clf := clusterlogforwarder{
-			name:                      "instance-67565",
-			namespace:                 loggingNS,
-			serviceAccountName:        "logcollector-67565",
-			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-			secretName:                "lokistack-secret-67565",
-			collectApplicationLogs:    true,
-			collectAuditLogs:          true,
-			collectInfrastructureLogs: true,
-			waitForPodReady:           true,
-			enableMonitoring:          true,
+			name:                   "instance-67565",
+			namespace:              loggingNS,
+			serviceAccountName:     "logcollector-67565",
+			templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+			secretName:             "lokistack-secret-67565",
+			collectApplicationLogs: true,
+			waitForPodReady:        true,
+			enableMonitoring:       true,
 		}
 		clf.createServiceAccount(oc)
 		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -3407,7 +3387,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`)
 
 		// Creating cluster roles to allow read access from LokiStack
 		defer deleteLokiClusterRolesForReadAccess(oc)
@@ -3504,7 +3484,6 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 			serviceAccountName:        "logcollector-67643",
 			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
 			secretName:                "lokistack-secret-67643",
-			collectApplicationLogs:    true,
 			collectAuditLogs:          true,
 			collectInfrastructureLogs: true,
 			waitForPodReady:           true,
@@ -3516,7 +3495,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["infrastructure", "audit"]`)
 
 		// Creating cluster roles to allow read access from LokiStack
 		defer deleteLokiClusterRolesForReadAccess(oc)
@@ -3609,15 +3588,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease LokiStack - Ef
 
 		compat_otp.By("create a CLF to test forward to LokiStack")
 		clf := clusterlogforwarder{
-			name:                      "instance-70683",
-			namespace:                 loggingNS,
-			serviceAccountName:        "logcollector-70683",
-			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-			secretName:                "lokistack-secret-70683",
-			collectApplicationLogs:    true,
-			collectAuditLogs:          true,
-			collectInfrastructureLogs: true,
-			waitForPodReady:           true,
+			name:                   "instance-70683",
+			namespace:              loggingNS,
+			serviceAccountName:     "logcollector-70683",
+			templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+			secretName:             "lokistack-secret-70683",
+			collectApplicationLogs: true,
+			waitForPodReady:        true,
 		}
 		clf.createServiceAccount(oc)
 		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -3626,7 +3603,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease LokiStack - Ef
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`)
 
 		g.By("Extracting Loki config ...")
 		dirname := "/tmp/" + oc.Namespace() + "-loki-otel-support"
@@ -3804,15 +3781,13 @@ spec:
 
 		compat_otp.By("create a CLF to test forward to lokistack")
 		clf := clusterlogforwarder{
-			name:                      "instance-70685",
-			namespace:                 loggingNS,
-			serviceAccountName:        "logcollector-70685",
-			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-			secretName:                "lokistack-secret-70685",
-			collectApplicationLogs:    true,
-			collectAuditLogs:          true,
-			collectInfrastructureLogs: true,
-			waitForPodReady:           true,
+			name:                   "instance-70685",
+			namespace:              loggingNS,
+			serviceAccountName:     "logcollector-70685",
+			templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+			secretName:             "lokistack-secret-70685",
+			collectApplicationLogs: true,
+			waitForPodReady:        true,
 		}
 		clf.createServiceAccount(oc)
 		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -3821,7 +3796,7 @@ spec:
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`)
 
 		defer removeClusterRoleFromServiceAccount(oc, ls.namespace, "default", "cluster-admin")
 		err = addClusterRoleToServiceAccount(oc, ls.namespace, "default", "cluster-admin")
@@ -4753,15 +4728,13 @@ resource_attributes:
 
 		compat_otp.By("create a CLF to test forward to Lokistack")
 		clf := clusterlogforwarder{
-			name:                      "instance-81978",
-			namespace:                 loggingNS,
-			serviceAccountName:        "logcollector-81978",
-			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-			secretName:                "lokistack-secret-81978",
-			collectApplicationLogs:    true,
-			collectAuditLogs:          true,
-			collectInfrastructureLogs: true,
-			waitForPodReady:           true,
+			name:                   "instance-81978",
+			namespace:              loggingNS,
+			serviceAccountName:     "logcollector-81978",
+			templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+			secretName:             "lokistack-secret-81978",
+			collectApplicationLogs: true,
+			waitForPodReady:        true,
 		}
 		clf.createServiceAccount(oc)
 		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -4770,7 +4743,7 @@ resource_attributes:
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `TUNING={"compression": "none"}`)
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`, `TUNING={"compression": "none"}`)
 
 		compat_otp.By("Check non-admin users can query logs with with OTEL conventions")
 		route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
@@ -4824,15 +4797,13 @@ resource_attributes:
 
 		compat_otp.By("create a CLF to test forward to Lokistack")
 		clf := clusterlogforwarder{
-			name:                      "instance-82009",
-			namespace:                 loggingNS,
-			serviceAccountName:        "logcollector-82009",
-			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-			secretName:                "lokistack-secret-82009",
-			collectApplicationLogs:    true,
-			collectAuditLogs:          true,
-			collectInfrastructureLogs: true,
-			waitForPodReady:           true,
+			name:                   "instance-82009",
+			namespace:              loggingNS,
+			serviceAccountName:     "logcollector-82009",
+			templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+			secretName:             "lokistack-secret-82009",
+			collectApplicationLogs: true,
+			waitForPodReady:        true,
 		}
 		clf.createServiceAccount(oc)
 		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -4841,7 +4812,7 @@ resource_attributes:
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, "DATAMODEL=Otel", `TUNING={"compression": "none"}`)
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`, "DATAMODEL=Otel", `TUNING={"compression": "none"}`)
 
 		compat_otp.By("Check non-admin users can query logs with with OTEL conventions")
 		route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
@@ -4885,15 +4856,13 @@ resource_attributes:
 
 		compat_otp.By("create a CLF to test forward to lokistack")
 		clf := clusterlogforwarder{
-			name:                      "instance-82010",
-			namespace:                 loggingNS,
-			serviceAccountName:        "logcollector-82010",
-			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-			secretName:                "lokistack-secret-82010",
-			collectApplicationLogs:    true,
-			collectAuditLogs:          true,
-			collectInfrastructureLogs: true,
-			waitForPodReady:           true,
+			name:                   "instance-82010",
+			namespace:              loggingNS,
+			serviceAccountName:     "logcollector-82010",
+			templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+			secretName:             "lokistack-secret-82010",
+			collectApplicationLogs: true,
+			waitForPodReady:        true,
 		}
 		clf.createServiceAccount(oc)
 		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -4902,7 +4871,7 @@ resource_attributes:
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`)
 
 		g.By("Create Loki Alerting Rule using Otel semantic covention expression")
 		alertingTemplate := filepath.Join(loggingBaseDir, "loki-log-alerts", "loki-app-alerting-rule-template.yaml")
@@ -4972,15 +4941,13 @@ resource_attributes:
 
 		compat_otp.By("create a CLF to test forward to lokistack")
 		clf := clusterlogforwarder{
-			name:                      "instance-83593",
-			namespace:                 loggingNS,
-			serviceAccountName:        "logcollector-83593",
-			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
-			secretName:                "lokistack-secret-83593",
-			collectApplicationLogs:    true,
-			collectAuditLogs:          true,
-			collectInfrastructureLogs: true,
-			waitForPodReady:           true,
+			name:                   "instance-83593",
+			namespace:              loggingNS,
+			serviceAccountName:     "logcollector-83593",
+			templateFile:           filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "lokistack.yaml"),
+			secretName:             "lokistack-secret-83593",
+			collectApplicationLogs: true,
+			waitForPodReady:        true,
 		}
 		clf.createServiceAccount(oc)
 		defer removeClusterRoleFromServiceAccount(oc, clf.namespace, clf.serviceAccountName, "logging-collector-logs-writer")
@@ -4989,7 +4956,7 @@ resource_attributes:
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, "DATAMODEL=Otel")
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["application"]`, "DATAMODEL=Otel")
 
 		compat_otp.By("check logs in loki")
 		defer removeClusterRoleFromServiceAccount(oc, oc.Namespace(), "default", "cluster-admin")
