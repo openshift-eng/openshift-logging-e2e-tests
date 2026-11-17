@@ -188,6 +188,22 @@ To gate a new test, pair the check with a release label constant from `internal/
 helpers.SkipIfLoggingVersionLessThan(labels.ReleaseLogging67)
 ```
 
+## Object storage of the LokiStack tests with `LOGGING_TEST_STORAGE`
+
+By default the LokiStack tests use the object storage of the cluster platform (S3 on AWS, GCS, Azure Blob, Swift), and
+skip when they find no credentials for it. Setting `LOGGING_TEST_STORAGE=minio` makes them use MinIO instead, on any
+platform: the suite deploys MinIO in the namespace `minio-aosqe` of the cluster when it isn't there yet, so the tests
+need no cloud credentials.
+
+```bash
+export LOGGING_TEST_STORAGE=minio
+make run-case CASE=74397
+```
+
+## Konflux integration tests
+
+The Tekton pipelines that run the suites on the FBC builds of ART are in [konflux/integration-tests](konflux/integration-tests/README.md).
+
 ## Test annotations
 
 All tests follow the OTE annotation conventions:

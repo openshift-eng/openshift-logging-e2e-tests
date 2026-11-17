@@ -492,8 +492,23 @@ func patchLokiOperatorWithAWSRoleArn(oc *exutil.CLI, subNamespace, roleArn strin
 	waitForPodReadyWithLabel(oc, loNS, "name=loki-operator-controller-manager")
 }
 
-// return the storage type per different platform
+// useMinIOStorage returns "minio" and deploys MinIO in the cluster if it isn't running yet
+func useMinIOStorage(oc *exutil.CLI) string {
+	if ready, _ := checkMinIO(oc, minioNS); ready {
+		e2e.Logf("use existing MinIO storage service")
+		return "minio"
+	}
+	e2e.Logf("deploy MinIO and use this MinIO as storage service")
+	deployMinIO(oc)
+	return "minio"
+}
+
+// return the storage type per different platform, or MinIO when LOGGING_TEST_STORAGE=minio.
+// MinIO lets a test run on a cloud cluster without credentials for the cloud object storage.
 func getStorageType(oc *exutil.CLI) string {
+	if os.Getenv("LOGGING_TEST_STORAGE") == "minio" {
+		return useMinIOStorage(oc)
+	}
 	platform := compat_otp.CheckPlatform(oc)
 	switch platform {
 	case "aws":
