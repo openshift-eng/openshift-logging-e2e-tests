@@ -1,0 +1,557 @@
+---
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: cluster-logging-e2e-tests-fbc
+spec:
+  description: |
+    End-to-end tests of Red Hat OpenShift Logging for an ART FBC build. The pipeline runs when ART has built the
+    FBC of the Cluster Logging Operator (or of the Loki Operator) for a logging release. It does nothing when the FBC
+    is for another OCP version than `ocp_version`, so one IntegrationTestScenario per OCP version can run on every
+    FBC build.
+
+    The pipeline creates an ephemeral OpenShift CI HyperShift cluster of `ocp_version`, adds the stage registry
+    credentials and a mirror from registry.redhat.io/openshift-logging to registry.stage.redhat.io/openshift-logging,
+    creates the catalog sources `cluster-logging-operator-registry` and `loki-operator-registry` from the FBC images
+    (the e2e tests use catalog sources with these names when they exist), builds the tests of this repository and runs
+    a suite of them with in-cluster MinIO as the object storage of the LokiStacks. The logging release and the channel
+    are read from the FBC, so the pipeline has no per-release parameters. The cluster is removed with the owning
+    PipelineRun.
+  params:
+    - name: SNAPSHOT
+      description: 'The JSON string representing the snapshot of the application under test.'
+      default: '{"components": [{"name":"test-app", "containerImage": "quay.io/example/repo:latest"}]}'
+      type: string
+    - name: ocp_version
+      description: OpenShift minor version of the cluster. The pipeline runs only for the FBC of this OCP version.
+      default: "5.0"
+    - name: tests_repo
+      description: Git repository with the tests
+      default: "https://github.com/openshift-eng/openshift-logging-e2e-tests.git"
+    - name: tests_revision
+      description: Branch or tag of the tests repository
+      default: "main"
+    - name: test_suite
+      description: Name of the suite of the test extension to run
+      default: "openshift-logging-e2e-tests/cluster-logging-operator"
+    - name: skip_tests
+      description: >-
+        Case-insensitive extended regular expression. The tests of the suite whose name matches it are not run. The
+        default skips the tests that need credentials of AWS CloudWatch or S3.
+      default: "CloudWatch|s3 output"
+    - name: test_timeout
+      description: Maximum duration of a single test
+      default: "60m"
+    - name: stage_registry_secret
+      description: Secret of this namespace (type dockerconfigjson) with the credentials of registry.stage.redhat.io
+      default: "stage-registry-creds"
+    - name: compute_node_type
+      description: AWS instance type for ephemeral HyperShift worker nodes
+      default: "m5.2xlarge"
+    - name: hypershift_node_count
+      description: Number of worker nodes for the ephemeral HyperShift cluster
+      default: "3"
+    - name: hosted_management_cluster
+      description: Hosted management cluster used to provision the ephemeral cluster
+      default: "hosted-mgmt2"
+  tasks:
+    - name: parse-metadata
+      description: Gets the FBC image of the component that triggered the Snapshot
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/konflux-ci/integration-examples
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: tasks/test_metadata.yaml
+      params:
+        - name: SNAPSHOT
+          value: $(params.SNAPSHOT)
+    - name: resolve-fbc
+      description: >-
+        Finds the logging release and the OCP version of the FBC that triggered the Snapshot and compares the OCP
+        version with ocp_version. Finds the FBC of the other operator for the same release and OCP version.
+      runAfter:
+        - parse-metadata
+      params:
+        - name: FBC_FRAGMENT
+          value: $(tasks.parse-metadata.results.component-container-image)
+        - name: OCP_VERSION
+          value: $(params.ocp_version)
+      taskSpec:
+        params:
+          - name: FBC_FRAGMENT
+            type: string
+          - name: OCP_VERSION
+            type: string
+        results:
+          - name: matches
+            description: '"true" when the FBC is for the OCP version of this scenario'
+          - name: ocp-version
+            description: OCP version of the FBC
+          - name: logging-version
+            description: Logging release of the FBC, for example 6.7
+          - name: clo-fbc
+            description: FBC image of the Cluster Logging Operator
+          - name: loki-fbc
+            description: FBC image of the Loki Operator, empty when there is none
+        steps:
+          - name: resolve
+            image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:aa2c97da9bb73a4e8d1c6b41950f8d902b74461be0e042debe89277fdc4ebe49
+            env:
+              - name: FBC_FRAGMENT
+                value: $(params.FBC_FRAGMENT)
+              - name: OCP_VERSION
+                value: $(params.OCP_VERSION)
+            script: |
+              #!/bin/bash
+              set -euo pipefail
+
+              want="${OCP_VERSION#v}"
+              if ! [[ "${want}" =~ ^[0-9]+\.[0-9]+$ ]]; then
+                echo "ERROR: ocp_version must look like 5.0, got '${OCP_VERSION}'"
+                exit 1
+              fi
+              echo "This scenario runs on OCP ${want}"
+
+              # ART names its FBC images <component>-<release>-<timestamp>.ocp<OCP version> (label com.redhat.art.nvr).
+              # The Snapshot of a build has the FBC of both operators, but the image that triggered it is the one that
+              # ART built now, for one OCP version. Only the config blob of the image is read (an FBC image is large).
+              # When the image has no OCP version in its nvr, the version label of the operator-registry base image
+              # (for example v5.0.0) is used.
+              labels=$(skopeo inspect --retry-times 3 --config --override-os linux --override-arch amd64 "docker://${FBC_FRAGMENT}" \
+                | jq -c '.config.Labels // {}')
+              art=$(jq -r '.["com.redhat.art.name"] // empty' <<<"${labels}")
+              nvr=$(jq -r '.["com.redhat.art.nvr"] // empty' <<<"${labels}")
+              case "${art}" in
+                cluster-logging-operator-fbc | loki-operator-fbc) ;;
+                *)
+                  echo "ERROR: ${FBC_FRAGMENT} is not an FBC of the Cluster Logging or the Loki Operator (label com.redhat.art.name '${art}')"
+                  exit 1
+                  ;;
+              esac
+              ocp=$(sed -nE 's/.*\.ocp([0-9]+\.[0-9]+)$/\1/p' <<<"${nvr}")
+              if [ -z "${ocp}" ]; then
+                ocp=$(jq -r '.version // empty' <<<"${labels}" | sed -E 's/^v//' | cut -d. -f1,2)
+              fi
+              logging=$(sed -nE 's/^[a-z-]+-fbc-([0-9]+\.[0-9]+)\..*/\1/p' <<<"${nvr}")
+              echo "${art}: ${FBC_FRAGMENT} (nvr '${nvr}', OCP '${ocp}', release '${logging}')"
+              if [ -z "${ocp}" ] || [ -z "${logging}" ]; then
+                echo "ERROR: cannot read the OCP version and the logging release from the labels of the image"
+                exit 1
+              fi
+
+              if [ "${ocp}" != "${want}" ]; then
+                echo "Skipping: not the OCP version of this scenario."
+                echo -n "false" > "$(results.matches.path)"
+                : > "$(results.ocp-version.path)"
+                : > "$(results.logging-version.path)"
+                : > "$(results.clo-fbc.path)"
+                : > "$(results.loki-fbc.path)"
+                exit 0
+              fi
+
+              # The FBC of the other operator is the newest build of the same release and OCP version in the ART FBC
+              # repository (public). The Snapshot has the newest build of that operator too, but for any OCP version.
+              latest_fbc() {
+                curl -fsS --retry 3 "https://quay.io/api/v1/repository/redhat-user-workloads/ocp-art-tenant/art-fbc/tag/?limit=100&onlyActiveTags=true&filter_tag_name=like:$1-fbc-${logging}" \
+                  | jq -r --arg suffix ".ocp${want}" '[.tags[].name | select(endswith($suffix))] | sort | last // empty'
+              }
+              clo=""
+              loki=""
+              if [ "${art}" = "cluster-logging-operator-fbc" ]; then
+                clo="${FBC_FRAGMENT}"
+                tag=$(latest_fbc loki-operator || true)
+                [ -n "${tag}" ] && loki="quay.io/redhat-user-workloads/ocp-art-tenant/art-fbc:${tag}"
+              else
+                loki="${FBC_FRAGMENT}"
+                tag=$(latest_fbc cluster-logging-operator)
+                [ -n "${tag}" ] || { echo "ERROR: no FBC of the Cluster Logging Operator for ${logging} on OCP ${want}"; exit 1; }
+                clo="quay.io/redhat-user-workloads/ocp-art-tenant/art-fbc:${tag}"
+              fi
+
+              echo "Logging ${logging} on OCP ${want}"
+              echo "Cluster Logging Operator FBC: ${clo}"
+              echo "Loki Operator FBC: ${loki:-none, the tests use the catalogs of the cluster}"
+              echo -n "true" > "$(results.matches.path)"
+              echo -n "${want}" > "$(results.ocp-version.path)"
+              echo -n "${logging}" > "$(results.logging-version.path)"
+              echo -n "${clo}" > "$(results.clo-fbc.path)"
+              echo -n "${loki}" > "$(results.loki-fbc.path)"
+    - name: prepare-cluster-env
+      runAfter:
+        - resolve-fbc
+      when:
+        - input: $(tasks.resolve-fbc.results.matches)
+          operator: in
+          values: ["true"]
+      params:
+        - name: compute_node_type
+          value: $(params.compute_node_type)
+        - name: hypershift_node_count
+          value: $(params.hypershift_node_count)
+        - name: hosted_management_cluster
+          value: $(params.hosted_management_cluster)
+      taskSpec:
+        params:
+          - name: compute_node_type
+            type: string
+          - name: hypershift_node_count
+            type: string
+          - name: hosted_management_cluster
+            type: string
+        results:
+          - name: env
+            description: OpenShift CI workflow environment as JSON
+        steps:
+          - name: prepare-env
+            image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:aa2c97da9bb73a4e8d1c6b41950f8d902b74461be0e042debe89277fdc4ebe49
+            script: |
+              #!/bin/bash
+              set -euo pipefail
+
+              # The ART images are named registry.redhat.io/openshift-logging/*@sha256:... and exist only on the
+              # stage registry until the release is published.
+              image_content_sources=$(cat <<'EOF'
+              - source: registry.redhat.io/openshift-logging
+                mirrors:
+                  - registry.stage.redhat.io/openshift-logging
+              EOF
+              )
+
+              jq -cn \
+                --arg computeNodeType "$(params.compute_node_type)" \
+                --arg nodeCount "$(params.hypershift_node_count)" \
+                --arg managementCluster "$(params.hosted_management_cluster)" \
+                --arg imageContentSources "$image_content_sources" \
+                '{
+                  COMPUTE_NODE_TYPE: $computeNodeType,
+                  HYPERSHIFT_NODE_COUNT: $nodeCount,
+                  HOSTED_MANAGEMENT_CLUSTER: $managementCluster,
+                  IMAGE_CONTENT_SOURCES: $imageContentSources
+                }' | tee "$(results.env.path)"
+    - name: provision-cluster
+      runAfter:
+        - prepare-cluster-env
+      when:
+        - input: $(tasks.resolve-fbc.results.matches)
+          operator: in
+          values: ["true"]
+      taskRef:
+        resolver: git
+        params:
+          - name: url
+            value: https://github.com/openshift/konflux-tasks
+          - name: revision
+            value: main
+          - name: pathInRepo
+            value: tasks/provision-ephemeral-cluster/0.1/provision-ephemeral-cluster.yaml
+      params:
+        - name: ownerName
+          value: $(context.pipelineRun.name)
+        - name: ownerUid
+          value: $(context.pipelineRun.uid)
+        - name: workflow
+          value: hypershift-hostedcluster-workflow
+        - name: clusterProfile
+          value: aws-konflux-prod
+        - name: timeout
+          value: 1h
+        - name: releases
+          value: >-
+            {"latest":{"release":{"channel":"stable","version":"$(tasks.resolve-fbc.results.ocp-version)","architecture":"multi"}}}
+        - name: env
+          value: $(tasks.prepare-cluster-env.results.env)
+    - name: add-stage-credentials
+      description: Adds the stage registry credentials to the pull secret of the cluster
+      runAfter:
+        - provision-cluster
+      when:
+        - input: $(tasks.resolve-fbc.results.matches)
+          operator: in
+          values: ["true"]
+      params:
+        - name: clusterCredentialsSecretRef
+          value: $(tasks.provision-cluster.results.secretRef)
+        - name: stageRegistrySecret
+          value: $(params.stage_registry_secret)
+      taskSpec:
+        params:
+          - name: clusterCredentialsSecretRef
+            type: string
+          - name: stageRegistrySecret
+            type: string
+        volumes:
+          - name: credentials
+            secret:
+              secretName: $(params.clusterCredentialsSecretRef)
+          - name: stage-registry
+            secret:
+              secretName: $(params.stageRegistrySecret)
+        steps:
+          - name: add-pull-secret
+            env:
+              - name: KUBECONFIG
+                value: /credentials/kubeconfig
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+              - name: stage-registry
+                mountPath: /stage
+                readOnly: true
+            image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:aa2c97da9bb73a4e8d1c6b41950f8d902b74461be0e042debe89277fdc4ebe49
+            script: |
+              #!/bin/bash
+              set -euo pipefail
+
+              echo "Adding the stage registry credentials to the pull secret of the cluster"
+
+              # Hosted clusters: HyperShift merges this secret into the global pull secret of the nodes
+              # (OCP versions with the global pull secret feature).
+              oc create secret generic additional-pull-secret -n kube-system \
+                --type=kubernetes.io/dockerconfigjson \
+                --from-file=.dockerconfigjson=/stage/.dockerconfigjson \
+                --dry-run=client -o yaml | oc apply -f -
+
+              # Other clusters: merge the credentials into the pull secret in openshift-config.
+              oc get secret pull-secret -n openshift-config -o jsonpath='{.data.\.dockerconfigjson}' | base64 -d > /tmp/current.json
+              jq -s '.[0] * {auths: (.[0].auths + .[1].auths)}' /tmp/current.json /stage/.dockerconfigjson > /tmp/merged.json
+              oc set data secret/pull-secret -n openshift-config --from-file=.dockerconfigjson=/tmp/merged.json
+
+              # Wait until the nodes got it, when a syncer runs on the cluster.
+              if oc get daemonset global-pull-secret-syncer -n kube-system >/dev/null 2>&1; then
+                oc rollout status daemonset/global-pull-secret-syncer -n kube-system --timeout=10m
+              else
+                echo "No global-pull-secret-syncer daemonset on this cluster, waiting 2 minutes for the nodes"
+                sleep 120
+              fi
+    - name: create-catalog-sources
+      description: >-
+        Creates the catalog sources of the FBC images under test. The e2e tests subscribe the operators from the catalog
+        sources cluster-logging-operator-registry and loki-operator-registry when they exist.
+      runAfter:
+        - add-stage-credentials
+      when:
+        - input: $(tasks.resolve-fbc.results.matches)
+          operator: in
+          values: ["true"]
+      params:
+        - name: CLO_FBC
+          value: $(tasks.resolve-fbc.results.clo-fbc)
+        - name: LOKI_FBC
+          value: $(tasks.resolve-fbc.results.loki-fbc)
+        - name: LOGGING_VERSION
+          value: $(tasks.resolve-fbc.results.logging-version)
+        - name: clusterCredentialsSecretRef
+          value: $(tasks.provision-cluster.results.secretRef)
+      taskSpec:
+        params:
+          - name: CLO_FBC
+            type: string
+          - name: LOKI_FBC
+            type: string
+          - name: LOGGING_VERSION
+            type: string
+          - name: clusterCredentialsSecretRef
+            type: string
+        volumes:
+          - name: credentials
+            secret:
+              secretName: $(params.clusterCredentialsSecretRef)
+        steps:
+          - name: create-catalog-sources
+            env:
+              - name: KUBECONFIG
+                value: /credentials/kubeconfig
+              - name: CLO_FBC
+                value: $(params.CLO_FBC)
+              - name: LOKI_FBC
+                value: $(params.LOKI_FBC)
+              - name: LOGGING_VERSION
+                value: $(params.LOGGING_VERSION)
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+            image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:aa2c97da9bb73a4e8d1c6b41950f8d902b74461be0e042debe89277fdc4ebe49
+            script: |
+              #!/bin/bash
+              set -euo pipefail
+
+              create_catalog() {
+                local name="$1" image="$2" package="$3"
+                echo "Creating the catalog source ${name} from ${image}"
+                cat <<EOF | oc apply -f -
+              apiVersion: operators.coreos.com/v1alpha1
+              kind: CatalogSource
+              metadata:
+                name: ${name}
+                namespace: openshift-marketplace
+              spec:
+                sourceType: grpc
+                image: ${image}
+                displayName: ART ${name}
+                publisher: ART
+              EOF
+                local state=""
+                for i in $(seq 1 40); do
+                  state=$(oc get catalogsource "${name}" -n openshift-marketplace -o jsonpath='{.status.connectionState.lastObservedState}')
+                  [ "${state}" = "READY" ] && break
+                  echo "Try ${i}/40: catalog source ${name} is '${state}'"
+                  sleep 15
+                done
+                [ "${state}" = "READY" ] || { echo "The catalog source ${name} did not become READY"; oc get pods -n openshift-marketplace; exit 1; }
+
+                local channels=""
+                for i in $(seq 1 20); do
+                  channels=$(oc get packagemanifests -n openshift-marketplace -l "catalog=${name}" \
+                    -o jsonpath="{.items[?(@.metadata.name==\"${package}\")].status.channels[*].name}")
+                  [[ " ${channels} " == *" stable-${LOGGING_VERSION} "* ]] && break
+                  echo "Try ${i}/20: the channels of ${package} in ${name} are '${channels}'"
+                  sleep 15
+                done
+                [[ " ${channels} " == *" stable-${LOGGING_VERSION} "* ]] || { echo "${package} in ${name} has no channel stable-${LOGGING_VERSION}"; exit 1; }
+              }
+
+              create_catalog cluster-logging-operator-registry "${CLO_FBC}" cluster-logging
+              if [ -n "${LOKI_FBC}" ]; then
+                create_catalog loki-operator-registry "${LOKI_FBC}" loki-operator
+              fi
+    - name: build-and-run-tests
+      description: Builds the test extension of this repository and runs a suite of it on the cluster
+      runAfter:
+        - create-catalog-sources
+      when:
+        - input: $(tasks.resolve-fbc.results.matches)
+          operator: in
+          values: ["true"]
+      timeout: "4h0m0s"
+      params:
+        - name: TESTS_REPO
+          value: $(params.tests_repo)
+        - name: TESTS_REVISION
+          value: $(params.tests_revision)
+        - name: TEST_SUITE
+          value: $(params.test_suite)
+        - name: SKIP_TESTS
+          value: $(params.skip_tests)
+        - name: TEST_TIMEOUT
+          value: $(params.test_timeout)
+        - name: LOGGING_VERSION
+          value: $(tasks.resolve-fbc.results.logging-version)
+        - name: clusterCredentialsSecretRef
+          value: $(tasks.provision-cluster.results.secretRef)
+      taskSpec:
+        params:
+          - name: TESTS_REPO
+            type: string
+          - name: TESTS_REVISION
+            type: string
+          - name: TEST_SUITE
+            type: string
+          - name: SKIP_TESTS
+            type: string
+          - name: TEST_TIMEOUT
+            type: string
+          - name: LOGGING_VERSION
+            type: string
+          - name: clusterCredentialsSecretRef
+            type: string
+        volumes:
+          - name: credentials
+            secret:
+              secretName: $(params.clusterCredentialsSecretRef)
+          - name: work
+            emptyDir: {}
+        steps:
+          - name: build-tests
+            image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:aa2c97da9bb73a4e8d1c6b41950f8d902b74461be0e042debe89277fdc4ebe49
+            computeResources:
+              requests:
+                cpu: "2"
+                memory: 4Gi
+              limits:
+                memory: 8Gi
+            volumeMounts:
+              - name: work
+                mountPath: /work
+            env:
+              - name: TESTS_REPO
+                value: $(params.TESTS_REPO)
+              - name: TESTS_REVISION
+                value: $(params.TESTS_REVISION)
+              - name: HOME
+                value: /work/home
+              - name: GOPATH
+                value: /work/go
+              - name: GOCACHE
+                value: /work/go-cache
+            script: |
+              #!/bin/bash
+              set -euo pipefail
+
+              mkdir -p "${HOME}"
+              git clone --depth 1 --branch "${TESTS_REVISION}" "${TESTS_REPO}" /work/src
+              cd /work/src
+              echo "Building the tests of $(git rev-parse HEAD)"
+              # GOTOOLCHAIN=auto downloads the Go version of go.mod when the image has an older one.
+              GOFLAGS=-mod=readonly GOTOOLCHAIN=auto go build -o /work/logging-tests-ext ./cmd
+          - name: run-tests
+            image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:aa2c97da9bb73a4e8d1c6b41950f8d902b74461be0e042debe89277fdc4ebe49
+            volumeMounts:
+              - name: credentials
+                mountPath: /credentials
+              - name: work
+                mountPath: /work
+            env:
+              - name: KUBECONFIG
+                value: /credentials/kubeconfig
+              - name: HOME
+                value: /work/home
+              - name: TEST_SUITE
+                value: $(params.TEST_SUITE)
+              - name: SKIP_TESTS
+                value: $(params.SKIP_TESTS)
+              - name: TEST_TIMEOUT
+                value: $(params.TEST_TIMEOUT)
+              # The release under test: selects the catalog channel (stable-<release>) and gates the tests that
+              # need a newer release.
+              - name: LOGGING_TEST_VERSION
+                value: $(params.LOGGING_VERSION)
+              # Object storage of the LokiStacks: MinIO in the cluster, so the tests need no cloud credentials.
+              - name: LOGGING_TEST_STORAGE
+                value: minio
+            script: |
+              #!/bin/bash
+              set -uo pipefail
+
+              ext=/work/logging-tests-ext
+              names=$("${ext}" list tests --suite "${TEST_SUITE}" -o names | grep '^\[' | grep -Eiv -- "${SKIP_TESTS:-^$}" || true)
+              if [ -z "${names}" ]; then
+                echo "ERROR: no tests in the suite ${TEST_SUITE} after skipping '${SKIP_TESTS}'"
+                exit 1
+              fi
+              echo "Tests to run, logging ${LOGGING_TEST_VERSION}:"
+              echo "${names}"
+
+              # Every spec is Informing, so run-test exits 0 even when a test fails. The outcome is in the JSONL
+              # results, one line per test. The test log goes to stderr.
+              results=/work/results.jsonl
+              : > "${results}"
+              while IFS= read -r name; do
+                echo "=== ${name}"
+                "${ext}" run-test --timeout "${TEST_TIMEOUT}" -o jsonl "${name}" | grep '^{' >> "${results}"
+              done <<<"${names}"
+
+              echo
+              echo "Results"
+              jq -r '(if .result == "passed" then "PASSED " elif .result == "skipped" then "SKIPPED" else "FAILED " end) + " " + .name' "${results}"
+              expected=$(grep -c . <<<"${names}")
+              recorded=$(jq -s 'length' "${results}")
+              if [ "${recorded}" -ne "${expected}" ]; then
+                echo "ERROR: ${recorded} results for ${expected} tests"
+                exit 1
+              fi
+              # Skipped tests do not count: a run where nothing passed is a failure, not a success.
+              jq -se 'all(.[]; .result != "failed") and any(.[]; .result == "passed")' "${results}" > /dev/null
