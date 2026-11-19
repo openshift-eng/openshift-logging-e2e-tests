@@ -966,68 +966,68 @@ func newLokiClient(routeAddress string) *lokiClient {
 }
 
 // retry sets how many times to retry each query
-func (c *lokiClient) retry(retry int) *lokiClient {
-	nc := *c
+func (lc *lokiClient) retry(retry int) *lokiClient {
+	nc := *lc
 	nc.retries = retry
 	return &nc
 }
 
 // withToken sets the token used to do query
-func (c *lokiClient) withToken(bearerToken string) *lokiClient {
-	nc := *c
+func (lc *lokiClient) withToken(bearerToken string) *lokiClient {
+	nc := *lc
 	nc.bearerToken = bearerToken
 	return &nc
 }
 
-func (c *lokiClient) withBasicAuth(username string, password string) *lokiClient {
-	nc := *c
+func (lc *lokiClient) withBasicAuth(username string, password string) *lokiClient {
+	nc := *lc
 	nc.username = username
 	nc.password = password
 	return &nc
 }
 
 /*
-func (c *lokiClient) withTokenFile(bearerTokenFile string) *lokiClient {
-	nc := *c
+func (lc *lokiClient) withTokenFile(bearerTokenFile string) *lokiClient {
+	nc := *lc
 	nc.bearerTokenFile = bearerTokenFile
 	return &nc
 }
 */
 
-func (c *lokiClient) getHTTPRequestHeader() (http.Header, error) {
+func (lc *lokiClient) getHTTPRequestHeader() (http.Header, error) {
 	h := make(http.Header)
-	if c.username != "" && c.password != "" {
+	if lc.username != "" && lc.password != "" {
 		h.Set(
 			"Authorization",
-			"Basic "+base64.StdEncoding.EncodeToString([]byte(c.username+":"+c.password)),
+			"Basic "+base64.StdEncoding.EncodeToString([]byte(lc.username+":"+lc.password)),
 		)
 	}
 	h.Set("User-Agent", "loki-logcli")
 
-	if c.orgID != "" {
-		h.Set("X-Scope-OrgID", c.orgID)
+	if lc.orgID != "" {
+		h.Set("X-Scope-OrgID", lc.orgID)
 	}
 
-	if c.queryTags != "" {
-		h.Set("X-Query-Tags", c.queryTags)
+	if lc.queryTags != "" {
+		h.Set("X-Query-Tags", lc.queryTags)
 	}
 
-	if (c.username != "" || c.password != "") && (len(c.bearerToken) > 0 || len(c.bearerTokenFile) > 0) {
+	if (lc.username != "" || lc.password != "") && (len(lc.bearerToken) > 0 || len(lc.bearerTokenFile) > 0) {
 		return nil, fmt.Errorf("at most one of HTTP basic auth (username/password), bearer-token & bearer-token-file is allowed to be configured")
 	}
 
-	if len(c.bearerToken) > 0 && len(c.bearerTokenFile) > 0 {
+	if len(lc.bearerToken) > 0 && len(lc.bearerTokenFile) > 0 {
 		return nil, fmt.Errorf("at most one of the options bearer-token & bearer-token-file is allowed to be configured")
 	}
 
-	if c.bearerToken != "" {
-		h.Set("Authorization", "Bearer "+c.bearerToken)
+	if lc.bearerToken != "" {
+		h.Set("Authorization", "Bearer "+lc.bearerToken)
 	}
 
-	if c.bearerTokenFile != "" {
-		b, err := os.ReadFile(c.bearerTokenFile)
+	if lc.bearerTokenFile != "" {
+		b, err := os.ReadFile(lc.bearerTokenFile)
 		if err != nil {
-			return nil, fmt.Errorf("unable to read authorization credentials file %s: %w", c.bearerTokenFile, err)
+			return nil, fmt.Errorf("unable to read authorization credentials file %s: %w", lc.bearerTokenFile, err)
 		}
 		bearerToken := strings.TrimSpace(string(b))
 		h.Set("Authorization", "Bearer "+bearerToken)
@@ -1035,24 +1035,24 @@ func (c *lokiClient) getHTTPRequestHeader() (http.Header, error) {
 	return h, nil
 }
 
-func (c *lokiClient) doRequest(path, query string, out any) error {
-	h, err := c.getHTTPRequestHeader()
+func (lc *lokiClient) doRequest(path, query string, out any) error {
+	h, err := lc.getHTTPRequestHeader()
 	if err != nil {
 		return err
 	}
 
-	resp, err := doHTTPRequest(h, c.address, path, query, "GET", c.quiet, c.retries, nil, 200)
+	resp, err := doHTTPRequest(h, lc.address, path, query, "GET", lc.quiet, lc.retries, nil, 200)
 	if err != nil {
 		return err
 	}
 	return json.Unmarshal(resp, out)
 }
 
-func (c *lokiClient) doQuery(path string, query string) (*lokiQueryResponse, error) {
+func (lc *lokiClient) doQuery(path string, query string) (*lokiQueryResponse, error) {
 	var err error
 	var r lokiQueryResponse
 
-	if err = c.doRequest(path, query, &r); err != nil {
+	if err = lc.doRequest(path, query, &r); err != nil {
 		return nil, err
 	}
 
@@ -1061,7 +1061,7 @@ func (c *lokiClient) doQuery(path string, query string) (*lokiQueryResponse, err
 
 // query uses the /api/v1/query endpoint to execute an instant query
 // lc.query("application", "sum by(kubernetes_namespace_name)(count_over_time({kubernetes_namespace_name=\"multiple-containers\"}[5m]))", 30, false, time.Now())
-func (c *lokiClient) query(tenant string, queryStr string, limit int, forward bool, time time.Time) (*lokiQueryResponse, error) {
+func (lc *lokiClient) query(tenant string, queryStr string, limit int, forward bool, time time.Time) (*lokiQueryResponse, error) {
 	direction := func() string {
 		if forward {
 			return "FORWARD"
@@ -1079,7 +1079,7 @@ func (c *lokiClient) query(tenant string, queryStr string, limit int, forward bo
 	} else {
 		logPath = queryRangePath
 	}
-	return c.doQuery(logPath, qsb.encode())
+	return lc.doQuery(logPath, qsb.encode())
 }
 
 // queryRange uses the /api/v1/query_range endpoint to execute a range query
@@ -1089,7 +1089,7 @@ func (c *lokiClient) query(tenant string, queryStr string, limit int, forward bo
 // start: Start looking for logs at this absolute time(inclusive), e.g.: time.Now().Add(time.Duration(-1)*time.Hour) means 1 hour ago
 // end: Stop looking for logs at this absolute time (exclusive)
 // forward: true means scan forwards through logs, false means scan backwards through logs
-func (c *lokiClient) queryRange(tenant string, queryStr string, limit int, start, end time.Time, forward bool) (*lokiQueryResponse, error) {
+func (lc *lokiClient) queryRange(tenant string, queryStr string, limit int, start, end time.Time, forward bool) (*lokiQueryResponse, error) {
 	direction := func() string {
 		if forward {
 			return "FORWARD"
@@ -1109,17 +1109,17 @@ func (c *lokiClient) queryRange(tenant string, queryStr string, limit int, start
 		logPath = queryRangePath
 	}
 
-	return c.doQuery(logPath, params.encode())
+	return lc.doQuery(logPath, params.encode())
 }
 
-func (c *lokiClient) searchLogsInLoki(tenant, query string) (*lokiQueryResponse, error) {
-	res, err := c.queryRange(tenant, query, 5, time.Now().Add(time.Duration(-1)*time.Hour), time.Now(), false)
+func (lc *lokiClient) searchLogsInLoki(tenant, query string) (*lokiQueryResponse, error) {
+	res, err := lc.queryRange(tenant, query, 5, time.Now().Add(time.Duration(-1)*time.Hour), time.Now(), false)
 	return res, err
 }
 
-func (c *lokiClient) waitForLogsAppearByQuery(tenant, query string) error {
-	return wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 300*time.Second, true, func(context.Context) (done bool, err error) {
-		logs, err := c.searchLogsInLoki(tenant, query)
+func (lc *lokiClient) waitForLogsAppearByQuery(tenant, query string) error {
+	return wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+		logs, err := lc.searchLogsInLoki(tenant, query)
 		if err != nil {
 			e2e.Logf("\ngot err when searching logs: %v, retrying...\n", err)
 			return false, nil
@@ -1132,14 +1132,17 @@ func (c *lokiClient) waitForLogsAppearByQuery(tenant, query string) error {
 	})
 }
 
-func (c *lokiClient) searchByKey(tenant, key, value string) (*lokiQueryResponse, error) {
-	res, err := c.searchLogsInLoki(tenant, "{"+key+"=\""+value+"\"}")
+func (lc *lokiClient) searchByKey(tenant, key, value string) (*lokiQueryResponse, error) {
+	res, err := lc.searchLogsInLoki(tenant, "{"+key+"=\""+value+"\"}")
 	return res, err
 }
 
-func (c *lokiClient) waitForLogsAppearByKey(tenant, key, value string) {
-	err := wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 300*time.Second, true, func(context.Context) (done bool, err error) {
-		logs, err := c.searchByKey(tenant, key, value)
+// waitForLogsAppearByKey polls until the query returns logs, and returns the
+// last query response. Callers that only need to wait can ignore the response.
+func (lc *lokiClient) waitForLogsAppearByKey(tenant, key, value string) *lokiQueryResponse {
+	var logs *lokiQueryResponse
+	err := wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+		logs, err = lc.searchByKey(tenant, key, value)
 		if err != nil {
 			e2e.Logf("\ngot err when searching logs: %v, retrying...\n", err)
 			return false, nil
@@ -1150,17 +1153,18 @@ func (c *lokiClient) waitForLogsAppearByKey(tenant, key, value string) {
 		}
 		return false, nil
 	})
-	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf(`can't find logs by {%s="%s"} in last 5 minutes`, key, value))
+	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf(`can't find logs by {%s="%s"}`, key, value))
+	return logs
 }
 
-func (c *lokiClient) searchByNamespace(tenant, projectName string) (*lokiQueryResponse, error) {
-	res, err := c.searchLogsInLoki(tenant, "{kubernetes_namespace_name=\""+projectName+"\"}")
+func (lc *lokiClient) searchByNamespace(tenant, projectName string) (*lokiQueryResponse, error) {
+	res, err := lc.searchLogsInLoki(tenant, "{kubernetes_namespace_name=\""+projectName+"\"}")
 	return res, err
 }
 
-func (c *lokiClient) waitForLogsAppearByProject(tenant, projectName string) {
-	err := wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 300*time.Second, true, func(context.Context) (done bool, err error) {
-		logs, err := c.searchByNamespace(tenant, projectName)
+func (lc *lokiClient) waitForLogsAppearByProject(tenant, projectName string) {
+	err := wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+		logs, err := lc.searchByNamespace(tenant, projectName)
 		if err != nil {
 			e2e.Logf("\ngot err when searching logs: %v, retrying...\n", err)
 			return false, nil
@@ -1171,7 +1175,7 @@ func (c *lokiClient) waitForLogsAppearByProject(tenant, projectName string) {
 		}
 		return false, nil
 	})
-	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("can't find logs from %s project in last 5 minutes", projectName))
+	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("can't find logs from %s project", projectName))
 }
 
 // extractLogEntities extract the log entities from loki query response, designed for checking the content of log data in Loki
@@ -1189,7 +1193,7 @@ func extractLogEntities(lokiQueryResult *lokiQueryResponse) []LogEntity {
 }
 
 // listLabelValues uses the /api/v1/label endpoint to list label values
-func (c *lokiClient) listLabelValues(tenant, name string, start, end time.Time) (*labelResponse, error) {
+func (lc *lokiClient) listLabelValues(tenant, name string, start, end time.Time) (*labelResponse, error) {
 	lpath := fmt.Sprintf(labelValuesPath, url.PathEscape(name))
 	var labelResponse labelResponse
 	params := newQueryStringBuilder()
@@ -1203,14 +1207,14 @@ func (c *lokiClient) listLabelValues(tenant, name string, start, end time.Time) 
 		path = lpath
 	}
 
-	if err := c.doRequest(path, params.encode(), &labelResponse); err != nil {
+	if err := lc.doRequest(path, params.encode(), &labelResponse); err != nil {
 		return nil, err
 	}
 	return &labelResponse, nil
 }
 
 // listLabelNames uses the /api/v1/label endpoint to list label names
-func (c *lokiClient) listLabelNames(tenant string, start, end time.Time) (*labelResponse, error) {
+func (lc *lokiClient) listLabelNames(tenant string, start, end time.Time) (*labelResponse, error) {
 	var labelResponse labelResponse
 	params := newQueryStringBuilder()
 	params.setInt("start", start.UnixNano())
@@ -1222,27 +1226,27 @@ func (c *lokiClient) listLabelNames(tenant string, start, end time.Time) (*label
 		path = labelsPath
 	}
 
-	if err := c.doRequest(path, params.encode(), &labelResponse); err != nil {
+	if err := lc.doRequest(path, params.encode(), &labelResponse); err != nil {
 		return nil, err
 	}
 	return &labelResponse, nil
 }
 
 // listLabels gets the label names or values
-func (c *lokiClient) listLabels(tenant, labelName string) ([]string, error) {
+func (lc *lokiClient) listLabels(tenant, labelName string) ([]string, error) {
 	var labelResponse *labelResponse
 	var err error
 	start := time.Now().Add(time.Duration(-2) * time.Hour)
 	end := time.Now()
 	if len(labelName) > 0 {
-		labelResponse, err = c.listLabelValues(tenant, labelName, start, end)
+		labelResponse, err = lc.listLabelValues(tenant, labelName, start, end)
 	} else {
-		labelResponse, err = c.listLabelNames(tenant, start, end)
+		labelResponse, err = lc.listLabelNames(tenant, start, end)
 	}
 	return labelResponse.Data, err
 }
 
-func (c *lokiClient) queryRules(tenant, ns string) ([]byte, error) {
+func (lc *lokiClient) queryRules(tenant, ns string) ([]byte, error) {
 	path := apiPath + tenant + rulesPath
 
 	params := url.Values{}
@@ -1250,12 +1254,12 @@ func (c *lokiClient) queryRules(tenant, ns string) ([]byte, error) {
 		params.Add("kubernetes_namespace_name", ns)
 	}
 
-	h, err := c.getHTTPRequestHeader()
+	h, err := lc.getHTTPRequestHeader()
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := doHTTPRequest(h, c.address, path, params.Encode(), "GET", c.quiet, c.retries, nil, 200)
+	resp, err := doHTTPRequest(h, lc.address, path, params.Encode(), "GET", lc.quiet, lc.retries, nil, 200)
 	if err != nil {
 		/*
 			Ignore error "unexpected EOF", adding `h.Add("Accept-Encoding", "identity")` doesn't resolve the error.

@@ -534,8 +534,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			bearerToken := getSAToken(oc, "default", oc.Namespace())
 			route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
 			lc := newLokiClient(route).withToken(bearerToken).retry(5)
+			logsByType := map[string]*lokiQueryResponse{}
 			for _, logType := range []string{"application", "infrastructure", "audit"} {
-				lc.waitForLogsAppearByKey(logType, "log_type", logType)
+				logsByType[logType] = lc.waitForLogsAppearByKey(logType, "log_type", logType)
 			}
 			lc.waitForLogsAppearByProject("application", appProj)
 
@@ -543,9 +544,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			clusterID, err := getClusterID(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			for _, logType := range []string{"application", "infrastructure", "audit"} {
-				logs, err := lc.searchByKey(logType, "log_type", logType)
-				o.Expect(err).NotTo(o.HaveOccurred())
-				extractedLogs := extractLogEntities(logs)
+				extractedLogs := extractLogEntities(logsByType[logType])
 				for _, log := range extractedLogs {
 					o.Expect(log.OpenShift.ClusterID).Should(o.Equal(clusterID))
 				}
@@ -742,7 +741,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			lc := newLokiClient(route).withToken(bearerToken).retry(5)
 			for k, v := range multilineLogTypes {
 				g.By("check " + k + " logs\n")
-				err = wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 300*time.Second, true, func(context.Context) (done bool, err error) {
+				err = wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
 					appLogs, err := lc.searchByNamespace("application", "multiline-log-"+k+"-74945")
 					if err != nil {
 						// the gateway can return 403 for a while after cluster-admin is granted
@@ -756,8 +755,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				})
 				compat_otp.AssertWaitPollNoErr(err, "can't find "+k+" logs")
 				for _, log := range v {
-					err = wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 120*time.Second, true, func(context.Context) (done bool, err error) {
-						dataInLoki, _ := lc.queryRange("application", "{kubernetes_namespace_name=\"multiline-log-"+k+"-74945\"}", len(v)*2, time.Now().Add(time.Duration(-2)*time.Hour), time.Now(), false)
+					err = wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+						dataInLoki, err := lc.queryRange("application", "{kubernetes_namespace_name=\"multiline-log-"+k+"-74945\"}", len(v)*2, time.Now().Add(time.Duration(-2)*time.Hour), time.Now(), false)
+						if err != nil {
+							// the gateway can return 403 for a while after cluster-admin is granted
+							e2e.Logf("query failed, try next round: %v", err)
+							return false, nil
+						}
 						lokiLogs := extractLogEntities(dataInLoki)
 						var messages []string
 						for _, lokiLog := range lokiLogs {
@@ -2768,10 +2772,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		time.Sleep(2 * time.Minute)
 
 		compat_otp.By("check data in user-managed loki, the count of logs from each node in one minute should be ~10*60")
-		route := "http://" + getRouteAddress(oc, loki.namespace, loki.name)
-		lc := newLokiClient(route)
-		lc.waitForLogsAppearByProject("", appProj)
-		res, err := lc.query("", "sum by(kubernetes_host)(count_over_time({log_type=~\".+\"}[1m]))", 30, false, time.Now())
+		routeUserLoki := "http://" + getRouteAddress(oc, loki.namespace, loki.name)
+		userLoki := newLokiClient(routeUserLoki)
+		userLoki.waitForLogsAppearByProject("", appProj)
+		res, err := userLoki.query("", "sum by(kubernetes_host)(count_over_time({log_type=~\".+\"}[1m]))", 30, false, time.Now())
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
 		for _, r := range res.Data.Result {
@@ -2785,13 +2789,22 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		}
 
 		compat_otp.By("check data in lokistack, there should not have rate limitation")
-		routeLokiStack := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
+		route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
 		bearerToken := getSAToken(oc, "default", oc.Namespace())
-		lokistackClient := newLokiClient(routeLokiStack).withToken(bearerToken).retry(5)
+		lc := newLokiClient(route).withToken(bearerToken).retry(5)
 		for _, nodeName := range nodeNames {
 			// only check app logs, because for infra and audit logs, we don't know how many logs the OCP generates in one minute
-			res, err := lokistackClient.query("application", "sum by(kubernetes_host)(count_over_time({kubernetes_host=\""+nodeName+"\"}[1m]))", 30, false, time.Now())
-			o.Expect(err).NotTo(o.HaveOccurred())
+			var res *lokiQueryResponse
+			err = wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+				res, err = lc.query("application", "sum by(kubernetes_host)(count_over_time({kubernetes_host=\""+nodeName+"\"}[1m]))", 30, false, time.Now())
+				if err != nil {
+					// the gateway can return 403 for a while after cluster-admin is granted
+					e2e.Logf("query failed, try next round: %v", err)
+					return false, nil
+				}
+				return true, nil
+			})
+			compat_otp.AssertWaitPollNoErr(err, "can't query logs in lokistack for node "+nodeName)
 			o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
 			for _, r := range res.Data.Result {
 				o.Expect(len(r.Values)).To(o.BeNumerically(">=", 2), "need at least two data points")
