@@ -1,6 +1,8 @@
 package logging
 
 import (
+	"time"
+
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/observability"
 )
 
@@ -11,6 +13,12 @@ const (
 	cloNS = observability.NamespaceClusterLoggingOperator
 	// the namespace where loki-operator is in
 	loNS = observability.NamespaceLokiOperator
+
+	// how often a Loki query poll is retried
+	queryPollInterval = 10 * time.Second
+	// how long a Loki query poll keeps trying, whether the query keeps failing
+	// or keeps returning no logs
+	queryErrorTimeout = 300 * time.Second
 
 	apiPath         = "/api/logs/v1/"
 	queryRangePath  = "/loki/api/v1/query_range"

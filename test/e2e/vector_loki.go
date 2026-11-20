@@ -534,8 +534,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			bearerToken := getSAToken(oc, "default", oc.Namespace())
 			route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
 			lc := newLokiClient(route).withToken(bearerToken).retry(5)
+			logsByType := map[string]*lokiQueryResponse{}
 			for _, logType := range []string{"application", "infrastructure", "audit"} {
-				lc.waitForLogsAppearByKey(logType, "log_type", logType)
+				logsByType[logType] = lc.waitForLogsAppearByKey(logType, "log_type", logType)
 			}
 			lc.waitForLogsAppearByProject("application", appProj)
 
@@ -543,9 +544,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			clusterID, err := getClusterID(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			for _, logType := range []string{"application", "infrastructure", "audit"} {
-				logs, err := lc.searchByKey(logType, "log_type", logType)
-				o.Expect(err).NotTo(o.HaveOccurred())
-				extractedLogs := extractLogEntities(logs)
+				extractedLogs := extractLogEntities(logsByType[logType])
 				for _, log := range extractedLogs {
 					o.Expect(log.OpenShift.ClusterID).Should(o.Equal(clusterID))
 				}
@@ -742,7 +741,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			lc := newLokiClient(route).withToken(bearerToken).retry(5)
 			for k, v := range multilineLogTypes {
 				g.By("check " + k + " logs\n")
-				err = wait.PollUntilContextTimeout(context.Background(), 10*time.Second, 300*time.Second, true, func(context.Context) (done bool, err error) {
+				err = wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
 					appLogs, err := lc.searchByNamespace("application", "multiline-log-"+k+"-74945")
 					if err != nil {
 						// the gateway can return 403 for a while after cluster-admin is granted
@@ -756,8 +755,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				})
 				compat_otp.AssertWaitPollNoErr(err, "can't find "+k+" logs")
 				for _, log := range v {
-					err = wait.PollUntilContextTimeout(context.Background(), 5*time.Second, 120*time.Second, true, func(context.Context) (done bool, err error) {
-						dataInLoki, _ := lc.queryRange("application", "{kubernetes_namespace_name=\"multiline-log-"+k+"-74945\"}", len(v)*2, time.Now().Add(time.Duration(-2)*time.Hour), time.Now(), false)
+					err = wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+						dataInLoki, err := lc.queryRange("application", "{kubernetes_namespace_name=\"multiline-log-"+k+"-74945\"}", len(v)*2, time.Now().Add(time.Duration(-2)*time.Hour), time.Now(), false)
+						if err != nil {
+							// the gateway can return 403 for a while after cluster-admin is granted
+							e2e.Logf("query failed, try next round: %v", err)
+							return false, nil
+						}
 						lokiLogs := extractLogEntities(dataInLoki)
 						var messages []string
 						for _, lokiLog := range lokiLogs {
@@ -842,9 +846,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			// sleep 3 minutes for collector pods to send the cached records
 			time.Sleep(3 * time.Minute)
 			compat_otp.By("check data in lokistack, only journal logs are collected")
-			re, _ := lc.queryRange("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name!~".+" }`, 30, time.Now().Add(time.Duration(-2)*time.Minute), time.Now(), true)
+			re := lc.queryRangeWithRetry("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name!~".+" }`, 30, 2*time.Minute, true)
 			o.Expect(re.Data.Result).ShouldNot(o.BeEmpty())
-			re, _ = lc.queryRange("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name=~".+" }`, 30, time.Now().Add(time.Duration(-2)*time.Minute), time.Now(), true)
+			re = lc.queryRangeWithRetry("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name=~".+" }`, 30, 2*time.Minute, true)
 			o.Expect(re.Data.Result).Should(o.BeEmpty())
 
 			compat_otp.By("Update CLF to collect infra container logs")
@@ -862,9 +866,9 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(result).To(o.BeTrue(), "the configuration %s is not in vector.toml", searchString)
 
-			re, _ = lc.queryRange("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name=~".+" }`, 30, time.Now().Add(time.Duration(-2)*time.Minute), time.Now(), true)
+			re = lc.queryRangeWithRetry("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name=~".+" }`, 30, 2*time.Minute, true)
 			o.Expect(re.Data.Result).ShouldNot(o.BeEmpty())
-			re, _ = lc.queryRange("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name!~".+" }`, 30, time.Now().Add(time.Duration(-2)*time.Minute), time.Now(), true)
+			re = lc.queryRangeWithRetry("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name!~".+" }`, 30, 2*time.Minute, true)
 			o.Expect(re.Data.Result).Should(o.BeEmpty())
 		})
 
@@ -2656,9 +2660,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		lc.waitForLogsAppearByProject("application", multiplePods)
 
 		compat_otp.By("for logs in project/" + multiplePods + ", the count of each container in one minute should be ~10*60")
-		re, _ := lc.query("application", "sum by(kubernetes_pod_name)(count_over_time({kubernetes_namespace_name=\""+multiplePods+"\"}[1m]))", 30, false, time.Now())
-		o.Expect(re.Data.Result).ShouldNot(o.BeEmpty())
-		for _, r := range re.Data.Result {
+		res := lc.queryWithRetry("application", "sum by(kubernetes_pod_name)(count_over_time({kubernetes_namespace_name=\""+multiplePods+"\"}[1m]))", 30, false)
+		o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
+		for _, r := range res.Data.Result {
 			// check the penultimate value
 			v := r.Values[len(r.Values)-2]
 			c := convertInterfaceToArray(v)[1]
@@ -2670,7 +2674,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		compat_otp.By("for logs in projects logging-flow-control-*, the count of each container in one minute should be ~20*60")
 		// get `400 Bad Request` when querying with `sum by(kubernetes_pod_name)(count_over_time({kubernetes_namespace_name=~\"logging-flow-control-.+\"}[1m]))`
 		for _, ns := range namespaces {
-			res, _ := lc.query("application", "sum by(kubernetes_pod_name)(count_over_time({kubernetes_namespace_name=\""+ns+"\"}[1m]))", 30, false, time.Now())
+			res := lc.queryWithRetry("application", "sum by(kubernetes_pod_name)(count_over_time({kubernetes_namespace_name=\""+ns+"\"}[1m]))", 30, false)
 			o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
 			for _, r := range res.Data.Result {
 				// check the penultimate value
@@ -2682,9 +2686,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		}
 
 		compat_otp.By("for logs in project/" + multipleContainers + ", the count of each container in one minute should be ~30*60")
-		r, _ := lc.query("application", "sum by(kubernetes_container_name)(count_over_time({kubernetes_namespace_name=\""+multipleContainers+"\"}[1m]))", 30, false, time.Now())
-		o.Expect(r.Data.Result).ShouldNot(o.BeEmpty())
-		for _, r := range r.Data.Result {
+		res = lc.queryWithRetry("application", "sum by(kubernetes_container_name)(count_over_time({kubernetes_namespace_name=\""+multipleContainers+"\"}[1m]))", 30, false)
+		o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
+		for _, r := range res.Data.Result {
 			// check the penultimate value
 			v := r.Values[len(r.Values)-2]
 			c := convertInterfaceToArray(v)[1]
@@ -2768,10 +2772,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		time.Sleep(2 * time.Minute)
 
 		compat_otp.By("check data in user-managed loki, the count of logs from each node in one minute should be ~10*60")
-		route := "http://" + getRouteAddress(oc, loki.namespace, loki.name)
-		lc := newLokiClient(route)
-		lc.waitForLogsAppearByProject("", appProj)
-		res, err := lc.query("", "sum by(kubernetes_host)(count_over_time({log_type=~\".+\"}[1m]))", 30, false, time.Now())
+		routeUserLoki := "http://" + getRouteAddress(oc, loki.namespace, loki.name)
+		userLoki := newLokiClient(routeUserLoki)
+		userLoki.waitForLogsAppearByProject("", appProj)
+		res, err := userLoki.query("", "sum by(kubernetes_host)(count_over_time({log_type=~\".+\"}[1m]))", 30, false, time.Now())
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
 		for _, r := range res.Data.Result {
@@ -2785,13 +2789,12 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		}
 
 		compat_otp.By("check data in lokistack, there should not have rate limitation")
-		routeLokiStack := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
+		route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
 		bearerToken := getSAToken(oc, "default", oc.Namespace())
-		lokistackClient := newLokiClient(routeLokiStack).withToken(bearerToken).retry(5)
+		lc := newLokiClient(route).withToken(bearerToken).retry(5)
 		for _, nodeName := range nodeNames {
 			// only check app logs, because for infra and audit logs, we don't know how many logs the OCP generates in one minute
-			res, err := lokistackClient.query("application", "sum by(kubernetes_host)(count_over_time({kubernetes_host=\""+nodeName+"\"}[1m]))", 30, false, time.Now())
-			o.Expect(err).NotTo(o.HaveOccurred())
+			res := lc.queryWithRetry("application", "sum by(kubernetes_host)(count_over_time({kubernetes_host=\""+nodeName+"\"}[1m]))", 30, false)
 			o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
 			for _, r := range res.Data.Result {
 				o.Expect(len(r.Values)).To(o.BeNumerically(">=", 2), "need at least two data points")
@@ -2887,7 +2890,7 @@ threshold = 10`
 		compat_otp.By("check data in loki, the count of logs from each node in one minute should be ~20*60")
 		route := "http://" + getRouteAddress(oc, loki.namespace, loki.name)
 		lc := newLokiClient(route)
-		res, _ := lc.query("", "sum by(kubernetes_host)(count_over_time({log_type=~\".+\"}[1m]))", 30, false, time.Now())
+		res := lc.queryWithRetry("", "sum by(kubernetes_host)(count_over_time({log_type=~\".+\"}[1m]))", 30, false)
 		o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
 		for _, r := range res.Data.Result {
 			// check the penultimate value
