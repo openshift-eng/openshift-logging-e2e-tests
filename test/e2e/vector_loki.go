@@ -846,9 +846,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			// sleep 3 minutes for collector pods to send the cached records
 			time.Sleep(3 * time.Minute)
 			compat_otp.By("check data in lokistack, only journal logs are collected")
-			re, _ := lc.queryRange("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name!~".+" }`, 30, time.Now().Add(time.Duration(-2)*time.Minute), time.Now(), true)
+			re := lc.queryRangeWithRetry("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name!~".+" }`, 30, 2*time.Minute, true)
 			o.Expect(re.Data.Result).ShouldNot(o.BeEmpty())
-			re, _ = lc.queryRange("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name=~".+" }`, 30, time.Now().Add(time.Duration(-2)*time.Minute), time.Now(), true)
+			re = lc.queryRangeWithRetry("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name=~".+" }`, 30, 2*time.Minute, true)
 			o.Expect(re.Data.Result).Should(o.BeEmpty())
 
 			compat_otp.By("Update CLF to collect infra container logs")
@@ -866,9 +866,9 @@ exclude_paths_glob_patterns = ["/var/log/pods/*/*/*.gz", "/var/log/pods/*/*/*.lo
 			o.Expect(err).NotTo(o.HaveOccurred())
 			o.Expect(result).To(o.BeTrue(), "the configuration %s is not in vector.toml", searchString)
 
-			re, _ = lc.queryRange("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name=~".+" }`, 30, time.Now().Add(time.Duration(-2)*time.Minute), time.Now(), true)
+			re = lc.queryRangeWithRetry("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name=~".+" }`, 30, 2*time.Minute, true)
 			o.Expect(re.Data.Result).ShouldNot(o.BeEmpty())
-			re, _ = lc.queryRange("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name!~".+" }`, 30, time.Now().Add(time.Duration(-2)*time.Minute), time.Now(), true)
+			re = lc.queryRangeWithRetry("infrastructure", `{ log_type="infrastructure", kubernetes_namespace_name!~".+" }`, 30, 2*time.Minute, true)
 			o.Expect(re.Data.Result).Should(o.BeEmpty())
 		})
 
@@ -2890,7 +2890,7 @@ threshold = 10`
 		compat_otp.By("check data in loki, the count of logs from each node in one minute should be ~20*60")
 		route := "http://" + getRouteAddress(oc, loki.namespace, loki.name)
 		lc := newLokiClient(route)
-		res, _ := lc.query("", "sum by(kubernetes_host)(count_over_time({log_type=~\".+\"}[1m]))", 30, false, time.Now())
+		res := lc.queryWithRetry("", "sum by(kubernetes_host)(count_over_time({log_type=~\".+\"}[1m]))", 30, false)
 		o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
 		for _, r := range res.Data.Result {
 			// check the penultimate value

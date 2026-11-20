@@ -1155,19 +1155,39 @@ func (lc *lokiClient) waitForLogsAppearByKey(tenant, key, value string) *lokiQue
 	return logs
 }
 
-// queryWithRetry polls until an instant query succeeds, and returns its
-// response. The LokiStack gateway can return 403 for a while after
-// cluster-admin is granted, so a failing query is retried instead of failing
-// the test.
-func (lc *lokiClient) queryWithRetry(tenant string, queryStr string, limit int, forward bool) *lokiQueryResponse {
+// retryQuery polls until run succeeds, and returns its response together with
+// the poll error. A failing query is retried instead of failing the test, for
+// example because the LokiStack gateway can return 403 for a while after
+// cluster-admin is granted.
+func retryQuery(run func() (*lokiQueryResponse, error)) (*lokiQueryResponse, error) {
 	var res *lokiQueryResponse
 	err := wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
-		res, err = lc.query(tenant, queryStr, limit, forward, time.Now())
+		res, err = run()
 		if err != nil {
 			e2e.Logf("query failed, try next round: %v", err)
 			return false, nil
 		}
 		return true, nil
+	})
+	return res, err
+}
+
+// queryWithRetry retries an instant query until it succeeds, and returns its
+// response.
+func (lc *lokiClient) queryWithRetry(tenant string, queryStr string, limit int, forward bool) *lokiQueryResponse {
+	res, err := retryQuery(func() (*lokiQueryResponse, error) {
+		return lc.query(tenant, queryStr, limit, forward, time.Now())
+	})
+	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("can't query logs in Loki by %s", queryStr))
+	return res
+}
+
+// queryRangeWithRetry retries a range query over the last window until it
+// succeeds, and returns its response.
+func (lc *lokiClient) queryRangeWithRetry(tenant string, queryStr string, limit int, window time.Duration, forward bool) *lokiQueryResponse {
+	res, err := retryQuery(func() (*lokiQueryResponse, error) {
+		end := time.Now()
+		return lc.queryRange(tenant, queryStr, limit, end.Add(-window), end, forward)
 	})
 	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("can't query logs in Loki by %s", queryStr))
 	return res
