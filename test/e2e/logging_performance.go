@@ -31,7 +31,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 	)
 
 	g.BeforeEach(func() {
-		// Check worker nodes count
+		// Check worker Nodes count
 		var err error
 		nodes, err = oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{
 			LabelSelector: "node-role.kubernetes.io/worker=,kubernetes.io/os=linux",
@@ -39,7 +39,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		o.Expect(err).NotTo(o.HaveOccurred())
 		workerNodeCount = len(nodes.Items)
 		if workerNodeCount == 0 {
-			g.Skip("Skipping test: No worker nodes available in the cluster")
+			g.Skip("Skipping test: No worker Nodes available in the cluster")
 		}
 
 		sc, _ = getStorageClassName(oc)
@@ -146,7 +146,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 			logLineLength      = 1000             // LINE_LENGTH: characters per log line
 		)
 
-		compat_otp.By("Deploy application pods on all worker nodes")
+		compat_otp.By("Deploy application pods on all worker Nodes")
 		// Calculate distribution across pods
 		podsPerNode := 8 // 8 pods per worker node for higher log volume
 		totalPods := workerNodeCount * podsPerNode
@@ -154,7 +154,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		numLinesPerPod := targetTotalLogs / int64(totalPods)           // Total logs per pod
 		totalExpectedLogs := targetTotalLogs
 		e2e.Logf("Performance test configuration:")
-		e2e.Logf("  - Worker nodes: %d", workerNodeCount)
+		e2e.Logf("  - Worker Nodes: %d", workerNodeCount)
 		e2e.Logf("  - Pods per node: %d", podsPerNode)
 		e2e.Logf("  - Total pods: %d", totalPods)
 		e2e.Logf("  - Rate per pod: %.1f logs/minute", ratePerPodPerMinute)
@@ -165,7 +165,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		e2e.Logf("  - Log line length: %d chars", logLineLength)
 		e2e.Logf("  - Expected total log size: %.2f GB", float64(targetTotalLogs*int64(logLineLength))/(1024*1024*1024))
 
-		g.By("Create application generator project with pods distributed across all worker nodes")
+		g.By("Create application generator project with pods distributed across all worker Nodes")
 		oc.SetupProject()
 		appProj := oc.Namespace()
 
@@ -366,7 +366,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 			logLineLength      = 1000             // LINE_LENGTH: characters per log line
 		)
 
-		compat_otp.By("Deploy application pods on all worker nodes")
+		compat_otp.By("Deploy application pods on all worker Nodes")
 		// Calculate distribution across pods
 		podsPerNode := 8 // 8 pods per worker node for higher log volume
 		totalPods := workerNodeCount * podsPerNode
@@ -374,7 +374,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		numLinesPerPod := targetTotalLogs / int64(totalPods)           // Total logs per pod
 		totalExpectedLogs := targetTotalLogs
 		e2e.Logf("Performance test configuration:")
-		e2e.Logf("  - Worker nodes: %d", workerNodeCount)
+		e2e.Logf("  - Worker Nodes: %d", workerNodeCount)
 		e2e.Logf("  - Pods per node: %d", podsPerNode)
 		e2e.Logf("  - Total pods: %d", totalPods)
 		e2e.Logf("  - Rate per pod: %.1f logs/minute", ratePerPodPerMinute)
@@ -385,7 +385,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		e2e.Logf("  - Log line length: %d chars", logLineLength)
 		e2e.Logf("  - Expected total log size: %.2f GB", float64(targetTotalLogs*int64(logLineLength))/(1024*1024*1024))
 
-		g.By("Create application generator project with pods distributed across all worker nodes")
+		g.By("Create application generator project with pods distributed across all worker Nodes")
 		oc.SetupProject()
 		appProj := oc.Namespace()
 
@@ -586,7 +586,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 			logLineLength      = 500              // LINE_LENGTH: characters per log line
 		)
 
-		compat_otp.By("Deploy application pods on all worker nodes")
+		compat_otp.By("Deploy application pods on all worker Nodes")
 		// Calculate distribution across pods
 		podsPerNode := 8 // 8 pods per worker node for higher log volume
 		totalPods := workerNodeCount * podsPerNode
@@ -594,7 +594,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		numLinesPerPod := targetTotalLogs / int64(totalPods)           // Total logs per pod
 		totalExpectedLogs := targetTotalLogs
 		e2e.Logf("Performance test configuration:")
-		e2e.Logf("  - Worker nodes: %d", workerNodeCount)
+		e2e.Logf("  - Worker Nodes: %d", workerNodeCount)
 		e2e.Logf("  - Pods per node: %d", podsPerNode)
 		e2e.Logf("  - Total pods: %d", totalPods)
 		e2e.Logf("  - Rate per pod: %.1f logs/minute", ratePerPodPerMinute)
@@ -605,7 +605,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		e2e.Logf("  - Log line length: %d chars", logLineLength)
 		e2e.Logf("  - Expected total log size: %.2f GB", float64(targetTotalLogs*int64(logLineLength))/(1024*1024*1024))
 
-		g.By("Create application generator project with pods distributed across all worker nodes")
+		g.By("Create application generator project with pods distributed across all worker Nodes")
 		oc.SetupProject()
 		appProj := oc.Namespace()
 
@@ -806,7 +806,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 			logLineLength      = 500              // LINE_LENGTH: characters per log line
 		)
 
-		compat_otp.By("Deploy application pods on all worker nodes")
+		compat_otp.By("Deploy application pods on all worker Nodes")
 		// Calculate distribution across pods
 		podsPerNode := 8 // 8 pods per worker node for higher log volume
 		totalPods := workerNodeCount * podsPerNode
@@ -814,7 +814,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		numLinesPerPod := targetTotalLogs / int64(totalPods)           // Total logs per pod
 		totalExpectedLogs := targetTotalLogs
 		e2e.Logf("Performance test configuration:")
-		e2e.Logf("  - Worker nodes: %d", workerNodeCount)
+		e2e.Logf("  - Worker Nodes: %d", workerNodeCount)
 		e2e.Logf("  - Pods per node: %d", podsPerNode)
 		e2e.Logf("  - Total pods: %d", totalPods)
 		e2e.Logf("  - Rate per pod: %.1f logs/minute", ratePerPodPerMinute)
@@ -825,7 +825,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		e2e.Logf("  - Log line length: %d chars", logLineLength)
 		e2e.Logf("  - Expected total log size: %.2f GB", float64(targetTotalLogs*int64(logLineLength))/(1024*1024*1024))
 
-		g.By("Create application generator project with pods distributed across all worker nodes")
+		g.By("Create application generator project with pods distributed across all worker Nodes")
 		oc.SetupProject()
 		appProj := oc.Namespace()
 
@@ -1026,7 +1026,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 			logLineLength      = 1500             // LINE_LENGTH: characters per log line
 		)
 
-		compat_otp.By("Deploy application pods on all worker nodes")
+		compat_otp.By("Deploy application pods on all worker Nodes")
 		// Calculate distribution across pods
 		podsPerNode := 8 // 8 pods per worker node for higher log volume
 		totalPods := workerNodeCount * podsPerNode
@@ -1034,7 +1034,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		numLinesPerPod := targetTotalLogs / int64(totalPods)           // Total logs per pod
 		totalExpectedLogs := targetTotalLogs
 		e2e.Logf("Performance test configuration:")
-		e2e.Logf("  - Worker nodes: %d", workerNodeCount)
+		e2e.Logf("  - Worker Nodes: %d", workerNodeCount)
 		e2e.Logf("  - Pods per node: %d", podsPerNode)
 		e2e.Logf("  - Total pods: %d", totalPods)
 		e2e.Logf("  - Rate per pod: %.1f logs/minute", ratePerPodPerMinute)
@@ -1045,7 +1045,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		e2e.Logf("  - Log line length: %d chars", logLineLength)
 		e2e.Logf("  - Expected total log size: %.2f GB", float64(targetTotalLogs*int64(logLineLength))/(1024*1024*1024))
 
-		g.By("Create application generator project with pods distributed across all worker nodes")
+		g.By("Create application generator project with pods distributed across all worker Nodes")
 		oc.SetupProject()
 		appProj := oc.Namespace()
 
@@ -1230,7 +1230,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 			logLineLength      = 1500             // LINE_LENGTH: characters per log line
 		)
 
-		compat_otp.By("Deploy application pods on all worker nodes")
+		compat_otp.By("Deploy application pods on all worker Nodes")
 		// Calculate distribution across pods
 		podsPerNode := 8 // 8 pods per worker node for higher log volume
 		totalPods := workerNodeCount * podsPerNode
@@ -1238,7 +1238,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		numLinesPerPod := targetTotalLogs / int64(totalPods)           // Total logs per pod
 		totalExpectedLogs := targetTotalLogs
 		e2e.Logf("Performance test configuration:")
-		e2e.Logf("  - Worker nodes: %d", workerNodeCount)
+		e2e.Logf("  - Worker Nodes: %d", workerNodeCount)
 		e2e.Logf("  - Pods per node: %d", podsPerNode)
 		e2e.Logf("  - Total pods: %d", totalPods)
 		e2e.Logf("  - Rate per pod: %.1f logs/minute", ratePerPodPerMinute)
@@ -1249,7 +1249,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		e2e.Logf("  - Log line length: %d chars", logLineLength)
 		e2e.Logf("  - Expected total log size: %.2f GB", float64(targetTotalLogs*int64(logLineLength))/(1024*1024*1024))
 
-		g.By("Create application generator project with pods distributed across all worker nodes")
+		g.By("Create application generator project with pods distributed across all worker Nodes")
 		oc.SetupProject()
 		appProj := oc.Namespace()
 
@@ -1441,7 +1441,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 			logLineLength      = 2000             // LINE_LENGTH: characters per log line
 		)
 
-		compat_otp.By("Deploy application pods on all worker nodes")
+		compat_otp.By("Deploy application pods on all worker Nodes")
 		// Calculate distribution across pods
 		podsPerNode := 8 // 8 pods per worker node for higher log volume
 		totalPods := workerNodeCount * podsPerNode
@@ -1449,7 +1449,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		numLinesPerPod := targetTotalLogs / int64(totalPods)           // Total logs per pod
 		totalExpectedLogs := targetTotalLogs
 		e2e.Logf("Performance test configuration:")
-		e2e.Logf("  - Worker nodes: %d", workerNodeCount)
+		e2e.Logf("  - Worker Nodes: %d", workerNodeCount)
 		e2e.Logf("  - Pods per node: %d", podsPerNode)
 		e2e.Logf("  - Total pods: %d", totalPods)
 		e2e.Logf("  - Rate per pod: %.1f logs/minute", ratePerPodPerMinute)
@@ -1460,7 +1460,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		e2e.Logf("  - Log line length: %d chars", logLineLength)
 		e2e.Logf("  - Expected total log size: %.2f GB", float64(targetTotalLogs*int64(logLineLength))/(1024*1024*1024))
 
-		g.By("Create application generator project with pods distributed across all worker nodes")
+		g.By("Create application generator project with pods distributed across all worker Nodes")
 		oc.SetupProject()
 		appProj := oc.Namespace()
 
@@ -1651,7 +1651,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 			logLineLength      = 2000             // LINE_LENGTH: characters per log line
 		)
 
-		compat_otp.By("Deploy application pods on all worker nodes")
+		compat_otp.By("Deploy application pods on all worker Nodes")
 		// Calculate distribution across pods
 		podsPerNode := 8 // 8 pods per worker node for higher log volume
 		totalPods := workerNodeCount * podsPerNode
@@ -1659,7 +1659,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		numLinesPerPod := targetTotalLogs / int64(totalPods)           // Total logs per pod
 		totalExpectedLogs := targetTotalLogs
 		e2e.Logf("Performance test configuration:")
-		e2e.Logf("  - Worker nodes: %d", workerNodeCount)
+		e2e.Logf("  - Worker Nodes: %d", workerNodeCount)
 		e2e.Logf("  - Pods per node: %d", podsPerNode)
 		e2e.Logf("  - Total pods: %d", totalPods)
 		e2e.Logf("  - Rate per pod: %.1f logs/minute", ratePerPodPerMinute)
@@ -1670,7 +1670,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 		e2e.Logf("  - Log line length: %d chars", logLineLength)
 		e2e.Logf("  - Expected total log size: %.2f GB", float64(targetTotalLogs*int64(logLineLength))/(1024*1024*1024))
 
-		g.By("Create application generator project with pods distributed across all worker nodes")
+		g.By("Create application generator project with pods distributed across all worker Nodes")
 		oc.SetupProject()
 		appProj := oc.Namespace()
 
