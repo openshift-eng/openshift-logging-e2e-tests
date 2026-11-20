@@ -2660,9 +2660,19 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		lc.waitForLogsAppearByProject("application", multiplePods)
 
 		compat_otp.By("for logs in project/" + multiplePods + ", the count of each container in one minute should be ~10*60")
-		re, _ := lc.query("application", "sum by(kubernetes_pod_name)(count_over_time({kubernetes_namespace_name=\""+multiplePods+"\"}[1m]))", 30, false, time.Now())
-		o.Expect(re.Data.Result).ShouldNot(o.BeEmpty())
-		for _, r := range re.Data.Result {
+		var res *lokiQueryResponse
+		err = wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+			res, err = lc.query("application", "sum by(kubernetes_pod_name)(count_over_time({kubernetes_namespace_name=\""+multiplePods+"\"}[1m]))", 30, false, time.Now())
+			if err != nil {
+				// the gateway can return 403 for a while after cluster-admin is granted
+				e2e.Logf("query failed, try next round: %v", err)
+				return false, nil
+			}
+			return true, nil
+		})
+		compat_otp.AssertWaitPollNoErr(err, "can't query logs in lokistack for project "+multiplePods)
+		o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
+		for _, r := range res.Data.Result {
 			// check the penultimate value
 			v := r.Values[len(r.Values)-2]
 			c := convertInterfaceToArray(v)[1]
@@ -2674,7 +2684,17 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		compat_otp.By("for logs in projects logging-flow-control-*, the count of each container in one minute should be ~20*60")
 		// get `400 Bad Request` when querying with `sum by(kubernetes_pod_name)(count_over_time({kubernetes_namespace_name=~\"logging-flow-control-.+\"}[1m]))`
 		for _, ns := range namespaces {
-			res, _ := lc.query("application", "sum by(kubernetes_pod_name)(count_over_time({kubernetes_namespace_name=\""+ns+"\"}[1m]))", 30, false, time.Now())
+			var res *lokiQueryResponse
+			err = wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+				res, err = lc.query("application", "sum by(kubernetes_pod_name)(count_over_time({kubernetes_namespace_name=\""+ns+"\"}[1m]))", 30, false, time.Now())
+				if err != nil {
+					// the gateway can return 403 for a while after cluster-admin is granted
+					e2e.Logf("query failed, try next round: %v", err)
+					return false, nil
+				}
+				return true, nil
+			})
+			compat_otp.AssertWaitPollNoErr(err, "can't query logs in lokistack for project "+ns)
 			o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
 			for _, r := range res.Data.Result {
 				// check the penultimate value
@@ -2686,9 +2706,18 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		}
 
 		compat_otp.By("for logs in project/" + multipleContainers + ", the count of each container in one minute should be ~30*60")
-		r, _ := lc.query("application", "sum by(kubernetes_container_name)(count_over_time({kubernetes_namespace_name=\""+multipleContainers+"\"}[1m]))", 30, false, time.Now())
-		o.Expect(r.Data.Result).ShouldNot(o.BeEmpty())
-		for _, r := range r.Data.Result {
+		err = wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+			res, err = lc.query("application", "sum by(kubernetes_container_name)(count_over_time({kubernetes_namespace_name=\""+multipleContainers+"\"}[1m]))", 30, false, time.Now())
+			if err != nil {
+				// the gateway can return 403 for a while after cluster-admin is granted
+				e2e.Logf("query failed, try next round: %v", err)
+				return false, nil
+			}
+			return true, nil
+		})
+		compat_otp.AssertWaitPollNoErr(err, "can't query logs in lokistack for project "+multipleContainers)
+		o.Expect(res.Data.Result).ShouldNot(o.BeEmpty())
+		for _, r := range res.Data.Result {
 			// check the penultimate value
 			v := r.Values[len(r.Values)-2]
 			c := convertInterfaceToArray(v)[1]
