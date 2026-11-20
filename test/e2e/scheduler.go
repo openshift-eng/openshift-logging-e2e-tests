@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -50,7 +51,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease scheduler", fu
 		oc.SetupProject()
 	})
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Critical-74398-Manage logging collector pods via CLF[PreMerge][CLO][Serial]", func() {
+	g.It("Author:qitang-Critical-74398-Manage logging collector pods via CLF[PreMerge][CLO][Serial]", g.Label(labels.GatePreMerge, labels.ComponentCLO, labels.ExecSerial), func() {
 		compat_otp.By("deploy loki stack")
 		s := getStorageType(oc)
 		sc, err := getStorageClassName(oc)
@@ -147,7 +148,7 @@ use_apiserver_cache = true
 		lc.waitForLogsAppearByProject("application", appProj)
 	})
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:anli-High-81398-set collector deamoset affinity/anti-affinity[CLO]", func() {
+	g.It("Author:anli-High-81398-set collector deamoset affinity/anti-affinity[CLO]", g.Label(labels.ComponentCLO), func() {
 		g.By("Create log producer")
 		appProj := oc.Namespace()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -199,7 +200,7 @@ use_apiserver_cache = true
 		o.Expect(strings.Contains(collectorRunNodeIPs, loggenNodeIP)).Should(o.BeTrue())
 	})
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:anli-High-81397-set collector deployment affinity/anti-affinity[CLO]", func() {
+	g.It("Author:anli-High-81397-set collector deployment affinity/anti-affinity[CLO]", g.Label(labels.ComponentCLO), func() {
 		g.By("Create log producer")
 		appProj := oc.Namespace()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")

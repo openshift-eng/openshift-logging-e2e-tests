@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -88,7 +89,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Longduration-Critical-53407-Upgrade with Vector as collector - minor version.[Serial][Slow][CLO][LokiOperator]", func() {
+	g.It("Author:qitang-Longduration-Critical-53407-Upgrade with Vector as collector - minor version.[Serial][Slow][CLO][LokiOperator]", g.Label(labels.ComponentCLO, labels.ComponentLokiOperator, labels.ExecSerial, labels.ExecSlow), func() {
 		if targetChannel == "" {
 			g.Skip("LOGGING_TEST_VERSION env var is not set, skipping upgrade test")
 		}
@@ -244,7 +245,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 
 	// author: qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Longduration-Critical-53404-Upgrade with Vector as collector - major version LokiStack [Serial][Slow][CLO][LokiOperator]", func() {
+	g.It("Author:qitang-Longduration-Critical-53404-Upgrade with Vector as collector - major version LokiStack [Serial][Slow][CLO][LokiOperator]", g.Label(labels.ComponentCLO, labels.ComponentLokiOperator, labels.ExecSerial, labels.ExecSlow), func() {
 		if upgradeFromChannel == "" {
 			g.Skip("LOGGING_UPGRADE_FROM_VERSION env var is not set, skipping operator deployment")
 		}
@@ -427,7 +428,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease OperatorDeploy
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:anli-Low-65518-deploy cluster-logging-operator after Datadog-Agent is deployed [Serial][CLO]", func() {
+	g.It("Author:anli-Low-65518-deploy cluster-logging-operator after Datadog-Agent is deployed [Serial][CLO]", g.Label(labels.ComponentCLO, labels.ExecSerial), func() {
 		// skip the case when operator is installed by operator-sdk
 
 		channel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "--all-namespaces", `-ojsonpath={.items[?(@.spec.name=="cluster-logging")].spec.channel}`).Output()
@@ -513,7 +514,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 
 	// author: qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-64147-Deploy LFME as an independent pod[Serial][CLO]", func() {
+	g.It("Author:qitang-Medium-64147-Deploy LFME as an independent pod[Serial][CLO]", g.Label(labels.ComponentCLO, labels.ExecSerial), func() {
 		template := filepath.Join(loggingBaseDir, "logfilemetricexporter", "lfme.yaml")
 		lfme := logFileMetricExporter{
 			name:          "instance",
@@ -605,7 +606,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-65407-ClusterLogForwarder validation for the serviceaccount[Slow][CLO]", func() {
+	g.It("Author:qitang-Medium-65407-ClusterLogForwarder validation for the serviceaccount[Slow][CLO]", g.Label(labels.ComponentCLO, labels.ExecSlow), func() {
 		clfNS := oc.Namespace()
 		compat_otp.By("Deploy ES server")
 		ees := externalES{
@@ -691,7 +692,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-65408-ClusterLogForwarder validation when roles don't match.[PreMerge][CLO]", func() {
+	g.It("Author:qitang-Medium-65408-ClusterLogForwarder validation when roles don't match.[PreMerge][CLO]", g.Label(labels.GatePreMerge, labels.ComponentCLO), func() {
 		clfNS := oc.Namespace()
 		loki := externalLoki{"loki-server", clfNS}
 		defer loki.remove(oc)
@@ -771,7 +772,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-65685-Deploy CLO to all namespaces and verify prometheusrule/collector and cm/grafana-dashboard-cluster-logging are created along with the CLO.[PreMerge][CLO]", func() {
+	g.It("Author:qitang-High-65685-Deploy CLO to all namespaces and verify prometheusrule/collector and cm/grafana-dashboard-cluster-logging are created along with the CLO.[PreMerge][CLO]", g.Label(labels.GatePreMerge, labels.ComponentCLO), func() {
 		csvs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("csv", "-n", "default", "-oname").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(strings.Contains(csvs, "cluster-logging")).Should(o.BeTrue())
@@ -807,7 +808,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease rapidast scan"
 	})
 	// author anli@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:anli-Critical-75070-clo operator should pass DAST[CLO]", func() {
+	g.It("Author:anli-Critical-75070-clo operator should pass DAST[CLO]", g.Label(labels.ComponentCLO), func() {
 		CLO := SubscriptionObjects{
 			OperatorName:  "cluster-logging-operator",
 			Namespace:     cloNS,
@@ -834,7 +835,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease rapidast scan"
 	})
 	// author anli@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:anli-Critical-67424-loki-operator should pass DAST test[LokiOperator]", func() {
+	g.It("Author:anli-Critical-67424-loki-operator should pass DAST test[LokiOperator]", g.Label(labels.ComponentLokiOperator), func() {
 		LO := SubscriptionObjects{
 			OperatorName:  "loki-operator-controller-manager",
 			Namespace:     loNS,
@@ -906,7 +907,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-75632-oc adm must-gather can collect logging data[Serial][CLO][LokiOperator]", func() {
+	g.It("Author:qitang-High-75632-oc adm must-gather can collect logging data[Serial][CLO][LokiOperator]", g.Label(labels.ComponentCLO, labels.ComponentLokiOperator, labels.ExecSerial), func() {
 		oc.SetupProject()
 		clfNS := oc.Namespace()
 
@@ -1043,7 +1044,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-84892-High-84897-NetworkPolicy for LFME and ClusterLogForwarder LokiStack output.[PreMerge][CLO][Serial]", func() {
+	g.It("Author:qitang-High-84892-High-84897-NetworkPolicy for LFME and ClusterLogForwarder LokiStack output.[PreMerge][CLO][Serial]", g.Label(labels.GatePreMerge, labels.ComponentCLO, labels.ExecSerial), func() {
 		sc, _ := getStorageClassName(oc)
 		if len(sc) == 0 {
 			g.Skip("The cluster doesn't have a storage class for this test!")
@@ -1171,7 +1172,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85402-NetworkPolicy for ClusterLogForwarder OTLP output.[PreMerge][CLO]", func() {
+	g.It("Author:qitang-High-85402-NetworkPolicy for ClusterLogForwarder OTLP output.[PreMerge][CLO]", g.Label(labels.GatePreMerge, labels.ComponentCLO), func() {
 		var (
 			expectedCSV       string
 			operatorInstalled bool
@@ -1267,7 +1268,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85456-NetworkPolicy for ClusterLogForwarder CloudWatch output.[PreMerge][CLO]", func() {
+	g.It("Author:qitang-High-85456-NetworkPolicy for ClusterLogForwarder CloudWatch output.[PreMerge][CLO]", g.Label(labels.GatePreMerge, labels.ComponentCLO), func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "aws" {
 			g.Skip("Skip for the platform is not AWS.")
@@ -1356,7 +1357,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85744-NetworkPolicy for ClusterLogForwarder s3 output.[PreMerge][CLO]", func() {
+	g.It("Author:qitang-High-85744-NetworkPolicy for ClusterLogForwarder s3 output.[PreMerge][CLO]", g.Label(labels.GatePreMerge, labels.ComponentCLO), func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "aws" {
 			g.Skip("Skip for the platform is not AWS.")
@@ -1440,7 +1441,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-ConnectedOnly-High-85410-NetworkPolicy for ClusterLogForwarder GCL output.[CLO]", func() {
+	g.It("Author:qitang-ConnectedOnly-High-85410-NetworkPolicy for ClusterLogForwarder GCL output.[CLO]", g.Label(labels.ComponentCLO), func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "gcp" {
 			g.Skip("Skip for the platform is not GCP.")
@@ -1513,7 +1514,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85411-NetworkPolicy for ClusterLogForwarder elasticsearch output.[CLO]", func() {
+	g.It("Author:qitang-High-85411-NetworkPolicy for ClusterLogForwarder elasticsearch output.[CLO]", g.Label(labels.ComponentCLO), func() {
 		compat_otp.By("Create external Elasticsearch instance")
 		esProj := oc.Namespace()
 		ees := externalES{
@@ -1574,7 +1575,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85466-High-85490-High-85465-NetworkPolicy for ClusterLogForwarder inputs.receiver.http and http, splunk output[Serial][CLO]", func() {
+	g.It("Author:qitang-High-85466-High-85490-High-85465-NetworkPolicy for ClusterLogForwarder inputs.receiver.http and http, splunk output[Serial][CLO]", g.Label(labels.ComponentCLO, labels.ExecSerial), func() {
 		nodes, err := oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: "kubernetes.io/os=linux,kubernetes.io/arch=amd64"})
 		if err != nil || len(nodes.Items) == 0 {
 			g.Skip("Skip for the cluster doesn't have amd64 node")
@@ -1661,7 +1662,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85469-High-85472-NetworkPolicy for ClusterLogForwarder inputs.receiver.syslog and syslog output.[Serial][Slow][CLO]", func() {
+	g.It("Author:qitang-High-85469-High-85472-NetworkPolicy for ClusterLogForwarder inputs.receiver.syslog and syslog output.[Serial][Slow][CLO]", g.Label(labels.ComponentCLO, labels.ExecSerial, labels.ExecSlow), func() {
 		sc, _ := getStorageClassName(oc)
 		if len(sc) == 0 {
 			g.Skip("The cluster doesn't have a storage class for this test!")
@@ -1778,7 +1779,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-ConnectedOnly-High-85496-NetworkPolicy for ClusterLogForwarder azureMonitor output.[CLO]", func() {
+	g.It("Author:qitang-ConnectedOnly-High-85496-NetworkPolicy for ClusterLogForwarder azureMonitor output.[CLO]", g.Label(labels.ComponentCLO), func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "azure" {
 			g.Skip("Skip for the platform is not Azure.")
@@ -1855,7 +1856,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-85491-NetworkPolicy for ClusterLogForwarder Kafka output.[CLO]", func() {
+	g.It("Author:qitang-High-85491-NetworkPolicy for ClusterLogForwarder Kafka output.[CLO]", g.Label(labels.ComponentCLO), func() {
 		g.By("Create log producer")
 		appProj := oc.Namespace()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")

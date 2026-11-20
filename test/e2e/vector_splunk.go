@@ -15,6 +15,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -45,7 +46,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-High-54980-Vector forward logs to Splunk 9.0 over HTTP[CLO]", func() {
+		g.It("Author:anli-High-54980-Vector forward logs to Splunk 9.0 over HTTP[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			splunkProject := oc.Namespace()
 			sp := splunkPodServer{
@@ -100,7 +101,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Medium-56248-vector forward logs to splunk 8.2 over TLS - SkipVerify[CLO]", func() {
+		g.It("Author:anli-Medium-56248-vector forward logs to splunk 8.2 over TLS - SkipVerify[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			splunkProject := oc.Namespace()
 			keysPath := filepath.Join("/tmp/temp" + getRandomString())
@@ -170,7 +171,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Critical-54976-vector forward logs to splunk 9.0 over TLS - ServerOnly[CLO]", func() {
+		g.It("Author:anli-Critical-54976-vector forward logs to splunk 9.0 over TLS - ServerOnly[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			splunkProject := oc.Namespace()
 			keysPath := filepath.Join("/tmp/temp" + getRandomString())
@@ -236,7 +237,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Medium-54978-vector forward logs to splunk 8.2 over TLS - Client Key Passphase[CLO]", func() {
+		g.It("Author:anli-Medium-54978-vector forward logs to splunk 8.2 over TLS - Client Key Passphase[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			splunkProject := oc.Namespace()
 			keysPath := filepath.Join("/tmp/temp" + getRandomString())
@@ -302,7 +303,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Medium-54979-vector forward logs to splunk 9.0 over TLS - ClientAuth[CLO]", func() {
+		g.It("Author:anli-Medium-54979-vector forward logs to splunk 9.0 over TLS - ClientAuth[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			splunkProject := oc.Namespace()
 			keysPath := filepath.Join("/tmp/temp" + getRandomString())
@@ -388,7 +389,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-High-71028-Forward logs to Splunk index by setting indexName[CLO]", func() {
+		g.It("Author:anli-High-71028-Forward logs to Splunk index by setting indexName[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			splunkProject := oc.Namespace()
 			sp := splunkPodServer{
@@ -444,7 +445,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-71029-Forward logs to Splunk indexes by kubernetes.namespace_name[Slow][CLO]", func() {
+		g.It("Author:qitang-High-71029-Forward logs to Splunk indexes by kubernetes.namespace_name[Slow][CLO]", g.Label(labels.ComponentCLO, labels.ExecSlow), func() {
 			compat_otp.By("create log producer")
 			oc.SetupProject()
 			appProj := oc.Namespace()
@@ -517,7 +518,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-71031-Forward logs to Splunk indexes by openshift.labels[CLO]", func() {
+		g.It("Author:qitang-High-71031-Forward logs to Splunk indexes by openshift.labels[CLO]", g.Label(labels.ComponentCLO), func() {
 			compat_otp.By("create log producer")
 			oc.SetupProject()
 			appProj := oc.Namespace()
@@ -582,7 +583,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-71035-Forward logs to Splunk indexes by kubernetes.labels[CLO]", func() {
+		g.It("Author:qitang-Medium-71035-Forward logs to Splunk indexes by kubernetes.labels[CLO]", g.Label(labels.ComponentCLO), func() {
 			compat_otp.By("create log producer")
 			oc.SetupProject()
 			appProj := oc.Namespace()
@@ -649,7 +650,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-High-75234-logs fallback to default splunk index if template syntax can not be found[CLO]", func() {
+		g.It("Author:anli-High-75234-logs fallback to default splunk index if template syntax can not be found[CLO]", g.Label(labels.ComponentCLO), func() {
 			compat_otp.By("create log producer")
 			oc.SetupProject()
 			appProj := oc.Namespace()
@@ -721,7 +722,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Critical-68303-mCLF Inputs.receiver.http multiple Inputs.receivers to splunk[CLO]", func() {
+		g.It("Author:anli-Critical-68303-mCLF Inputs.receiver.http multiple Inputs.receivers to splunk[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			clfNS := oc.Namespace()
 			splunkProject := clfNS
@@ -776,7 +777,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Medium-75386-ClusterLogForwarder input validation testing.[CLO]", func() {
+		g.It("Author:anli-Medium-75386-ClusterLogForwarder input validation testing.[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			splunkProject := oc.Namespace()
 			sp := splunkPodServer{
@@ -841,7 +842,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-75390-CLF should be rejected and show error message if the filters are invalid[CLO]", func() {
+		g.It("Author:qitang-Medium-75390-CLF should be rejected and show error message if the filters are invalid[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			splunkProject := oc.Namespace()
 			sp := splunkPodServer{
@@ -920,7 +921,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			checkResource(oc, true, false, `prune-logs: [[".log_source" ".log_type" ".message"] is/are required fields and must be included in`+" the `notIn` list.]", []string{"clusterlogforwarder.observability.openshift.io", clf.name, "-n", clf.namespace, "-ojsonpath={.status.filterConditions[0].message}"})
 		})
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-High-81855-Vector forward logs to Splunk - customized source[CLO]", func() {
+		g.It("Author:anli-High-81855-Vector forward logs to Splunk - customized source[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			splunkProject := oc.Namespace()
 			sp := splunkPodServer{

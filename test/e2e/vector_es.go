@@ -18,6 +18,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	e2eoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -45,7 +46,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Critical-49390-Vector Collecting Kubernetes events using event router[CLO]", func() {
+		g.It("Author:ikanse-Critical-49390-Vector Collecting Kubernetes events using event router[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create external Elasticsearch instance")
 			esProj := oc.Namespace()
 			es := externalES{
@@ -98,7 +99,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Critical-53995-Vector Collect OVN audit logs[CLO]", func() {
+		g.It("Author:ikanse-Critical-53995-Vector Collect OVN audit logs[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Check the network type for the test")
 			networkType := checkNetworkType(oc)
 			if !strings.Contains(networkType, "ovnkubernetes") {
@@ -175,7 +176,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-76073-Medium-74944-Send logs from containers in the same pod to separate indices and parse json logs[CLO]", func() {
+		g.It("Author:qitang-Medium-76073-Medium-74944-Send logs from containers in the same pod to separate indices and parse json logs[CLO]", g.Label(labels.ComponentCLO), func() {
 			app := oc.Namespace()
 			containerName := "log-76073-" + getRandomString()
 			multiContainerJSONLog := filepath.Join(loggingBaseDir, "generatelog", "multi_container_json_log_template.yaml")
@@ -257,7 +258,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-52131-Vector Logs from different projects are forwarded to the same index if the pods have same annotation[CLO]", func() {
+		g.It("Author:qitang-Medium-52131-Vector Logs from different projects are forwarded to the same index if the pods have same annotation[CLO]", g.Label(labels.ComponentCLO), func() {
 			containerName := "log-52131-" + getRandomString()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			app1 := oc.Namespace()
@@ -308,7 +309,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-74947-New filter openshiftLabels testing[CLO]", func() {
+		g.It("Author:qitang-Medium-74947-New filter openshiftLabels testing[CLO]", g.Label(labels.ComponentCLO), func() {
 			compat_otp.By("Create Elasticsearch")
 			esProj := oc.Namespace()
 			ees := externalES{
@@ -367,7 +368,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Medium-48593-Vector ClusterLogForwarder Label each message type differently and send all to the same output[CLO]", func() {
+		g.It("Author:ikanse-Medium-48593-Vector ClusterLogForwarder Label each message type differently and send all to the same output[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create external Elasticsearch instance")
 			esProj := oc.Namespace()
 			ees := externalES{
@@ -421,7 +422,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-High-46882-High-47061-Vector ClusterLogForwarder forward logs to Elasticsearch insecure forward and metadata check[CLO]", func() {
+		g.It("Author:ikanse-High-46882-High-47061-Vector ClusterLogForwarder forward logs to Elasticsearch insecure forward and metadata check[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create external Elasticsearch instance")
 			esProj := oc.Namespace()
 			ees := externalES{
@@ -489,7 +490,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-High-55396-AlertRule CollectorNodeDown testing[CLO]", func() {
+		g.It("Author:ikanse-High-55396-AlertRule CollectorNodeDown testing[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create external Elasticsearch instance")
 			esProj := oc.Namespace()
 			ees := externalES{
@@ -545,7 +546,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Medium-55200-Medium-47753-Vector Forward logs to external Elasticsearch with username password HTTP ES 6.x[CLO]", func() {
+		g.It("Author:ikanse-Medium-55200-Medium-47753-Vector Forward logs to external Elasticsearch with username password HTTP ES 6.x[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create external Elasticsearch instance")
 			esProj := oc.Namespace()
 			ees := externalES{
@@ -590,7 +591,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-Medium-55199-Medium-47755-Vector Forward logs to external Elasticsearch with username password HTTPS ES 7.x[CLO]", func() {
+		g.It("Author:ikanse-Medium-55199-Medium-47755-Vector Forward logs to external Elasticsearch with username password HTTPS ES 7.x[CLO]", g.Label(labels.ComponentCLO), func() {
 			oc.SetupProject()
 			clfNS := oc.Namespace()
 
@@ -640,7 +641,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-High-61450-Collector-External Elasticsearch output complies with the tlsSecurityProfile config.[Slow][Disruptive][CLO]", func() {
+		g.It("Author:ikanse-High-61450-Collector-External Elasticsearch output complies with the tlsSecurityProfile config.[Slow][Disruptive][CLO]", g.Label(labels.ComponentCLO, labels.ExecDisruptive, labels.ExecSlow), func() {
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			expectedTLSConfig := `{"custom":{"ciphers":["ECDHE-ECDSA-CHACHA20-POLY1305","ECDHE-RSA-CHACHA20-POLY1305","ECDHE-RSA-AES128-GCM-SHA256","ECDHE-ECDSA-AES128-GCM-SHA256","TLS_AES_128_GCM_SHA256","TLS_AES_256_GCM_SHA384","TLS_CHACHA20_POLY1305_SHA256","ECDHE-ECDSA-AES256-GCM-SHA384","ECDHE-RSA-AES256-GCM-SHA384","ECDHE-ECDSA-CHACHA20-POLY1305","ECDHE-RSA-CHACHA20-POLY1305","DHE-RSA-AES128-GCM-SHA256","DHE-RSA-AES256-GCM-SHA384","DHE-RSA-CHACHA20-POLY1305","ECDHE-ECDSA-AES128-SHA256","ECDHE-RSA-AES128-SHA256","ECDHE-ECDSA-AES128-SHA","ECDHE-RSA-AES128-SHA","ECDHE-ECDSA-AES256-SHA384","ECDHE-RSA-AES256-SHA384","ECDHE-ECDSA-AES256-SHA","ECDHE-RSA-AES256-SHA","DHE-RSA-AES128-SHA256","DHE-RSA-AES256-SHA256","AES128-GCM-SHA256","AES256-GCM-SHA384","AES128-SHA256","AES256-SHA256"],"minTLSVersion":"VersionTLS10"},"type":"Custom"}`
 			if !compareExpectedTLSConfigWithCurrent(oc, expectedTLSConfig) {
@@ -734,7 +735,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-71000-Collect or exclude logs by namespace[Slow][CLO]", func() {
+		g.It("Author:qitang-High-71000-Collect or exclude logs by namespace[Slow][CLO]", g.Label(labels.ComponentCLO, labels.ExecSlow), func() {
 			compat_otp.By("Deploy Elasticsearch")
 			esProj := oc.Namespace()
 			ees := externalES{
@@ -864,9 +865,9 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-High-51740-Vector Preserve k8s Common Labels[CLO]", func() {
+		g.It("Author:qitang-High-51740-Vector Preserve k8s Common Labels[CLO]", g.Label(labels.ComponentCLO), func() {
 			loglabeltemplate := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
-			labels := map[string]string{
+			podLabels := map[string]string{
 				"app.kubernetes.io/name":       "test",
 				"app.kubernetes.io/instance":   "functionaltest",
 				"app.kubernetes.io/version":    "123",
@@ -899,7 +900,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 					o.Expect(k).NotTo(o.ContainSubstring("/"), "label key %q is not converted", k)
 				}
 			}
-			labelJSON, _ := json.Marshal(labels)
+			labelJSON, _ := json.Marshal(podLabels)
 			labelStr := string(labelJSON)
 			app := oc.Namespace()
 			err := oc.WithoutNamespace().Run("new-app").Args("-f", loglabeltemplate, "-n", app, "-p", "LABELS="+labelStr).Execute()
@@ -973,7 +974,7 @@ ca_file = "/var/run/ocp-collector/secrets/ees-https/ca-bundle.crt"`
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Critical-74927-Forward logs to elasticsearch 8.x.[CLO]", func() {
+		g.It("Author:qitang-Critical-74927-Forward logs to elasticsearch 8.x.[CLO]", g.Label(labels.ComponentCLO), func() {
 			compat_otp.By("Create external Elasticsearch instance")
 			esProj := oc.Namespace()
 			ees := externalES{
@@ -1043,7 +1044,7 @@ retry_max_duration_secs = 30`,
 			o.Expect(result).Should(o.BeTrue())
 		})
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-High-74322-CLO expose Metrics,AlertRule and Telemetry[CLO]", func() {
+		g.It("Author:anli-High-74322-CLO expose Metrics,AlertRule and Telemetry[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create external Elasticsearch instance")
 			esProj := oc.Namespace()
 			ees := externalES{
@@ -1107,7 +1108,7 @@ retry_max_duration_secs = 30`,
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-86567-Add custom headers when forwarding to Elasticsearch output.[CLO]", func() {
+		g.It("Author:qitang-Medium-86567-Add custom headers when forwarding to Elasticsearch output.[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create external Elasticsearch instance")
 			esProj := oc.Namespace()
 			ees := externalES{
