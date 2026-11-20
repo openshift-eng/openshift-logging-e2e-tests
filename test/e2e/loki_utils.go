@@ -1117,9 +1117,12 @@ func (lc *lokiClient) searchLogsInLoki(tenant, query string) (*lokiQueryResponse
 	return res, err
 }
 
-func (lc *lokiClient) waitForLogsAppearByQuery(tenant, query string) error {
-	return wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
-		logs, err := lc.searchLogsInLoki(tenant, query)
+// waitForLogs polls until the query returns logs, and returns the last query
+// response together with the poll error.
+func (lc *lokiClient) waitForLogs(tenant, query string) (*lokiQueryResponse, error) {
+	var logs *lokiQueryResponse
+	err := wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+		logs, err = lc.searchLogsInLoki(tenant, query)
 		if err != nil {
 			e2e.Logf("\ngot err when searching logs: %v, retrying...\n", err)
 			return false, nil
@@ -1130,6 +1133,12 @@ func (lc *lokiClient) waitForLogsAppearByQuery(tenant, query string) error {
 		}
 		return false, nil
 	})
+	return logs, err
+}
+
+func (lc *lokiClient) waitForLogsAppearByQuery(tenant, query string) error {
+	_, err := lc.waitForLogs(tenant, query)
+	return err
 }
 
 func (lc *lokiClient) searchByKey(tenant, key, value string) (*lokiQueryResponse, error) {
@@ -1140,20 +1149,9 @@ func (lc *lokiClient) searchByKey(tenant, key, value string) (*lokiQueryResponse
 // waitForLogsAppearByKey polls until the query returns logs, and returns the
 // last query response. Callers that only need to wait can ignore the response.
 func (lc *lokiClient) waitForLogsAppearByKey(tenant, key, value string) *lokiQueryResponse {
-	var logs *lokiQueryResponse
-	err := wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
-		logs, err = lc.searchByKey(tenant, key, value)
-		if err != nil {
-			e2e.Logf("\ngot err when searching logs: %v, retrying...\n", err)
-			return false, nil
-		}
-		if len(logs.Data.Result) > 0 {
-			e2e.Logf(`find logs by {%s="%s"}`, key, value)
-			return true, nil
-		}
-		return false, nil
-	})
-	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf(`can't find logs by {%s="%s"}`, key, value))
+	query := "{" + key + "=\"" + value + "\"}"
+	logs, err := lc.waitForLogs(tenant, query)
+	compat_otp.AssertWaitPollNoErr(err, "can't find logs by "+query)
 	return logs
 }
 
@@ -1181,18 +1179,7 @@ func (lc *lokiClient) searchByNamespace(tenant, projectName string) (*lokiQueryR
 }
 
 func (lc *lokiClient) waitForLogsAppearByProject(tenant, projectName string) {
-	err := wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
-		logs, err := lc.searchByNamespace(tenant, projectName)
-		if err != nil {
-			e2e.Logf("\ngot err when searching logs: %v, retrying...\n", err)
-			return false, nil
-		}
-		if len(logs.Data.Result) > 0 {
-			e2e.Logf("find logs from %s project", projectName)
-			return true, nil
-		}
-		return false, nil
-	})
+	_, err := lc.waitForLogs(tenant, "{kubernetes_namespace_name=\""+projectName+"\"}")
 	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("can't find logs from %s project", projectName))
 }
 
