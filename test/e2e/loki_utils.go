@@ -1157,6 +1157,24 @@ func (lc *lokiClient) waitForLogsAppearByKey(tenant, key, value string) *lokiQue
 	return logs
 }
 
+// queryWithRetry polls until an instant query succeeds, and returns its
+// response. The LokiStack gateway can return 403 for a while after
+// cluster-admin is granted, so a failing query is retried instead of failing
+// the test.
+func (lc *lokiClient) queryWithRetry(tenant string, queryStr string, limit int, forward bool) *lokiQueryResponse {
+	var res *lokiQueryResponse
+	err := wait.PollUntilContextTimeout(context.Background(), queryPollInterval, queryErrorTimeout, true, func(context.Context) (done bool, err error) {
+		res, err = lc.query(tenant, queryStr, limit, forward, time.Now())
+		if err != nil {
+			e2e.Logf("query failed, try next round: %v", err)
+			return false, nil
+		}
+		return true, nil
+	})
+	compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("can't query logs in Loki by %s", queryStr))
+	return res
+}
+
 func (lc *lokiClient) searchByNamespace(tenant, projectName string) (*lokiQueryResponse, error) {
 	res, err := lc.searchLogsInLoki(tenant, "{kubernetes_namespace_name=\""+projectName+"\"}")
 	return res, err
