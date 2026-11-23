@@ -19,10 +19,16 @@ objects:
       type: application
     outputs:
     - kafka:
-        brokers: ${{BROKERS}}
+        brokers: ${{BROKERS1}}
         topic: ${TOPIC}
         tuning: ${{TUNING}}
-      name: kafka-brokers
+      name: kafka-broker1
+      type: kafka
+    - kafka:
+        brokers: ${{BROKERS2}}
+        topic: ${TOPIC}
+        tuning: ${{TUNING}}
+      name: kafka-broker2
       type: kafka
     pipelines:
     - inputRefs:
@@ -30,14 +36,17 @@ objects:
       - audit
       name: pipe1
       outputRefs:
-      - kafka-brokers
+      - kafka-broker1
+      - kafka-broker2
     serviceAccount:
       name: ${SERVICE_ACCOUNT_NAME}
 parameters:
 - name: NAME
   value: "instance"
-- name: BROKERS
-  value: "[\"tls://my-cluster-kafka-bootstrap.amq-aosqe1.svc:9092\", \"tls://my-cluster-kafka-bootstrap.amq-aosqe2.svc:9092\"]"
+- name: BROKERS1
+  value: "[\"tls://my-cluster-kafka-bootstrap.amq-aosqe1.svc:9092\", \"tls://my-cluster-kafka-0.my-cluster-kafka-brokers.amq-aosqe1.svc:9092\"]"
+- name: BROKERS2
+  value: "[\"tls://my-cluster-kafka-bootstrap.amq-aosqe2.svc:9092\", \"tls://my-cluster-kafka-0.my-cluster-kafka-brokers.amq-aosqe2.svc:9092\"]"
 - name: TOPIC
   value: "{.log_type||\"none-typed-logs\"}"
 - name: SERVICE_ACCOUNT_NAME

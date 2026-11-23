@@ -1879,6 +1879,14 @@ func (amqi *amqInstance) deploy(oc *exutil.CLI) {
 	e2e.Logf("amqstream deployed")
 }
 
+// brokerPodService returns the DNS address of the first broker pod on the
+// brokers headless service, an extra bootstrap peer of the same cluster.
+// It only fits ZooKeeper-mode clusters without node pools, where broker
+// pods are named <cluster>-kafka-<n>.
+func (amqi amqInstance) brokerPodService() string {
+	return amqi.name + "-kafka-0." + amqi.name + "-kafka-brokers." + amqi.namespace + ".svc:9092"
+}
+
 // try best to delete resources which will block normal deletion
 func (amqi *amqInstance) destroy(oc *exutil.CLI) {
 	e2e.Logf("delete kakfa resources")
