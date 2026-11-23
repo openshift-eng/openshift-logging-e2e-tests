@@ -284,7 +284,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			amqi2NS := oc.Namespace()
 			g.By("deploy AMQ kafka instance in two different namespaces")
 			// to avoid collecting kafka logs, deploy kafka in project openshift-*
-			// In general, we send data to brokers in kafka cluster. for historical, we use two clusters here. toDo: launch one cluster with more than one broker
+			//
+			// a kafka output's brokers all belong to one cluster, so the two
+			// independent clusters are addressed by two outputs below
 			topicName := "topic-logging"
 			amqi1 := amqInstance{
 				name:         "my-cluster",
@@ -327,8 +329,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				enableMonitoring:          true,
 			}
 			defer clf.delete(oc)
-			brokers, _ := json.Marshal([]string{"tls://" + amqi1.service, "tls://" + amqi2.service})
-			clf.create(oc, "TOPIC="+topicName, "BROKERS="+string(brokers), "NAMESPACE_PATTERN="+appProj, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
+			// each output keeps a multi-entry brokers list: the cluster's bootstrap
+			// service and one of its broker pods
+			brokers1, _ := json.Marshal([]string{"tls://" + amqi1.service, "tls://" + amqi1.brokerPodService()})
+			brokers2, _ := json.Marshal([]string{"tls://" + amqi2.service, "tls://" + amqi2.brokerPodService()})
+			clf.create(oc, "TOPIC="+topicName, "BROKERS1="+string(brokers1), "BROKERS2="+string(brokers2), "NAMESPACE_PATTERN="+appProj, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 			clf.checkNetworkPolicy(oc)
 			o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{"9092", "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
