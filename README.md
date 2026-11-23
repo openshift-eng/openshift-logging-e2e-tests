@@ -200,6 +200,30 @@ export LOGGING_TEST_STORAGE=minio
 make run-case CASE=74397
 ```
 
+## OpenShift CI (Prow and Sippy)
+
+[Prow](https://prow.ci.openshift.org/?repo=openshift-eng%2Fopenshift-logging-e2e-tests) runs the jobs of this repository
+on OpenShift CI. [Sippy](https://sippy.dptools.openshift.org) collects the results of the periodic jobs and shows pass
+rates, failures and trends per release.
+
+### Prow
+
+- [All jobs of this repository](https://prow.ci.openshift.org/?repo=openshift-eng%2Fopenshift-logging-e2e-tests) — every
+  job with its state, and links to the logs of every run.
+- The presubmits `lint`, `unit` and `images` run on every pull request.
+- The optional presubmits `aws-ipi-f14-logging-{clo,loki}-{premerge,full}` run a suite on an AWS cluster. Start them with
+  a `/test <job name>` comment on the pull request.
+- The periodics run the full suites on a schedule:
+  - Daily runs for loki-operator/main and cluster-logging-operator/master
+  - Weekly runs for each maintained release
+
+### Sippy
+
+Each logging release is listed as `logging-<version>`, and contains the periodic jobs of this repository:
+
+- [Release health of logging-6.6](https://sippy.dptools.openshift.org/sippy-ng/release/logging-6.6) — pass rates of the
+  jobs and the overall state of the release.
+
 ## Konflux integration tests
 
 The Tekton pipelines that run the suites on the FBC builds of ART are in [konflux/integration-tests](konflux/integration-tests/README.md).
