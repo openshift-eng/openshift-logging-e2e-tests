@@ -12,6 +12,7 @@ import (
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -37,7 +38,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Otlp output te
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Critical-68961-Medium-85651-Forward logs to OTEL collector and use opentelemetry sink when forwarding to OTLP output[PreMerge][CLO]", func() {
+	g.It("Author:qitang-Critical-68961-Medium-85651-Forward logs to OTEL collector and use opentelemetry sink when forwarding to OTLP output[PreMerge][CLO]", g.Label(labels.GatePreMerge, labels.ComponentCLO), func() {
 		var (
 			expectedCSV       string
 			operatorInstalled bool
@@ -133,7 +134,7 @@ type = "opentelemetry"`,
 
 	// author: qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-ConnectedOnly-High-76728-Add stream info to data model OTEL LokiStack[CLO][Serial][Slow]", func() {
+	g.It("Author:qitang-ConnectedOnly-High-76728-Add stream info to data model OTEL LokiStack[CLO][Serial][Slow]", g.Label(labels.ComponentCLO, labels.ExecSerial, labels.ExecSlow), func() {
 		s := getStorageType(oc)
 		if len(s) == 0 {
 			g.Skip("Current cluster doesn't have a proper object storage for this test!")
@@ -264,7 +265,7 @@ type = "opentelemetry"`,
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-75351-Tech preview annotation should be enabled when forwarding logs via Otlp[CLO]", func() {
+	g.It("Author:qitang-Medium-75351-Tech preview annotation should be enabled when forwarding logs via Otlp[CLO]", g.Label(labels.ComponentCLO), func() {
 		g.Skip("Skip this test because it is no longer supported")
 		compat_otp.By("Deploy collector pods")
 		clf := clusterlogforwarder{

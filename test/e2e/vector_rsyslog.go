@@ -15,6 +15,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	e2eoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -42,7 +43,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author gkarager@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:gkarager-High-60699-Vector forward logs to syslog(RFCThirtyOneSixtyFour)[CLO]", func() {
+		g.It("Author:gkarager-High-60699-Vector forward logs to syslog(RFCThirtyOneSixtyFour)[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -130,7 +131,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 		// author anli@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-High-75431-forward logs to Syslog using KubernetesMinimal[CLO]", func() {
+		g.It("Author:anli-High-75431-forward logs to Syslog using KubernetesMinimal[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -212,7 +213,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author anli@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Medium-75317-forward logs to Syslog customized fields and debug mode[CLO]", func() {
+		g.It("Author:anli-Medium-75317-forward logs to Syslog customized fields and debug mode[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -288,7 +289,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:gkarager-WRS-Critical-61479-V-ICA.02-V-ICA.03-Vector forward logs to syslog(tls)[CLO]", func() {
+		g.It("Author:gkarager-WRS-Critical-61479-V-ICA.02-V-ICA.03-Vector forward logs to syslog(tls)[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -330,7 +331,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:gkarager-High-61477-Vector-Forward logs to syslog - mtls with private key passphrase[CLO]", func() {
+		g.It("Author:gkarager-High-61477-Vector-Forward logs to syslog - mtls with private key passphrase[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -383,7 +384,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-mtls/ca-bundle.crt"`
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:ikanse-High-62527-Collector External syslog output complies with the tlsSecurityProfile configuration.[Slow][Disruptive][CLO]", func() {
+		g.It("Author:ikanse-High-62527-Collector External syslog output complies with the tlsSecurityProfile configuration.[Slow][Disruptive][CLO]", g.Label(labels.ComponentCLO, labels.ExecDisruptive, labels.ExecSlow), func() {
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			if !compareExpectedTLSConfigWithCurrent(oc, `{"custom":{"ciphers":["ECDHE-ECDSA-CHACHA20-POLY1305","ECDHE-RSA-CHACHA20-POLY1305","ECDHE-RSA-AES128-GCM-SHA256","ECDHE-ECDSA-AES128-GCM-SHA256"],"minTLSVersion":"VersionTLS12"},"type":"Custom"}`) {
 				g.Skip("Current tlsSecurityProfile is not the expected one, skipping the test...")
@@ -474,7 +475,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-Medium-71143-Collect or exclude audit logs.[CLO]", func() {
+		g.It("Author:qitang-Medium-71143-Collect or exclude audit logs.[CLO]", g.Label(labels.ComponentCLO), func() {
 			compat_otp.By("Deploy rsyslog server")
 			syslogProj := oc.Namespace()
 			rsyslog := rsyslog{
@@ -601,7 +602,7 @@ ca_file = "/var/run/ocp-collector/secrets/rsyslog-tls/ca-bundle.crt"`
 		})
 		// author anli@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:anli-Medium-81512-Syslog output payloadKey customized[CLO]", func() {
+		g.It("Author:anli-Medium-81512-Syslog output payloadKey customized[CLO]", g.Label(labels.ComponentCLO), func() {
 			g.By("Create log producer")
 			appProj := oc.Namespace()
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")

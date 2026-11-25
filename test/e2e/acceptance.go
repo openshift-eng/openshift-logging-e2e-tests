@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -56,7 +57,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 
 	// author qitang@redhat.com
 	// port=no - 64.8% pass rate (253 runs last 60 days)
-	g.It("Author:qitang-Critical-74397-[InterOps] Forward logs to LokiStack.[Slow][Serial][PreMerge][CLO][LokiOperator]", func() {
+	g.It("Author:qitang-Critical-74397-[InterOps] Forward logs to LokiStack.[Slow][Serial][PreMerge][CLO][LokiOperator]", g.Label(labels.GatePreMerge, labels.ComponentCLO, labels.ComponentLokiOperator, labels.ScopeInterop, labels.ExecSerial, labels.ExecSlow), func() {
 		g.By("deploy LO")
 		LO.SubscribeOperator(oc)
 		s := getStorageType(oc)
@@ -143,9 +144,9 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		lc := newLokiClient(route).withToken(bearerToken).retry(5)
 		for _, logType := range []string{"application", "infrastructure", "audit"} {
 			lc.waitForLogsAppearByKey(logType, "log_type", logType)
-			labels, err := lc.listLabels(logType, "")
+			logLabels, err := lc.listLabels(logType, "")
 			o.Expect(err).NotTo(o.HaveOccurred(), "got error when checking %s log labels", logType)
-			e2e.Logf("\nthe %s log labels are: %v\n", logType, labels)
+			e2e.Logf("\nthe %s log labels are: %v\n", logType, logLabels)
 		}
 		journalLog, err := lc.searchLogsInLoki("infrastructure", `{log_type = "infrastructure", kubernetes_namespace_name !~ ".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -196,7 +197,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 	})
 
 	// port=no - 69.1% pass rate (687 runs last 60 days)
-	g.It("Author:qitang-ConnectedOnly-Critical-74926-[InterOps] Forward logs to Cloudwatch.[PreMerge][CLO]", func() {
+	g.It("Author:qitang-ConnectedOnly-Critical-74926-[InterOps] Forward logs to Cloudwatch.[PreMerge][CLO]", g.Label(labels.GatePreMerge, labels.ComponentCLO, labels.ScopeInterop), func() {
 		clfNS := oc.Namespace()
 		cw := cloudwatchSpec{
 			collectorSAName: "cloudwatch-" + getRandomString(),
@@ -268,7 +269,7 @@ retry_max_duration_secs = 20`,
 
 	// author qitang@redhat.com
 	// port=yes - 99.1% pass rate (687 runs last 60 days)
-	g.It("Author:qitang-ConnectedOnly-Critical-74924-Forward logs to GCL[CLO]", func() {
+	g.It("Author:qitang-ConnectedOnly-Critical-74924-Forward logs to GCL[CLO]", g.Label(labels.ComponentCLO), func() {
 		projectID, err := getGCPProjectID(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		gcl := googleCloudLogging{
@@ -326,7 +327,7 @@ retry_max_duration_secs = 20`,
 
 	// author anli@redhat.com
 	// port=maybe - 88.2% pass rate (687 runs last 60 days)
-	g.It("Author:anli-ConnectedOnly-Critical-71772-Forward logs to AZMonitor -- full options[CLO]", func() {
+	g.It("Author:anli-ConnectedOnly-Critical-71772-Forward logs to AZMonitor -- full options[CLO]", g.Label(labels.ComponentCLO), func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform == "azure" && compat_otp.IsWorkloadIdentityCluster(oc) {
 			g.Skip("Skip on the workload identity enabled cluster!")
@@ -398,7 +399,7 @@ retry_max_duration_secs = 20`,
 	})
 
 	// port=no - 67.6% pass rate (253 runs last 60 days)
-	g.It("Author:kbharti-Critical-85642-Deploy LokiOperator with network policies enabled[Slow][Serial][CLO][LokiOperator]", func() {
+	g.It("Author:kbharti-Critical-85642-Deploy LokiOperator with network policies enabled[Slow][Serial][CLO][LokiOperator]", g.Label(labels.ComponentCLO, labels.ComponentLokiOperator, labels.ExecSerial, labels.ExecSlow), func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "aws" && platform != "azure" && platform != "gcp" {
 			g.Skip("This test only runs on aws, azure, or gcp platforms due to open bugs against Swift, ODF, and minIO backend storage")
@@ -505,9 +506,9 @@ retry_max_duration_secs = 20`,
 		lc := newLokiClient(route).withToken(bearerToken).retry(5)
 		for _, logType := range []string{"application", "infrastructure", "audit"} {
 			lc.waitForLogsAppearByKey(logType, "log_type", logType)
-			labels, err := lc.listLabels(logType, "")
+			logLabels, err := lc.listLabels(logType, "")
 			o.Expect(err).NotTo(o.HaveOccurred(), "got error when checking %s log labels", logType)
-			e2e.Logf("\nthe %s log labels are: %v\n", logType, labels)
+			e2e.Logf("\nthe %s log labels are: %v\n", logType, logLabels)
 		}
 		journalLog, err := lc.searchLogsInLoki("infrastructure", `{log_type = "infrastructure", kubernetes_namespace_name !~ ".+"}`)
 		o.Expect(err).NotTo(o.HaveOccurred())

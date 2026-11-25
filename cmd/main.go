@@ -16,6 +16,9 @@ import (
 	"k8s.io/component-base/logs"
 	framework "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/specs"
+
 	// Import test packages from this module
 	_ "github.com/openshift/openshift-logging-e2e-tests/test/e2e"
 	// Import testdata package from this module
@@ -38,7 +41,8 @@ func main() {
 	registerSuites(ext)
 
 	// Build test specs from Ginkgo
-	// Note: ModuleTestsOnly() is applied by default, which filters out /vendor/ and k8s.io/kubernetes tests
+	// Note: ModuleTestsOnly() is applied by default, which filters out /vendor/
+	// and k8s.io/kubernetes tests; module-cache specs are excluded below
 	allSpecs, err := g.BuildExtensionTestSpecsFromOpenShiftGinkgoSuite()
 	if err != nil {
 		panic(fmt.Sprintf("couldn't build extension test specs from ginkgo: %+v", err.Error()))
@@ -46,15 +50,7 @@ func main() {
 
 	// Filter to only include tests from this module's test/e2e/ directory
 	// Excludes tests from /go/pkg/mod/ (module cache) and /vendor/
-	componentSpecs := allSpecs.Select(func(spec *et.ExtensionTestSpec) bool {
-		for _, loc := range spec.CodeLocations {
-			// Include tests from local test/e2e/ directory (not from module cache or vendor)
-			if strings.Contains(loc, "/test/e2e/") && !strings.Contains(loc, "/go/pkg/mod/") && !strings.Contains(loc, "/vendor/") {
-				return true
-			}
-		}
-		return false
-	})
+	componentSpecs := allSpecs.Select(specs.IsModuleSpec)
 
 	// Initialize test framework before all tests
 	componentSpecs.AddBeforeAll(func() {
@@ -120,7 +116,9 @@ func registerSuites(ext *e.Extension) {
 			},
 			Description: "Parallel conformance tests (Level0, non-serial, non-disruptive)",
 			Qualifiers: []string{
-				`name.contains("[Level0]") && !(name.contains("[Serial]") || name.contains("[Disruptive]"))`,
+				// no test carries a Level0 label yet; the bracket tag stays
+				// name-based until the conformance suites are populated (LOG-10400)
+				et.And(`name.contains("[Level0]")`, labels.Lacks(labels.ExecSerial, labels.ExecDisruptive)),
 			},
 		},
 		{
@@ -130,35 +128,36 @@ func registerSuites(ext *e.Extension) {
 			},
 			Description: "Serial conformance tests (must run sequentially)",
 			Qualifiers: []string{
-				`name.contains("[Level0]") && name.contains("[Serial]") && !name.contains("[Disruptive]")`,
+				et.And(`name.contains("[Level0]")`, labels.Has(labels.ExecSerial), labels.Lacks(labels.ExecDisruptive)),
 			},
 		},
 		{
 			Name:        "openshift-logging-e2e-tests/cluster-logging-operator",
 			Description: "PR-gate regression tests for cluster-logging-operator (non-disruptive)",
 			Qualifiers: []string{
-				`name.contains("[PreMerge]") && name.contains("[CLO]") && !name.contains("[Disruptive]")`,
+				et.And(labels.Has(labels.GatePreMerge, labels.ComponentCLO), labels.Lacks(labels.ExecDisruptive)),
 			},
 		},
 		{
 			Name:        "openshift-logging-e2e-tests/loki-operator",
 			Description: "PR-gate regression tests for loki-operator (non-disruptive)",
 			Qualifiers: []string{
-				`name.contains("[PreMerge]") && name.contains("[LokiOperator]") && !name.contains("[Disruptive]")`,
+				et.And(labels.Has(labels.GatePreMerge, labels.ComponentLokiOperator), labels.Lacks(labels.ExecDisruptive)),
 			},
 		},
 		{
 			Name:        "openshift-logging-e2e-tests/cluster-logging-operator/all",
 			Description: "All non-disruptive cluster-logging-operator tests",
 			Qualifiers: []string{
-				`name.contains("[CLO]") && !name.contains("[Disruptive]") && !name.contains("Longduration")`,
+				// Longduration is an author-string marker, not a bracket tag; it stays name-based
+				et.And(labels.Has(labels.ComponentCLO), labels.Lacks(labels.ExecDisruptive), `!name.contains("Longduration")`),
 			},
 		},
 		{
 			Name:        "openshift-logging-e2e-tests/loki-operator/all",
 			Description: "All non-disruptive loki-operator tests",
 			Qualifiers: []string{
-				`name.contains("[LokiOperator]") && !name.contains("[Disruptive]") && !name.contains("Longduration")`,
+				et.And(labels.Has(labels.ComponentLokiOperator), labels.Lacks(labels.ExecDisruptive), `!name.contains("Longduration")`),
 			},
 		},
 		{
@@ -166,14 +165,14 @@ func registerSuites(ext *e.Extension) {
 			Parents:     []string{"openshift/disruptive"},
 			Description: "Disruptive tests (may affect cluster state)",
 			Qualifiers: []string{
-				`name.contains("[Disruptive]")`,
+				labels.Has(labels.ExecDisruptive),
 			},
 		},
 		{
 			Name:        "openshift-logging-e2e-tests/non-disruptive",
 			Description: "All non-disruptive tests (safe for development clusters)",
 			Qualifiers: []string{
-				`!name.contains("[Disruptive]")`,
+				labels.Lacks(labels.ExecDisruptive),
 			},
 		},
 		{

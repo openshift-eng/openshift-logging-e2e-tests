@@ -10,6 +10,7 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -38,7 +39,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 
 	// author anli@redhat.com
 	// port=no - insufficient data: 5 runs last 60 days
-	g.It("Author:anli-ConnectedOnly-High-71770-Forward logs to AZMonitor -- Minimal Options[CLO]", func() {
+	g.It("Author:anli-ConnectedOnly-High-71770-Forward logs to AZMonitor -- Minimal Options[CLO]", g.Label(labels.ComponentCLO), func() {
 		if compat_otp.IsWorkloadIdentityCluster(oc) {
 			g.Skip("Skip on the workload identity enabled cluster!")
 		}

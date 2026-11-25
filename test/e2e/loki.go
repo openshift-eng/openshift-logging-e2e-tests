@@ -17,6 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -52,7 +53,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-ConnectedOnly-Critical-48607-High-66088-High-64961-Loki Operator - Verify replica support and PodDisruptionBudget 1x.extra-small, 1x.small and 1x.medium t-shirt size[Serial][LokiOperator]", func() {
+		g.It("Author:kbharti-ConnectedOnly-Critical-48607-High-66088-High-64961-Loki Operator - Verify replica support and PodDisruptionBudget 1x.extra-small, 1x.small and 1x.medium t-shirt size[Serial][LokiOperator]", g.Label(labels.ComponentLokiOperator, labels.ExecSerial), func() {
 			// This test needs m5.8xlarge (AWS) instance type and similar instance requirement for other public clouds
 			objectStorage := getStorageType(oc)
 			if len(objectStorage) == 0 {
@@ -188,7 +189,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// Author: kbharti@redhat.com (GitHub: kabirbhartiRH)
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-ConnectedOnly-High-48608-Loki Operator-Reconcile and re-create objects on accidental user deletes[PreMerge][LokiOperator][Serial]", func() {
+		g.It("Author:kbharti-ConnectedOnly-High-48608-Loki Operator-Reconcile and re-create objects on accidental user deletes[PreMerge][LokiOperator][Serial]", g.Label(labels.GatePreMerge, labels.ComponentLokiOperator, labels.ExecSerial), func() {
 			objectStorage := getStorageType(oc)
 			if len(objectStorage) == 0 {
 				g.Skip("Current cluster doesn't have a proper object storage for this test!")
@@ -269,7 +270,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			e2e.Logf("Loki Configmaps are reconciled \n")
 		})
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-ConnectedOnly-High-48679-High-48616-Define limits and overrides per tenant for Loki and restart loki components on config change[PreMerge][LokiOperator][Serial]", func() {
+		g.It("Author:kbharti-ConnectedOnly-High-48679-High-48616-Define limits and overrides per tenant for Loki and restart loki components on config change[PreMerge][LokiOperator][Serial]", g.Label(labels.GatePreMerge, labels.ComponentLokiOperator, labels.ExecSerial), func() {
 			objectStorage := getStorageType(oc)
 			if len(objectStorage) == 0 {
 				g.Skip("Current cluster doesn't have a proper object storage for this test!")
@@ -368,7 +369,7 @@ spec:
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-ConnectedOnly-High-76729-LokiStack 1x.pico Support[Serial][LokiOperator]", func() {
+		g.It("Author:qitang-ConnectedOnly-High-76729-LokiStack 1x.pico Support[Serial][LokiOperator]", g.Label(labels.ComponentLokiOperator, labels.ExecSerial), func() {
 			if !validateInfraAndResourcesForLoki(oc, "18Gi", "9") {
 				g.Skip("Skip this case for the cluster does't have enough resources")
 			}

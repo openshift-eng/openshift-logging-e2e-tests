@@ -13,6 +13,7 @@ import (
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -41,7 +42,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-53731-Forward logs to GCL using different logName for each log type and using Service Account authentication.[CLO]", func() {
+	g.It("Author:qitang-High-53731-Forward logs to GCL using different logName for each log type and using Service Account authentication.[CLO]", g.Label(labels.ComponentCLO), func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "gcp" {
 			g.Skip("Skip for the platform is not GCP.")
@@ -99,7 +100,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-High-71003-Collect or exclude logs by matching pod expressions[Slow][CLO]", func() {
+	g.It("Author:qitang-High-71003-Collect or exclude logs by matching pod expressions[Slow][CLO]", g.Label(labels.ComponentCLO, labels.ExecSlow), func() {
 		clfNS := oc.Namespace()
 		projectID, err := getGCPProjectID(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -198,7 +199,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:ikanse-High-61602-Collector external to GCL complies with the tlsSecurityProfile configuration. [Slow][Disruptive][CLO]", func() {
+	g.It("Author:ikanse-High-61602-Collector external to GCL complies with the tlsSecurityProfile configuration. [Slow][Disruptive][CLO]", g.Label(labels.ComponentCLO, labels.ExecDisruptive, labels.ExecSlow), func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "gcp" {
 			g.Skip("Skip for the platform is not GCP.")
@@ -297,7 +298,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-71777-Include or exclude logs by combining namespace and container selectors.[Slow][CLO]", func() {
+	g.It("Author:qitang-Medium-71777-Include or exclude logs by combining namespace and container selectors.[Slow][CLO]", g.Label(labels.ComponentCLO, labels.ExecSlow), func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "gcp" {
 			g.Skip("Skip for the platform is not GCP.")
@@ -477,7 +478,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-ConnectedOnly-Medium-71753-Prune fields from log messages[CLO]", func() {
+	g.It("Author:qitang-ConnectedOnly-Medium-71753-Prune fields from log messages[CLO]", g.Label(labels.ComponentCLO), func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "gcp" {
 			g.Skip("Skip for the platform is not GCP.")

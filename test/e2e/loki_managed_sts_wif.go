@@ -9,6 +9,7 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -56,7 +57,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease loki-operator 
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-71534-Verify CCO support on AWSSTS cluster and forward logs to default LokiStack[Serial][LokiOperator]", func() {
+	g.It("Author:kbharti-Critical-71534-Verify CCO support on AWSSTS cluster and forward logs to default LokiStack[Serial][LokiOperator]", g.Label(labels.ComponentLokiOperator, labels.ExecSerial), func() {
 		currentPlatform := compat_otp.CheckPlatform(oc)
 		if strings.ToLower(currentPlatform) != "aws" {
 			g.Skip("The platform is not AWS. Skipping case..")
@@ -132,7 +133,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease loki-operator 
 
 	// Case for Microsoft Azure WIF cluster
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-71773-Verify CCO support with custom region on a AZWIF cluster and forward logs to LokiStack logstore[Serial][LokiOperator]", func() {
+	g.It("Author:kbharti-Critical-71773-Verify CCO support with custom region on a AZWIF cluster and forward logs to LokiStack logstore[Serial][LokiOperator]", g.Label(labels.ComponentLokiOperator, labels.ExecSerial), func() {
 		currentPlatform := compat_otp.CheckPlatform(oc)
 		if currentPlatform != "azure" {
 			g.Skip("The platform is not Azure. Skipping case..")
@@ -205,7 +206,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease loki-operator 
 
 	// Case for Microsoft Azure WIF cluster
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-Critical-71794-Verify CCO support with default region on a AZWIF cluster and forward logs to LokiStack logstore[Serial][LokiOperator]", func() {
+	g.It("Author:kbharti-Critical-71794-Verify CCO support with default region on a AZWIF cluster and forward logs to LokiStack logstore[Serial][LokiOperator]", g.Label(labels.ComponentLokiOperator, labels.ExecSerial), func() {
 		currentPlatform := compat_otp.CheckPlatform(oc)
 		if currentPlatform != "azure" {
 			g.Skip("The platform is not Azure. Skipping case..")
