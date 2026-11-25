@@ -35,10 +35,12 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 	e2eoutput "k8s.io/kubernetes/test/e2e/framework/pod/output"
 
-	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/env"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/cluster"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/metrics"
 	libhttp "github.com/openshift/openshift-logging-e2e-tests/internal/lib/net/http"
 	librandom "github.com/openshift/openshift-logging-e2e-tests/internal/lib/random"
+	libstrings "github.com/openshift/openshift-logging-e2e-tests/internal/lib/strings"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/test/certificates"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/apps/daemonset"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/apps/deployment"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/types/core/serviceaccount"
@@ -83,43 +85,14 @@ type CatalogSourceObjects struct {
 	SourceNamespace string `json:",omitempty"`
 }
 
-var getRandomString = librandom.String
-
-// contain checks if b is an elememt of a
-func contain(a []string, b string) bool {
-	return slices.Contains(a, b)
-}
-
-// containSubstring checks if b is a's element's substring
-func containSubstring(a any, b string) bool {
-	switch reflect.TypeOf(a).Kind() {
-	case reflect.Slice, reflect.Array:
-		s := reflect.ValueOf(a)
-		for i := 0; i < s.Len(); i++ {
-			if strings.Contains(fmt.Sprintln(s.Index(i)), b) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 var (
-	processTemplate = openshift.ProcessTemplate
-	getProxyFromEnv = env.Proxy
+	contain          = slices.Contains[[]string, string]
+	containSubstring = libstrings.AnyContainSubstring
+	getClusterID     = cluster.ID
+	getRandomString  = librandom.String
+	isFipsEnabled    = cluster.IsFipsEnabled
+	processTemplate  = openshift.ProcessTemplate
 )
-
-func getClusterID(oc *exutil.CLI) (string, error) {
-	return oc.AsAdmin().WithoutNamespace().Run("get").Args("clusterversion/version", "-ojsonpath={.spec.clusterID}").Output()
-}
-
-func isFipsEnabled(oc *exutil.CLI) bool {
-	nodes, err := compat_otp.GetSchedulableLinuxWorkerNodes(oc)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	fips, err := compat_otp.DebugNodeWithChroot(oc, nodes[0].Name, "bash", "-c", "fips-mode-setup --check")
-	o.Expect(err).NotTo(o.HaveOccurred())
-	return strings.Contains(fips, "FIPS mode is enabled.")
-}
 
 func (so *SubscriptionObjects) checkPackagemanifestBySource(oc *exutil.CLI) {
 	args := []string{"-n", so.CatalogSource.SourceNamespace, "packagemanifests", "-l", "catalog=" + so.CatalogSource.SourceName}
@@ -161,7 +134,7 @@ func (so *SubscriptionObjects) checkPackagemanifestBySource(oc *exutil.CLI) {
 	}
 }
 
-// setCatalogSourceObjects set the default values of channel, source namespace and source name if they're not specified
+// setCatalogSourceObjects set the default values of channel, source Namespace and source name if they're not specified
 func (so *SubscriptionObjects) setCatalogSourceObjects(oc *exutil.CLI) {
 	// set channel
 	if so.CatalogSource.Channel == "" {
@@ -171,7 +144,7 @@ func (so *SubscriptionObjects) setCatalogSourceObjects(oc *exutil.CLI) {
 		so.CatalogSource.Channel = targetChannel
 	}
 
-	// set source namespace
+	// set source Namespace
 	if so.CatalogSource.SourceNamespace == "" {
 		so.CatalogSource.SourceNamespace = "openshift-marketplace"
 	}
@@ -249,7 +222,7 @@ func (so *SubscriptionObjects) setCatalogSourceObjects(oc *exutil.CLI) {
 
 // SubscribeOperator is used to deploy operators
 func (so *SubscriptionObjects) SubscribeOperator(oc *exutil.CLI) {
-	// check if the namespace exists, if it doesn't exist, create the namespace
+	// check if the Namespace exists, if it doesn't exist, create the Namespace
 	if so.OperatorPodLabel == "" {
 		so.OperatorPodLabel = "name=" + so.OperatorName
 	}
@@ -406,7 +379,7 @@ func (so *SubscriptionObjects) uninstallOperator(oc *exutil.CLI) {
 	resource{"subscription", so.PackageName, so.Namespace}.clear(oc)
 	//_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", so.Namespace, "csv", csv).Execute()
 	_ = oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", so.Namespace, "csv", "-l", "operators.coreos.com/"+so.PackageName+"."+so.Namespace+"=").Execute()
-	// do not remove namespace openshift-logging and openshift-operators-redhat, and preserve the operatorgroup as there may have several operators deployed in one namespace
+	// do not remove Namespace openshift-logging and openshift-operators-redhat, and preserve the operatorgroup as there may have several operators deployed in one Namespace
 	// for example: loki-operator
 	if so.Namespace != "openshift-logging" && so.Namespace != "openshift-operators-redhat" && !strings.HasPrefix(so.Namespace, "e2e-test-") {
 		deleteNamespace(oc, so.Namespace)
@@ -504,7 +477,7 @@ func getPodNames(oc *exutil.CLI, ns, label string) ([]string, error) {
 		return names, err
 	}
 	if len(pods.Items) == 0 {
-		return names, fmt.Errorf("no pod(s) match label %s in namespace %s", label, ns)
+		return names, fmt.Errorf("no pod(s) match label %s in Namespace %s", label, ns)
 	}
 	for _, pod := range pods.Items {
 		names = append(names, pod.Name)
@@ -585,12 +558,12 @@ type clusterlogforwarder struct {
 	collectApplicationLogs    bool // optional, if true, will add cluster-role/collect-application-logs to the serviceAccount
 	collectAuditLogs          bool // optional, if true, will add cluster-role/collect-audit-logs to the serviceAccount
 	collectInfrastructureLogs bool // optional, if true, will add cluster-role/collect-infrastructure-logs to the serviceAccount
-	enableMonitoring          bool // optional, if true, will add label `openshift.io/cluster-monitoring: "true"` to the project, and create role/prometheus-k8s rolebinding/prometheus-k8s in the namespace, works when when !(clf.namespace == "openshift-operators-redhat" || clf.namespace == "openshift-logging")
+	enableMonitoring          bool // optional, if true, will add label `openshift.io/cluster-monitoring: "true"` to the project, and create role/prometheus-k8s rolebinding/prometheus-k8s in the namespace, works when when !(clf.Namespace == "openshift-operators-redhat" || clf.Namespace == "openshift-logging")
 	name                      string
 	namespace                 string
 	serviceAccountName        string
 	templateFile              string // the template used to create clusterlogforwarder, no default value
-	secretName                string // optional, if it's specified, when creating CLF, the parameter `"SECRET_NAME="+clf.secretName` will be added automatically
+	secretName                string // optional, if it's specified, when creating CLF, the parameter `"SECRET_NAME="+clf.SecretName` will be added automatically
 	waitForPodReady           bool   // optional, if true, will check daemonset stats
 }
 
@@ -632,7 +605,7 @@ var (
 func (clf *clusterlogforwarder) update(oc *exutil.CLI, template string, patches ...string) {
 	var err error
 	if template != "" {
-		//parameters := []string{"-f", template, "--ignore-unknown-parameters=true", "-p", "NAME=" + clf.name, "NAMESPACE=" + clf.namespace}
+		//parameters := []string{"-f", template, "--ignore-unknown-parameters=true", "-p", "NAME=" + clf.name, "NAMESPACE=" + clf.Namespace}
 		parameters := []string{"-n", clf.namespace, "-f", template, "-p", "NAME=" + clf.name, "NAMESPACE=" + clf.namespace}
 		if clf.secretName != "" {
 			parameters = append(parameters, "SECRET_NAME="+clf.secretName)
@@ -1173,37 +1146,12 @@ func getCurrentCSVFromPackage(oc *exutil.CLI, source, channel, packagemanifest s
 	return currentCSV
 }
 
-func checkNetworkType(oc *exutil.CLI) string {
-	output, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("network.operator", "cluster", "-o=jsonpath={.spec.defaultNetwork.type}").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	return strings.ToLower(output)
-}
+var (
+	checkNetworkType = cluster.NetworkType
+	getAppDomain     = cluster.Domain
+)
 
-func getAppDomain(oc *exutil.CLI) (string, error) {
-	subDomain, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("ingresses.config/cluster", "-ojsonpath={.spec.domain}").Output()
-	if err != nil {
-		return "", err
-	}
-	return subDomain, nil
-}
-
-type certsConf struct {
-	serverName string
-	namespace  string
-	passPhrase string // client private key passphrase
-}
-
-func (certs certsConf) generateCerts(oc *exutil.CLI, keysPath string) {
-	generateCertsSH := testdata.FixturePath("logging", "external-log-stores", "cert_generation.sh")
-	domain, err := getAppDomain(oc)
-	o.Expect(err).NotTo(o.HaveOccurred())
-	cmd := []string{generateCertsSH, keysPath, certs.namespace, certs.serverName, domain}
-	if certs.passPhrase != "" {
-		cmd = append(cmd, certs.passPhrase)
-	}
-	err = exec.Command("sh", cmd...).Run()
-	o.Expect(err).NotTo(o.HaveOccurred())
-}
+type CertsConf = certificates.Conf
 
 // expect: true means we want the resource contain/compare with the expectedContent, false means the resource is expected not to compare with/contain the expectedContent;
 // compare: true means compare the expectedContent with the resource content, false means check if the resource contains the expectedContent;
@@ -1277,8 +1225,8 @@ func (r rsyslog) deploy(oc *exutil.CLI) {
 		err = os.MkdirAll(keysPath, 0o755)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		cert := certsConf{r.serverName, r.namespace, r.clientKeyPassphrase}
-		cert.generateCerts(oc, keysPath)
+		cert := CertsConf{ServerName: r.serverName, Namespace: r.namespace, PassPhrase: r.clientKeyPassphrase}
+		cert.Generate(oc, keysPath)
 		// create pipelinesecret
 		r.createPipelineSecret(oc, keysPath)
 		// create secret for rsyslog server
@@ -1380,7 +1328,7 @@ func (r rsyslog) checkDataContent(oc *exutil.CLI, expect bool, filename string, 
 // syslogAppNamePattern builds a regex matching the RFC5424 syslog tag
 // (APP-NAME followed by PROCID in brackets) as rsyslog renders it in its
 // default file template. The tag is built from
-// "<namespace>_<pod>_<container>" and the pod id. vector truncates the
+// "<Namespace>_<pod>_<container>" and the pod id. vector truncates the
 // APP-NAME to 48 characters (the RFC 5424 limit), so the pattern matches the
 // truncated tag of any of the given pods, which covers pods recreated while
 // the test runs.
@@ -1431,7 +1379,7 @@ func (f fluentdServer) deploy(oc *exutil.CLI) {
 	err := oc.WithoutNamespace().Run("create").Args("serviceaccount", sa.name, "-n", sa.namespace).Execute()
 	o.Expect(err).NotTo(o.HaveOccurred())
 	sa.WaitForResourceToAppear(oc)
-	//err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-scc-to-user", "privileged", fmt.Sprintf("system:serviceaccount:%s:%s", f.namespace, f.serverName), "-n", f.namespace).Execute()
+	//err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-scc-to-user", "privileged", fmt.Sprintf("system:serviceaccount:%s:%s", f.Namespace, f.ServerName), "-n", f.Namespace).Execute()
 	//o.Expect(err).NotTo(o.HaveOccurred())
 	filePath := []string{"logging", "external-log-stores", "fluentd"}
 
@@ -1446,8 +1394,8 @@ func (f fluentdServer) deploy(oc *exutil.CLI) {
 		err = os.MkdirAll(keysPath, 0o755)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		// generate certs
-		cert := certsConf{f.serverName, f.namespace, f.clientPrivateKeyPassphrase}
-		cert.generateCerts(oc, keysPath)
+		cert := CertsConf{ServerName: f.serverName, Namespace: f.namespace, PassPhrase: f.clientPrivateKeyPassphrase}
+		cert.Generate(oc, keysPath)
 		// create pipelinesecret
 		f.createPipelineSecret(oc, keysPath)
 		// create secret for fluentd server
@@ -1558,11 +1506,7 @@ func (f fluentdServer) checkData(oc *exutil.CLI, expect bool, filename string) {
 }
 
 // return the infrastructureName. For example:  anli922-jglp4
-func getInfrastructureName(oc *exutil.CLI) string {
-	infrastructureName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("infrastructure/cluster", "-o=jsonpath={.status.infrastructureName}").Output()
-	o.Expect(err).NotTo(o.HaveOccurred())
-	return infrastructureName
-}
+var getInfrastructureName = cluster.InfrastructureName
 
 func getDataFromKafkaConsumerPod(oc *exutil.CLI, kafkaNS, consumerPod string) ([]LogEntity, error) {
 	e2e.Logf("get logs from kakfa consumerPod %s", consumerPod)
@@ -1775,7 +1719,7 @@ func (amqi *amqInstance) deploy(oc *exutil.CLI) {
 		amqi.name = "my-cluster"
 	}
 	if amqi.namespace == "" {
-		e2e.Failf("error, please define a namespace for amqstream instance")
+		e2e.Failf("error, please define a Namespace for amqstream instance")
 	}
 	if amqi.user == "" {
 		amqi.user = "my-user"
@@ -1838,7 +1782,7 @@ func (amqi *amqInstance) deploy(oc *exutil.CLI) {
 		kafkaUser := resource{"kafkauser", amqi.user, amqi.namespace}
 		kafkaUserTemplate := filepath.Join(loggingBaseDir, "external-log-stores", "kafka", "amqstreams", "kafka-sasl-user.yaml")
 		kafkaUser.applyFromTemplate(oc, "-n", kafkaUser.namespace, "-f", kafkaUserTemplate, "-p", "NAME="+amqi.user, "-p", "KAFKA_NAME="+amqi.name, "-p", "TOPIC_PREFIX="+amqi.topicPrefix)
-		// get user password from secret my-user
+		// get user Password from secret my-user
 		err := wait.PollUntilContextTimeout(context.Background(), 30*time.Second, 180*time.Second, true, func(context.Context) (done bool, err error) {
 			secrets, err := oc.AdminKubeClient().CoreV1().Secrets(kafkaUser.namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "app.kubernetes.io/instance=" + kafkaUser.name})
 			if err != nil {
@@ -1854,8 +1798,8 @@ func (amqi *amqInstance) deploy(oc *exutil.CLI) {
 		})
 		compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("Can not find the kafka user Secret %s", amqi.user))
 
-		e2e.Logf("set kafka user password")
-		amqi.password, err = oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("get").Args("secret", amqi.user, "-n", amqi.namespace, "-o", "jsonpath={.data.password}").Output()
+		e2e.Logf("set kafka user Password")
+		amqi.password, err = oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("get").Args("secret", amqi.user, "-n", amqi.namespace, "-o", "jsonpath={.data.Password}").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		temp, err := base64.StdEncoding.DecodeString(amqi.password)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -1914,7 +1858,7 @@ func (amqi amqInstance) createTopicAndConsumber(oc *exutil.CLI, topicName string
 
 	if amqi.instanceType == "kafka-sasl-cluster" {
 		// create consumers sasl.client.property
-		truststorePassword, err := oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("get").Args("secret", amqi.name+"-cluster-ca-cert", "-n", amqi.namespace, "-o", `jsonpath={.data.ca\.password}`).Output()
+		truststorePassword, err := oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("get").Args("secret", amqi.name+"-cluster-ca-cert", "-n", amqi.namespace, "-o", `jsonpath={.data.ca\.Password}`).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		temp, err := base64.StdEncoding.DecodeString(truststorePassword)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -2497,7 +2441,7 @@ func waitForOperatorsRunning(oc *exutil.CLI) {
 
 var doHTTPRequest = libhttp.DoRequest
 
-// GetIPVersionStackType gets IP-version Stack type of the cluster
+// GetIPVersionStackType gets IP-Version Stack type of the cluster
 func GetIPVersionStackType(oc *exutil.CLI) (ipvStackType string) {
 	svcNetwork, err := oc.WithoutNamespace().AsAdmin().Run("get").Args("network.operator", "cluster", "-o=jsonpath={.spec.serviceNetwork}").Output()
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -2508,7 +2452,7 @@ func GetIPVersionStackType(oc *exutil.CLI) (ipvStackType string) {
 	} else if strings.Count(svcNetwork, ".") >= 2 {
 		ipvStackType = "ipv4single"
 	}
-	e2e.Logf("The test cluster IP-version Stack type is :\"%s\".", ipvStackType)
+	e2e.Logf("The test cluster IP-Version Stack type is :\"%s\".", ipvStackType)
 	return ipvStackType
 }
 
@@ -2771,13 +2715,7 @@ func rapidastScan(oc *exutil.CLI, ns, configFile string, scanPolicyFile string, 
 }
 
 // Get OIDC provider for the cluster
-func getOIDC(oc *exutil.CLI) (string, error) {
-	oidc, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("authentication.config", "cluster", "-o=jsonpath={.spec.serviceAccountIssuer}").Output()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimPrefix(oidc, "https://"), nil
-}
+var getOIDC = cluster.OIDCProvider
 
 func getPoolID(oc *exutil.CLI) (string, error) {
 	// pool_id="$(oc get authentication cluster -o json | jq -r .spec.serviceAccountIssuer | sed 's/.*\/\([^\/]*\)-oidc/\1/')"
@@ -2812,13 +2750,7 @@ func deleteLinuxAuditPolicyFromNode(oc *exutil.CLI, nodeName string) error {
 	return err
 }
 
-func hasMaster(oc *exutil.CLI) bool {
-	masterNodes, err := oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: "node-role.kubernetes.io/master="})
-	if err != nil {
-		e2e.Logf("hit error when listing master nodes: %v", err)
-	}
-	return len(masterNodes.Items) > 0
-}
+var hasMaster = cluster.HasMaster
 
 func runLoggingMustGather(oc *exutil.CLI) ([]string, error) {
 	// create a temporary directory

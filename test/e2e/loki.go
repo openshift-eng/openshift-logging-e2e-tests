@@ -45,7 +45,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				Subscription:  subTemplate,
 				OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-og.yaml"),
 			}
-			g.By("deploy CLO and LO")
+			g.By("Deploy CLO and LO")
 			CLO.SubscribeOperator(oc)
 			LO.SubscribeOperator(oc)
 			oc.SetupProject()
@@ -220,11 +220,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			// The controller can take a few seconds after LokiStack becomes Ready to finish
 			// creating all of its configmaps, so poll for the expected count instead of a
-			// single point-in-time check. ls.namespace is shared with other LokiStack
+			// single point-in-time check. ls.Namespace is shared with other LokiStack
 			// tests, so also filter by this instance's own app.kubernetes.io/instance
 			// label (set by the loki-operator's commonLabels on every configmap it
 			// manages) rather than relying on the created-by label alone, which matches
-			// every LokiStack controller-managed configmap in the namespace.
+			// every LokiStack controller-managed configmap in the Namespace.
 			listLokiControllerCMs := func(reason string) []corev1.ConfigMap {
 				e2e.Logf("Getting list of configmaps managed by Loki Controller (%s)", reason)
 				var ownCMs []corev1.ConfigMap
@@ -240,7 +240,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				return ownCMs
 			}
 
-			lokiCMList := listLokiControllerCMs("initial deploy")
+			lokiCMList := listLokiControllerCMs("initial Deploy")
 
 			e2e.Logf("Deleting Loki Configmaps")
 			for _, items := range lokiCMList {
@@ -299,7 +299,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			ls.waitForLokiStackToBeReady(oc)
 			e2e.Logf("LokiStack deployed")
 
-			// Get names of some lokistack components before patching. ls.namespace is shared
+			// Get names of some lokistack components before patching. ls.Namespace is shared
 			// with other LokiStack tests, so scope by this instance's own name too (the
 			// same app.kubernetes.io/instance convention used elsewhere in this codebase)
 			// rather than by component alone, which would match every LokiStack's pods.

@@ -25,7 +25,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 	g.Context("Log Forward to Http", func() {
 		g.BeforeEach(func() {
 			loggingBaseDir = testdata.FixturePath("logging")
-			g.By("deploy CLO")
+			g.By("Deploy CLO")
 			CLO := SubscriptionObjects{
 				OperatorName:  "cluster-logging-operator",
 				Namespace:     cloNS,
@@ -48,7 +48,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			oc.SetupProject()
 			clfNS := oc.Namespace()
 
-			g.By("deploy fluentd server")
+			g.By("Deploy fluentd server")
 			oc.SetupProject()
 			fluentdProj := oc.Namespace()
 			keyPassphase := getRandomString()
@@ -94,7 +94,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			g.By("deploy fluentd server")
+			g.By("Deploy fluentd server")
 			oc.SetupProject()
 			fluentdProj := oc.Namespace()
 			fluentdS := fluentdServer{
@@ -138,7 +138,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			g.By("deploy fluentd server")
+			g.By("Deploy fluentd server")
 			oc.SetupProject()
 			fluentdProj := oc.Namespace()
 			fluentdS := fluentdServer{
@@ -180,7 +180,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			g.By("deploy fluentd server")
+			g.By("Deploy fluentd server")
 			oc.SetupProject()
 			fluentdProj := oc.Namespace()
 			fluentdS := fluentdServer{
@@ -242,7 +242,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			compat_otp.By("deploy fluentd server")
+			compat_otp.By("Deploy fluentd server")
 			oc.SetupProject()
 			fluentdProj := oc.Namespace()
 			fluentdS := fluentdServer{
@@ -320,7 +320,7 @@ ca_file = "/var/run/ocp-collector/secrets/to-fluentd-60933/ca-bundle.crt"`
 			clfNS := oc.Namespace()
 			fluentdNS := clfNS
 
-			g.By("deploy fluentd server")
+			g.By("Deploy fluentd server")
 			keyPassphase := getRandomString()
 			fluentdS := fluentdServer{
 				serverName:                 "fluentdtest",

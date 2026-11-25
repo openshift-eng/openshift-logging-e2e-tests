@@ -108,9 +108,18 @@ test: ## Run cluster-free unit tests.
 # test binary when the var is unset (it exits 0, silently skipping all specs).
 # -ginkgo.skip-file excludes specs defined in the module cache: importing
 # exutil transitively registers thousands of upstream kubernetes e2e specs
-# that need a cluster; only this repo's specs run.
+# that need a cluster; only this repo's specs run. The flag goes only to
+# packages whose tests import Ginkgo: plain go-test binaries reject unknown
+# flags after -args.
+	GINKGO_PKGS="$$(go list ./internal/... | while read p; do \
+		go list -f '{{range .TestImports}}{{println .}}{{end}}' "$$p" | \
+		grep -q '^github\.com/onsi/ginkgo/v2$$' && echo "$$p"; \
+	done)"; \
+	PLAIN_PKGS="$$(go list ./internal/... | grep -vxF "$$GINKGO_PKGS")"; \
 	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto \
-		go test ./internal/... -args -ginkgo.skip-file='/go/pkg/mod/'
+		go test $$GINKGO_PKGS -args -ginkgo.skip-file='/go/pkg/mod/'; \
+	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto \
+		go test $$PLAIN_PKGS
 	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto go test ./test/e2e/testdata
 	KUBECONFIG=/dev/null GOFLAGS=-mod=readonly GOTOOLCHAIN=auto go test ./test/e2e
 

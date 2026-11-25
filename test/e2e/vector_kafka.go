@@ -194,7 +194,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			secretName := "secret-for-kafka-52420"
 			oc.NotShowInfo().AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", secretName, "-n", clf.namespace, "--from-literal=username="+amqi.user, "--from-literal=password="+amqi.password, "--from-literal=ca-bundle.crt="+amqi.routeCA).Execute()
 			// To reduce the logs collected, we only collect app logs from appProj
-			// Note: all sasl and tls data are from secret clf-to-amq with fix name -- user,password,ca
+			// Note: all sasl and tls data are from secret clf-to-amq with fix name -- user,Password,ca
 			clf.create(oc, "URL=tls://"+amqi.route+"/"+topicName, "SECRET_NAME="+secretName, "NAMESPACE_PATTERN="+appProj)
 
 			g.By("verifiy the data are sent to kafka")
@@ -347,8 +347,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			g.By("check metrics exposed by collector")
 			promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
-			checkMetric(oc, promToken, "{job=\""+clf.name+"\", namespace=\""+clf.namespace+"\"}", 3)
-			checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
+			checkMetric(oc, promToken, "{job=\""+clf.name+"\", Namespace=\""+clf.namespace+"\"}", 3)
+			checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", Namespace="`+clf.namespace+`"}`, 3)
 
 			g.By("update network policy to AllowAllIngressEgress")
 			clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
@@ -364,10 +364,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// port=unknown - no data in BigQuery last 60 days
 		g.It("Author:ikanse-High-61549-Collector-External Kafka output complies with the tlsSecurityProfile configuration.[Slow][Disruptive][CLO]", func() {
-			compat_otp.By("Check if the cluster has amd64 nodes")
+			compat_otp.By("Check if the cluster has amd64 Nodes")
 			nodes, err := oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: "kubernetes.io/os=linux,kubernetes.io/arch=amd64"})
 			if err != nil || len(nodes.Items) == 0 {
-				g.Skip("Cluster doesn't have amd64 nodes, skipping the test...")
+				g.Skip("Cluster doesn't have amd64 Nodes, skipping the test...")
 			}
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			if !compareExpectedTLSConfigWithCurrent(oc, `{"custom":{"ciphers":["ECDHE-ECDSA-CHACHA20-POLY1305","ECDHE-RSA-CHACHA20-POLY1305","ECDHE-RSA-AES128-GCM-SHA256","ECDHE-ECDSA-AES128-GCM-SHA256"],"minTLSVersion":"VersionTLS12"},"type":"Custom"}`) {

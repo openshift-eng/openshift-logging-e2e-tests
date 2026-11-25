@@ -12,11 +12,13 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
+	"github.com/openshift/origin/test/extended/util/compat_otp"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/azure"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -49,7 +51,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			SkipCaseWhenFailed: true,
 		}
 
-		g.By("deploy CLO")
+		g.By("Deploy CLO")
 		CLO.SubscribeOperator(oc)
 		oc.SetupProject()
 	})
@@ -57,7 +59,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 	// author qitang@redhat.com
 	// port=no - 64.8% pass rate (253 runs last 60 days)
 	g.It("Author:qitang-Critical-74397-[InterOps] Forward logs to LokiStack.[Slow][Serial][PreMerge][CLO][LokiOperator]", func() {
-		g.By("deploy LO")
+		g.By("Deploy LO")
 		LO.SubscribeOperator(oc)
 		s := getStorageType(oc)
 		sc, err := getStorageClassName(oc)
@@ -75,7 +77,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			defer deleteLinuxAuditPolicyFromNode(oc, nodeName)
 		}
 
-		g.By("deploy loki stack")
+		g.By("Deploy loki stack")
 		lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
 		ls := lokiStack{
 			name:          "loki-74397",
@@ -95,7 +97,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
 
-		compat_otp.By("deploy logfilesmetricexporter")
+		compat_otp.By("Deploy logfilesmetricexporter")
 		lfme := logFileMetricExporter{
 			name:          "instance",
 			namespace:     loggingNS,
@@ -188,7 +190,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 				checkMetric(oc, promToken, "{job=\""+svc.Name+"\"}", 3)
 			}
 		}
-		for _, metric := range []string{"loki_boltdb_shipper_compactor_running", "loki_distributor_bytes_received_total", "loki_inflight_requests", "workqueue_work_duration_seconds_bucket{namespace=\"" + loNS + "\", job=\"loki-operator-controller-manager-metrics-service\"}", "loki_build_info", "loki_ingester_streams_created_total"} {
+		for _, metric := range []string{"loki_boltdb_shipper_compactor_running", "loki_distributor_bytes_received_total", "loki_inflight_requests", "workqueue_work_duration_seconds_bucket{Namespace=\"" + loNS + "\", job=\"loki-operator-controller-manager-metrics-service\"}", "loki_build_info", "loki_ingester_streams_created_total"} {
 			checkMetric(oc, promToken, metric, 3)
 		}
 		compat_otp.By("Validate log streams are pushed to external storage bucket/container")
@@ -198,22 +200,22 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 	// port=no - 69.1% pass rate (687 runs last 60 days)
 	g.It("Author:qitang-ConnectedOnly-Critical-74926-[InterOps] Forward logs to Cloudwatch.[PreMerge][CLO]", func() {
 		clfNS := oc.Namespace()
-		cw := cloudwatchSpec{
-			collectorSAName: "cloudwatch-" + getRandomString(),
-			groupName:       "logging-74926-" + getInfrastructureName(oc) + `.{.log_type||"none-typed-logs"}`,
-			logTypes:        []string{"infrastructure", "application", "audit"},
-			secretNamespace: clfNS,
-			secretName:      "logging-74926-" + getRandomString(),
+		cw := aws.CloudwatchSpec{
+			CollectorSAName: "cloudwatch-" + getRandomString(),
+			GroupName:       "logging-74926-" + getInfrastructureName(oc) + `.{.log_type||"none-typed-logs"}`,
+			LogTypes:        []string{"infrastructure", "application", "audit"},
+			SecretNamespace: clfNS,
+			SecretName:      "logging-74926-" + getRandomString(),
 		}
-		cw.init(oc)
-		defer cw.deleteResources(oc)
+		cw.Init(oc)
+		defer cw.DeleteResources(oc)
 
 		g.By("Create log producer")
 		appProj := oc.Namespace()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		if !cw.hasMaster {
+		if !cw.HasMaster {
 			nodeName, err := genLinuxAuditLogsOnWorker(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
 			defer deleteLinuxAuditPolicyFromNode(oc, nodeName)
@@ -221,7 +223,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 
 		g.By("Create clusterlogforwarder")
 		var template string
-		if cw.stsEnabled {
+		if cw.StsEnabled {
 			template = filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "cloudwatch-iamRole.yaml")
 		} else {
 			template = filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "cloudwatch-accessKey.yaml")
@@ -229,26 +231,26 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		clf := clusterlogforwarder{
 			name:                      "clf-74926",
 			namespace:                 clfNS,
-			secretName:                cw.secretName,
+			secretName:                cw.SecretName,
 			templateFile:              template,
 			waitForPodReady:           true,
 			collectApplicationLogs:    true,
 			collectAuditLogs:          true,
 			collectInfrastructureLogs: true,
 			enableMonitoring:          true,
-			serviceAccountName:        cw.collectorSAName,
+			serviceAccountName:        cw.CollectorSAName,
 		}
 		defer clf.delete(oc)
 		clf.createServiceAccount(oc)
-		cw.createClfSecret(oc)
-		clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName, `TUNING={"compression": "snappy", "deliveryMode": "AtMostOnce", "maxRetryDuration": 20, "maxWrite": "1M", "minRetryDuration": 5}`)
+		cw.CreateClfSecret(oc)
+		clf.create(oc, "REGION="+cw.AwsRegion, "GROUP_NAME="+cw.GroupName, `TUNING={"compression": "snappy", "deliveryMode": "AtMostOnce", "maxRetryDuration": 20, "maxWrite": "1M", "minRetryDuration": 5}`)
 
 		nodes, err := clf.getCollectorNodeNames(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		cw.nodes = append(cw.nodes, nodes...)
+		cw.Nodes = append(cw.Nodes, nodes...)
 
 		g.By("Check logs in Cloudwatch")
-		o.Expect(cw.logsFound()).To(o.BeTrue())
+		o.Expect(cw.LogsFound()).To(o.BeTrue())
 
 		compat_otp.By("check tuning in collector configurations")
 		expectedConfigs := []string{
@@ -337,22 +339,22 @@ retry_max_duration_secs = 20`,
 		)
 		infraName := getInfrastructureName(oc)
 		if platform != "azure" {
-			if !readAzureCredentials() {
+			if !azure.ReadAzureCredentials() {
 				g.Skip("Skip for the platform is not Azure and can't get credentials from env vars.")
 			}
 			resourceGroupName = infraName + "-logging-71772-rg"
 			azureSubscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
-			cred := createNewDefaultAzureCredential()
+			cred := azure.NewDefaultAzureCredential()
 			location = "westus" // TODO: define default location
 
-			_, err := createAzureResourceGroup(resourceGroupName, azureSubscriptionID, location, cred)
-			defer deleteAzureResourceGroup(resourceGroupName, azureSubscriptionID, cred)
+			_, err := azure.CreateResourceGroup(resourceGroupName, azureSubscriptionID, location, cred)
+			defer azure.DeleteResourceGroup(resourceGroupName, azureSubscriptionID, cred)
 			if err != nil {
 				g.Skip("Failed to create azure resource group: " + err.Error() + ", skip the case.")
 			}
 			e2e.Logf("Successfully created resource group %s", resourceGroupName)
 		} else {
-			cloudName := getAzureCloudName(oc)
+			cloudName := azure.CloudName(oc)
 			if cloudName != "azurepubliccloud" && cloudName != "azureusgovernmentcloud" {
 				g.Skip("The case can only be running on Azure Public and Azure US Government now!")
 			}
@@ -361,8 +363,8 @@ retry_max_duration_secs = 20`,
 
 		g.By("Prepre Azure Log Storage Env")
 		workSpaceName := infraName + "case71772"
-		azLog, err := newAzureLog(oc, location, resourceGroupName, workSpaceName, "case71772")
-		defer azLog.deleteWorkspace()
+		azLog, err := azure.NewAzureLog(oc, location, resourceGroupName, workSpaceName, "case71772")
+		defer azLog.DeleteWorkspace()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Create log producer")
@@ -374,7 +376,7 @@ retry_max_duration_secs = 20`,
 		g.By("Deploy CLF to send logs to Log Analytics")
 		azureSecret := resource{"secret", "azure-secret-71772", clfNS}
 		defer azureSecret.clear(oc)
-		err = azLog.createSecret(oc, azureSecret.name, azureSecret.namespace)
+		err = azLog.CreateSecret(oc, azureSecret.name, azureSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clf := clusterlogforwarder{
 			name:                      "clf-71772",
@@ -388,11 +390,11 @@ retry_max_duration_secs = 20`,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
 		defer clf.delete(oc)
-		clf.create(oc, "PREFIX_OR_NAME="+azLog.tPrefixOrName, "CUSTOMER_ID="+azLog.customerID, "RESOURCE_ID="+azLog.workspaceID, "AZURE_HOST="+azLog.host)
+		clf.create(oc, "PREFIX_OR_NAME="+azLog.TPrefixOrName, "CUSTOMER_ID="+azLog.CustomerID, "RESOURCE_ID="+azLog.WorkspaceID, "AZURE_HOST="+azLog.Host)
 
 		g.By("Verify the test result")
-		for _, tableName := range []string{azLog.tPrefixOrName + "infra_log_CL", azLog.tPrefixOrName + "audit_log_CL", azLog.tPrefixOrName + "app_log_CL"} {
-			_, err := azLog.getLogByTable(tableName)
+		for _, tableName := range []string{azLog.TPrefixOrName + "infra_log_CL", azLog.TPrefixOrName + "audit_log_CL", azLog.TPrefixOrName + "app_log_CL"} {
+			_, err := azLog.GetLogByTable(tableName)
 			compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("can't find logs from %s in AzureLogWorkspace", tableName))
 		}
 	})
@@ -404,16 +406,16 @@ retry_max_duration_secs = 20`,
 			g.Skip("This test only runs on aws, azure, or gcp platforms due to open bugs against Swift, ODF, and minIO backend storage")
 		}
 
-		compat_otp.By("deploy LokiOperator")
+		compat_otp.By("Deploy LokiOperator")
 		LO.SubscribeOperator(oc)
 		s := getStorageType(oc)
 		sc, err := getStorageClassName(oc)
 		if err != nil || len(sc) == 0 {
 			g.Skip("can't get storageclass from cluster, skip this case")
 		}
-		compat_otp.By("Create an application project and deploy a log generator")
+		compat_otp.By("Create an application project and Deploy a log generator")
 		appProj := oc.Namespace()
-		oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
+		oc.AsAdmin().WithoutNamespace().Run("label").Args("Namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -423,7 +425,7 @@ retry_max_duration_secs = 20`,
 			defer deleteLinuxAuditPolicyFromNode(oc, nodeName)
 		}
 
-		compat_otp.By("deploy loki stack with network policies enabled.")
+		compat_otp.By("Deploy loki stack with network policies enabled.")
 		lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
 		ls := lokiStack{
 			name:          "loki-85642",
@@ -457,7 +459,7 @@ retry_max_duration_secs = 20`,
 		o.Expect(policiesExist).Should(o.BeTrue(), "Network policies should exist when ruleSet is RestrictIngressEgress")
 		ls.verifyLokiStackNetworkPolicies(oc)
 
-		compat_otp.By("deploy logfilesmetricexporter")
+		compat_otp.By("Deploy logfilesmetricexporter")
 		lfme := logFileMetricExporter{
 			name:          "instance",
 			namespace:     loggingNS,
@@ -524,7 +526,7 @@ retry_max_duration_secs = 20`,
 				checkMetric(oc, promToken, "{job=\""+svc.Name+"\"}", 3)
 			}
 		}
-		for _, metric := range []string{"loki_boltdb_shipper_compactor_running", "loki_distributor_bytes_received_total", "loki_inflight_requests", "workqueue_work_duration_seconds_bucket{namespace=\"" + loNS + "\", job=\"loki-operator-controller-manager-metrics-service\"}", "loki_build_info", "loki_ingester_streams_created_total"} {
+		for _, metric := range []string{"loki_boltdb_shipper_compactor_running", "loki_distributor_bytes_received_total", "loki_inflight_requests", "workqueue_work_duration_seconds_bucket{Namespace=\"" + loNS + "\", job=\"loki-operator-controller-manager-metrics-service\"}", "loki_build_info", "loki_ingester_streams_created_total"} {
 			checkMetric(oc, promToken, metric, 3)
 		}
 		e2e.Logf("Metrics are successfully exposed by LokiStack")
