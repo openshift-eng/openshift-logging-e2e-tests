@@ -267,7 +267,10 @@ use_apiserver_cache = true
 		o.Expect(err).NotTo(o.HaveOccurred())
 		collectorRunNodeIPs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", clf.namespace, "pod", "-l app.kubernetes.io/instance="+clf.name, `-ojsonpath={.items[?(@.status.phase=="Running")].status.hostIP}}`).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(strings.Contains(collectorRunNodeIPs, loggenNodeIP)).Should(o.BeTrue())
+		// The collector affinity matches run=centos-logtest pods of all namespaces, so print the pods when the check fails.
+		allLoggen, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-A", "-l", "run=centos-logtest", "-o", "wide").Output()
+		allCollectors, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", clf.namespace, "pods", "-l", "app.kubernetes.io/instance="+clf.name, "-o", "wide").Output()
+		o.Expect(strings.Contains(collectorRunNodeIPs, loggenNodeIP)).Should(o.BeTrue(), "running collector pods are on the nodes %q, the log producer is on %q\nlog producers in all namespaces:\n%s\ncollector pods:\n%s", collectorRunNodeIPs, loggenNodeIP, allLoggen, allCollectors)
 
 		g.By("Verify record from https are send as audit logs")
 		o.Expect(postDataToHttpserver(oc, "https://"+clf.name+"-collector-receiver."+clf.namespace+".svc:8443", `{"data":"record1"}`)).To(o.BeTrue())
