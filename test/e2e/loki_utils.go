@@ -19,7 +19,7 @@ import (
 	g "github.com/onsi/ginkgo/v2"
 	o "github.com/onsi/gomega"
 	exutil "github.com/openshift/origin/test/extended/util"
-	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
+	"github.com/openshift/origin/test/extended/util/compat_otp"
 	"google.golang.org/api/cloudresourcemanager/v1"
 	"google.golang.org/api/iam/v1"
 	"google.golang.org/api/iterator"
@@ -30,8 +30,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	clientsaws "github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
+
+type AWSClientConfig = clientsaws.ClientConfig
 
 func getMinIOCreds(oc *exutil.CLI, ns string) AWSClientConfig {
 	dirname := "/tmp/" + oc.Namespace() + "-creds"
@@ -57,7 +60,7 @@ func createSecretForAWSS3Bucket(oc *exutil.CLI, bucketName, secretName, ns strin
 		return fmt.Errorf("secret name shouldn't be empty")
 	}
 
-	err := loadAccessKeySecretKeyFromFile(context.TODO(), &cred)
+	err := clientsaws.LoadAccessKeySecretKeyFromFile(context.TODO(), &cred)
 	if err != nil {
 		return fmt.Errorf("error loading aws credentials")
 	}
@@ -560,11 +563,11 @@ func (l lokiStack) prepareResourcesForLokiStack(oc *exutil.CLI) error {
 	switch l.storageType {
 	case "s3":
 		{
-			cred, err1 := getAWSCredentials(oc)
+			cred, err1 := clientsaws.Credentials(oc)
 			if err1 != nil {
 				g.Skip("Skip since no AWS credetial! No Env AWS_SHARED_CREDENTIALS_FILE, Env CLUSTER_PROFILE_DIR  or $HOME/.aws/credentials file")
 			}
-			factory, err2 := NewAWSClientFactory(context.TODO(), cred)
+			factory, err2 := clientsaws.NewClientFactory(context.TODO(), cred)
 			if err2 != nil {
 				e2e.Failf("error loading aws config: %v", err2)
 			}
@@ -575,14 +578,14 @@ func (l lokiStack) prepareResourcesForLokiStack(oc *exutil.CLI) error {
 				}
 				iamClient := factory.IAM()
 				stsClient := factory.STS()
-				awsAccountID, _ := getAwsAccount(stsClient)
+				awsAccountID, _ := clientsaws.Account(stsClient)
 				oidcName, err := getOIDC(oc)
 				o.Expect(err).NotTo(o.HaveOccurred())
 				lokiIAMRoleName := l.name + "-" + compat_otp.GetRandomString()
-				roleArn := createIAMRoleForS3Bucket(iamClient, oidcName, awsAccountID, partition, l.namespace, l.name, lokiIAMRoleName)
+				roleArn := clientsaws.CreateIAMRoleForS3Bucket(iamClient, oidcName, awsAccountID, partition, l.namespace, l.name, lokiIAMRoleName)
 				os.Setenv("LOKI_ROLE_NAME_ON_STS", lokiIAMRoleName)
 				patchLokiOperatorWithAWSRoleArn(oc, loNS, roleArn)
-				createObjectStorageSecretOnAWSSTSCluster(oc, cred.Region, l.storageSecret, l.bucketName, l.namespace)
+				clientsaws.CreateObjectStorageSecretOnAWSSTSCluster(oc, cred.Region, l.storageSecret, l.bucketName, l.namespace)
 			} else {
 				err = createSecretForAWSS3Bucket(oc, l.bucketName, l.storageSecret, l.namespace, cred)
 				if err != nil {
@@ -590,7 +593,7 @@ func (l lokiStack) prepareResourcesForLokiStack(oc *exutil.CLI) error {
 				}
 			}
 			s3Client := factory.S3()
-			return createS3Bucket(s3Client, l.bucketName, cred.Region)
+			return clientsaws.CreateS3Bucket(s3Client, l.bucketName, cred.Region)
 		}
 	case "azure":
 		{
@@ -675,12 +678,12 @@ func (l lokiStack) prepareResourcesForLokiStack(oc *exutil.CLI) error {
 	case "minio":
 		{
 			cred := getMinIOCreds(oc, minioNS)
-			factory, err := NewAWSClientFactory(context.TODO(), cred)
+			factory, err := clientsaws.NewClientFactory(context.TODO(), cred)
 			if err != nil {
 				e2e.Failf("error loading aws config: %v", err)
 			}
 			client := factory.S3()
-			err = createS3Bucket(client, l.bucketName, "")
+			err = clientsaws.CreateS3Bucket(client, l.bucketName, "")
 			if err != nil {
 				return err
 			}
@@ -764,7 +767,7 @@ func (l lokiStack) waitForLokiStackToBeReady(oc *exutil.CLI) {
 func (l lokiStack) update(oc *exutil.CLI, template string, patches ...string) {
 	var err error
 	if template != "" {
-		parameters := []string{"-f", template, "-p", "NAME=" + l.name, "NAMESPACE=" + l.namespace}
+		parameters := []string{"-f", template, "-p", "NAME=" + l.name, "NAMESPACE=" + l.Namespace}
 		if len(patches) > 0 {
 			parameters = append(parameters, patches...)
 		}
@@ -773,9 +776,9 @@ func (l lokiStack) update(oc *exutil.CLI, template string, patches ...string) {
 		if processErr != nil {
 			e2e.Failf("error processing file: %v", processErr)
 		}
-		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", file, "-n", l.namespace).Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", file, "-n", l.Namespace).Execute()
 	} else {
-		parameters := []string{"lokistack/" + l.name, "-n", l.namespace, "-p"}
+		parameters := []string{"lokistack/" + l.name, "-n", l.Namespace, "-p"}
 		parameters = append(parameters, patches...)
 		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args(parameters...).Execute()
 	}
@@ -822,14 +825,14 @@ func (l lokiStack) removeObjectStorage(oc *exutil.CLI) {
 	switch l.storageType {
 	case "s3":
 		{
-			cred, _ := getAWSCredentials(oc)
-			factory, err1 := NewAWSClientFactory(context.TODO(), cred)
+			cred, _ := clientsaws.Credentials(oc)
+			factory, err1 := clientsaws.NewClientFactory(context.TODO(), cred)
 			if err1 != nil {
 				e2e.Failf("error loading aws config: %v", err1)
 			}
 			if compat_otp.IsWorkloadIdentityCluster(oc) {
 				iamClient := factory.IAM()
-				deleteIAMroleonAWS(iamClient, os.Getenv("LOKI_ROLE_NAME_ON_STS"))
+				clientsaws.DeleteIAMroleonAWS(iamClient, os.Getenv("LOKI_ROLE_NAME_ON_STS"))
 				os.Unsetenv("LOKI_ROLE_NAME_ON_STS")
 				subName, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "-n", loNS, `-ojsonpath={.items[?(@.spec.name=="loki-operator")].metadata.name}`).Output()
 				o.Expect(err).NotTo(o.HaveOccurred())
@@ -839,7 +842,7 @@ func (l lokiStack) removeObjectStorage(oc *exutil.CLI) {
 				waitForPodReadyWithLabel(oc, loNS, "name=loki-operator-controller-manager")
 			}
 			client := factory.S3()
-			err = deleteS3Bucket(client, l.bucketName)
+			err = clientsaws.DeleteS3Bucket(client, l.bucketName)
 		}
 	case "azure":
 		{
@@ -899,12 +902,12 @@ func (l lokiStack) removeObjectStorage(oc *exutil.CLI) {
 	case "minio":
 		{
 			cred := getMinIOCreds(oc, minioNS)
-			factory, err1 := NewAWSClientFactory(context.TODO(), cred)
+			factory, err1 := clientsaws.NewClientFactory(context.TODO(), cred)
 			if err1 != nil {
 				e2e.Failf("error loading aws config: %v", err1)
 			}
 			client := factory.S3()
-			err = deleteS3Bucket(client, l.bucketName)
+			err = clientsaws.DeleteS3Bucket(client, l.bucketName)
 		}
 	}
 	o.Expect(err).NotTo(o.HaveOccurred())
@@ -1013,7 +1016,7 @@ func (lc *lokiClient) getHTTPRequestHeader() (http.Header, error) {
 	}
 
 	if (lc.username != "" || lc.password != "") && (len(lc.bearerToken) > 0 || len(lc.bearerTokenFile) > 0) {
-		return nil, fmt.Errorf("at most one of HTTP basic auth (username/password), bearer-token & bearer-token-file is allowed to be configured")
+		return nil, fmt.Errorf("at most one of HTTP basic auth (Username/Password), bearer-token & bearer-token-file is allowed to be configured")
 	}
 
 	if len(lc.bearerToken) > 0 && len(lc.bearerTokenFile) > 0 {
@@ -1412,10 +1415,10 @@ func (l externalLoki) remove(oc *exutil.CLI) {
 }
 
 func deployMinIO(oc *exutil.CLI) {
-	// create namespace
+	// create Namespace
 	_, err := oc.AdminKubeClient().CoreV1().Namespaces().Get(context.Background(), minioNS, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("namespace", minioNS).Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("Namespace", minioNS).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 	// create secret
@@ -1576,15 +1579,15 @@ func (l lokiStack) validateExternalObjectStorageForLogs(oc *exutil.CLI, tenants 
 	switch l.storageType {
 	case "s3":
 		{
-			cred, err := getAWSCredentials(oc)
+			cred, err := clientsaws.Credentials(oc)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			factory, err := NewAWSClientFactory(context.TODO(), cred)
+			factory, err := clientsaws.NewClientFactory(context.TODO(), cred)
 			if err != nil {
 				e2e.Failf("error loading aws config: %v", err)
 			}
 			s3Client := factory.S3()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			validatesIfLogsArePushedToS3Bucket(s3Client, l.bucketName, tenants)
+			clientsaws.ValidatesIfLogsArePushedToS3Bucket(s3Client, l.bucketName, tenants)
 		}
 	case "azure":
 		{
@@ -1687,7 +1690,7 @@ func compareExpectedTLSConfigWithCurrent(oc *exutil.CLI, expectedTLSConfig strin
 func validatesIfLogsArePushedToMinIOBucket(oc *exutil.CLI, bucketName string, tenants []string) {
 	// Build an S3 client pointing to the in-cluster MinIO endpoint
 	cred := getMinIOCreds(oc, minioNS)
-	factory, err := NewAWSClientFactory(context.TODO(), cred)
+	factory, err := clientsaws.NewClientFactory(context.TODO(), cred)
 	if err != nil {
 		e2e.Failf("error loading aws config: %v", err)
 	}
@@ -1720,16 +1723,16 @@ func validatesIfLogsArePushedToMinIOBucket(oc *exutil.CLI, bucketName string, te
 // verifyIfLokiStackNetworkPoliciesExist checks if network policies exist for the LokiStack.
 // Returns 'false' if no network policies found (disabled), 'true' if network policies are found
 func (l lokiStack) verifyIfLokiStackNetworkPoliciesExist(oc *exutil.CLI) bool {
-	e2e.Logf("Checking if network policies exist for lokistack: %s in namespace: %s", l.name, l.namespace)
+	e2e.Logf("Checking if network policies exist for lokistack: %s in Namespace: %s", l.name, l.namespace)
 	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", l.namespace, "-l", "app.kubernetes.io/instance="+l.name, "-o", "name").Output()
 	if err != nil {
 		e2e.Logf("Error getting network policies: %v", err)
 	}
 	if len(output) > 0 {
-		e2e.Logf("Network policies found for lokistack %s in namespace %s", l.name, l.namespace)
+		e2e.Logf("Network policies found for lokistack %s in Namespace %s", l.name, l.namespace)
 		return true
 	}
-	e2e.Logf("No network policies found for lokistack %s in namespace %s", l.name, l.namespace)
+	e2e.Logf("No network policies found for lokistack %s in Namespace %s", l.name, l.namespace)
 	return false
 }
 
@@ -1748,7 +1751,7 @@ func (l lokiStack) verifyLokiStackNetworkPolicies(oc *exutil.CLI) {
 		{Name: l.name + "-ruler-allow-alert-egress", PolicyTypes: []string{"Egress"}},
 	}
 
-	e2e.Logf("Verifying %d network policies for lokistack: %s in namespace: %s", len(expectedPolicies), l.name, l.namespace)
+	e2e.Logf("Verifying %d network policies for lokistack: %s in Namespace: %s", len(expectedPolicies), l.name, l.namespace)
 
 	for _, expected := range expectedPolicies {
 		// Get network policy with full content for validation
@@ -1880,7 +1883,7 @@ func (l lokiStack) validateLokiStackNetworkPolicyContent(oc *exutil.CLI, policyN
 			return fmt.Errorf("gateway-allow-metrics policy should allow prometheus pods")
 		}
 		if !hasNamespaceCheck {
-			return fmt.Errorf("gateway-allow-metrics policy should allow from openshift-monitoring namespace")
+			return fmt.Errorf("gateway-allow-metrics policy should allow from openshift-monitoring Namespace")
 		}
 		if !hasPort8081 {
 			return fmt.Errorf("gateway-allow-metrics policy missing port 8081")
@@ -2008,7 +2011,7 @@ func (l lokiStack) validateLokiStackNetworkPolicyContent(oc *exutil.CLI, policyN
 			return fmt.Errorf("loki-allow-metrics policy should allow prometheus pods")
 		}
 		if !hasNamespaceCheck {
-			return fmt.Errorf("loki-allow-metrics policy should allow from openshift-monitoring namespace")
+			return fmt.Errorf("loki-allow-metrics policy should allow from openshift-monitoring Namespace")
 		}
 		if !hasPort3100 {
 			return fmt.Errorf("loki-allow-metrics policy should have port 3100")

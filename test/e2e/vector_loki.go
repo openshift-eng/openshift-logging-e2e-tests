@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/receivers/elasticsearch"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -155,7 +156,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				return false, nil
 			})
 			compat_otp.AssertWaitPollNoErr(err, "Failed searching for application logs in Loki")
-			e2e.Logf("Application Logs Query using namespace as tenantKey is a success")
+			e2e.Logf("Application Logs Query using Namespace as tenantKey is a success")
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
@@ -413,7 +414,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 		// author qitang@redhat.com
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:qitang-ConnectedOnly-Medium-48646-Medium-49486-Deploy LokiStack under different namespace and Vector Forward logs to LokiStack using CLF with gateway[Serial][CLO][LokiOperator]", func() {
+		g.It("Author:qitang-ConnectedOnly-Medium-48646-Medium-49486-Deploy LokiStack under different Namespace and Vector Forward logs to LokiStack using CLF with gateway[Serial][CLO][LokiOperator]", func() {
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			oc.SetupProject()
 			appProj := oc.Namespace()
@@ -561,13 +562,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				}
 			}
 
-			for _, metric := range []string{"loki_boltdb_shipper_compactor_running", "loki_distributor_bytes_received_total", "loki_inflight_requests", "workqueue_work_duration_seconds_bucket{namespace=\"" + loNS + "\", job=\"loki-operator-controller-manager-metrics-service\"}", "loki_build_info", "loki_ingester_streams_created_total"} {
+			for _, metric := range []string{"loki_boltdb_shipper_compactor_running", "loki_distributor_bytes_received_total", "loki_inflight_requests", "workqueue_work_duration_seconds_bucket{Namespace=\"" + loNS + "\", job=\"loki-operator-controller-manager-metrics-service\"}", "loki_build_info", "loki_ingester_streams_created_total"} {
 				checkMetric(oc, prometheusToken, metric, 3)
 			}
 		})
 
 		// port=unknown - no data in BigQuery last 60 days
-		g.It("Author:kbharti-ConnectedOnly-High-57063-Forward app logs to LokiStack with namespace selectors (vector)[Serial][CLO]", func() {
+		g.It("Author:kbharti-ConnectedOnly-High-57063-Forward app logs to LokiStack with Namespace selectors (vector)[Serial][CLO]", func() {
 			g.By("Creating 2 applications..")
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 
@@ -620,7 +621,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 			defer clf.delete(oc)
 			clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, `INPUT_REFS=["infrastructure", "audit"]`)
-			patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"includes": [{"namespace":"` + appProj2 + `"}]}}]}, {"op": "add", "path": "/spec/pipelines/0/inputRefs/-", "value": "new-app"}]`
+			patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"includes": [{"Namespace":"` + appProj2 + `"}]}}]}, {"op": "add", "path": "/spec/pipelines/0/inputRefs/-", "value": "new-app"}]`
 			clf.update(oc, "", patch, "--type=json")
 			clf.waitForCollectorPodsReady(oc)
 
@@ -1753,7 +1754,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			server := fmt.Sprintf("%s-gateway-http:8081", ls.name)
 			checkTLSProfile(oc, "intermediate", "RSA", server, "/run/secrets/kubernetes.io/serviceaccount/service-ca.crt", ls.namespace, 2)
 
-			compat_otp.By("Check the LokiStack config for the intermediate TLS security profile ciphers and TLS version")
+			compat_otp.By("Check the LokiStack config for the intermediate TLS security profile ciphers and TLS Version")
 			dirname := "/tmp/" + oc.Namespace() + "-lkcnf"
 			defer os.RemoveAll(dirname)
 			err = os.MkdirAll(dirname, 0o777)
@@ -1858,7 +1859,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			server := fmt.Sprintf("%s-gateway-http:8081", ls.name)
 			checkTLSProfile(oc, "old", "RSA", server, "/run/secrets/kubernetes.io/serviceaccount/service-ca.crt", ls.namespace, 2)
 
-			compat_otp.By("Check the LokiStack config for the Old TLS security profile ciphers and TLS version")
+			compat_otp.By("Check the LokiStack config for the Old TLS security profile ciphers and TLS Version")
 			dirname := "/tmp/" + oc.Namespace() + "-lkcnf"
 			defer os.RemoveAll(dirname)
 			err = os.MkdirAll(dirname, 0o777)
@@ -1960,7 +1961,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			server := fmt.Sprintf("%s-gateway-http:8081", ls.name)
 			checkTLSProfile(oc, "custom", "RSA", server, "/run/secrets/kubernetes.io/serviceaccount/service-ca.crt", ls.namespace, 2)
 
-			compat_otp.By("Check the LokiStack config for the Custom TLS security profile ciphers and TLS version")
+			compat_otp.By("Check the LokiStack config for the Custom TLS security profile ciphers and TLS Version")
 			dirname := "/tmp/" + oc.Namespace() + "-lkcnf"
 			defer os.RemoveAll(dirname)
 			err = os.MkdirAll(dirname, 0o777)
@@ -2066,7 +2067,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			server := fmt.Sprintf("%s-gateway-http:8081", ls.name)
 			checkTLSProfile(oc, "old", "RSA", server, "/run/secrets/kubernetes.io/serviceaccount/service-ca.crt", ls.namespace, 2)
 
-			compat_otp.By("Check the LokiStack config for the Old TLS security profile ciphers and TLS version")
+			compat_otp.By("Check the LokiStack config for the Old TLS security profile ciphers and TLS Version")
 			dirname := "/tmp/" + oc.Namespace() + "-lkcnf"
 			defer os.RemoveAll(dirname)
 			err = os.MkdirAll(dirname, 0o777)
@@ -2130,7 +2131,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			server = fmt.Sprintf("%s-gateway-http:8081", ls.name)
 			checkTLSProfile(oc, "intermediate", "RSA", server, "/run/secrets/kubernetes.io/serviceaccount/service-ca.crt", ls.namespace, 2)
 
-			compat_otp.By("Check the LokiStack config for the intermediate TLS security profile ciphers and TLS version")
+			compat_otp.By("Check the LokiStack config for the intermediate TLS security profile ciphers and TLS Version")
 			os.RemoveAll(dirname)
 			dirname = "/tmp/" + oc.Namespace() + "-lkcnf"
 			err = os.MkdirAll(dirname, 0o777)
@@ -2206,7 +2207,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			oc.SetupProject()
 			appProj := oc.Namespace()
-			oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
+			oc.AsAdmin().WithoutNamespace().Run("label").Args("Namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
 			err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -2323,7 +2324,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			oc.SetupProject()
 			appProj := oc.Namespace()
-			oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
+			oc.AsAdmin().WithoutNamespace().Run("label").Args("Namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
 			err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -2427,7 +2428,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			oc.SetupProject()
 			appProj := oc.Namespace()
-			oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
+			oc.AsAdmin().WithoutNamespace().Run("label").Args("Namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
 			err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -2637,7 +2638,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, "INPUT_REFS=[\"application\"]")
-		patch := fmt.Sprintf(`[{"op": "add", "path": "/spec/inputs", "value": [{"application": {"includes": [{"namespace": %s}], "tuning": {"rateLimitPerContainer": {"maxRecordsPerSecond": 10}}}, "name": "limited-rates-1", "type": "application"}, {"application": {"selector": {"matchLabels": {"logging-flow-control": "centos-logtest"}}, "tuning": {"rateLimitPerContainer": {"maxRecordsPerSecond": 20}}}, "name": "limited-rates-2", "type": "application"}, {"application": {"selector": {"matchLabels": {"multiple-containers": "centos-logtest"}}, "tuning": {"rateLimitPerContainer": {"maxRecordsPerSecond": 30}}}, "name": "limited-rates-3", "type": "application"}]},{ "op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["limited-rates-1","limited-rates-2","limited-rates-3"]}]`, multiplePods)
+		patch := fmt.Sprintf(`[{"op": "add", "path": "/spec/inputs", "value": [{"application": {"includes": [{"Namespace": %s}], "tuning": {"rateLimitPerContainer": {"maxRecordsPerSecond": 10}}}, "name": "limited-rates-1", "type": "application"}, {"application": {"selector": {"matchLabels": {"logging-flow-control": "centos-logtest"}}, "tuning": {"rateLimitPerContainer": {"maxRecordsPerSecond": 20}}}, "name": "limited-rates-2", "type": "application"}, {"application": {"selector": {"matchLabels": {"multiple-containers": "centos-logtest"}}, "tuning": {"rateLimitPerContainer": {"maxRecordsPerSecond": 30}}}, "name": "limited-rates-3", "type": "application"}]},{ "op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["limited-rates-1","limited-rates-2","limited-rates-3"]}]`, multiplePods)
 		clf.update(oc, "", patch, "--type=json")
 		clf.waitForCollectorPodsReady(oc)
 
@@ -2827,14 +2828,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		defer loki.remove(oc)
 		loki.deployLoki(oc)
 
-		es := externalES{
-			namespace:  logStoresNS,
-			version:    "8",
-			serverName: "elasticsearch-8",
-			loggingNS:  logStoresNS,
+		es := elasticsearch.ExternalES{
+			Namespace:  logStoresNS,
+			Version:    "8",
+			ServerName: "elasticsearch-8",
+			LoggingNS:  logStoresNS,
 		}
-		defer es.remove(oc)
-		es.deploy(oc)
+		defer es.Remove(oc)
+		es.Deploy(oc)
 
 		rsyslog := rsyslog{
 			serverName: "rsyslog",
@@ -2857,7 +2858,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Flow control t
 		}
 		defer clf.delete(oc)
 		clf.create(oc, "URL=http://"+loki.name+"."+loki.namespace+".svc:3100")
-		patch := fmt.Sprintf(`{"spec": {"outputs": [{"name":"loki-server","type":"loki","loki":{"url":"http://%s.%s.svc:3100"},"rateLimit": {"maxRecordsPerSecond": 20}}, {"name":"rsyslog-server","type":"syslog","syslog":{"url":"udp://%s.%s.svc:514","rfc":"RFC5424"},"rateLimit": {"maxRecordsPerSecond": 30}}, {"name":"elasticsearch-server","type":"elasticsearch","rateLimit":{"maxRecordsPerSecond": 10},"elasticsearch":{"version":8,"url":"http://%s.%s.svc:9200","index":"{.log_type||\"none-typed-logs\"}"}}]}}`, loki.name, loki.namespace, rsyslog.serverName, rsyslog.namespace, es.serverName, es.namespace)
+		patch := fmt.Sprintf(`{"spec": {"outputs": [{"name":"loki-server","type":"loki","loki":{"url":"http://%s.%s.svc:3100"},"rateLimit": {"maxRecordsPerSecond": 20}}, {"name":"rsyslog-server","type":"syslog","syslog":{"url":"udp://%s.%s.svc:514","rfc":"RFC5424"},"rateLimit": {"maxRecordsPerSecond": 30}}, {"name":"elasticsearch-server","type":"elasticsearch","rateLimit":{"maxRecordsPerSecond": 10},"elasticsearch":{"Version":8,"url":"http://%s.%s.svc:9200","index":"{.log_type||\"none-typed-logs\"}"}}]}}`, loki.name, loki.namespace, rsyslog.serverName, rsyslog.namespace, es.ServerName, es.Namespace)
 		clf.update(oc, "", patch, "--type=merge")
 		outputRefs := `[{"op": "replace", "path": "/spec/pipelines/0/outputRefs", "value": ["loki-server", "rsyslog-server", "elasticsearch-server"]}]`
 		clf.update(oc, "", outputRefs, "--type=json")
@@ -2905,7 +2906,7 @@ threshold = 10`
 			compat_otp.By("check data in ES, the count of logs from each node in one minute should be ~10*60")
 			for _, node := range nodeNames {
 				query := `{"query": {"bool": {"must": [{"match_phrase": {"hostname.keyword": "` + node + `"}}, {"range": {"@timestamp": {"gte": "now-1m/m", "lte": "now/m"}}}]}}}`
-				count, err := es.getDocCount(oc, "", query)
+				count, err := es.GetDocCount(oc, "", query)
 				o.Expect(err).NotTo(o.HaveOccurred())
 				o.Expect(count <= 700).Should(o.BeTrue(), fmt.Sprintf("The increased count in %s in 1 minute is: %d", node, count))
 			}
@@ -3116,15 +3117,15 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Audit Policy T
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:qitang-High-67421-Separate policies can be applied on separate pipelines LokiStack.[Serial][CLO]", func() {
 		compat_otp.By("Deploying an external log store")
-		es := externalES{
-			namespace:  oc.Namespace(),
-			loggingNS:  loggingNS,
-			version:    "8",
-			serverName: "external-es",
-			httpSSL:    false,
+		es := elasticsearch.ExternalES{
+			Namespace:  oc.Namespace(),
+			LoggingNS:  loggingNS,
+			Version:    "8",
+			ServerName: "external-es",
+			HttpSSL:    false,
 		}
-		defer es.remove(oc)
-		es.deploy(oc)
+		defer es.Remove(oc)
+		es.Deploy(oc)
 
 		compat_otp.By("Deploying LokiStack")
 		ls := lokiStack{
@@ -3163,20 +3164,20 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Audit Policy T
 		defer resource{"secret", clf.secretName, clf.namespace}.clear(oc)
 		ls.createSecretFromGateway(oc, clf.secretName, clf.namespace, "")
 		defer clf.delete(oc)
-		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, "ES_VERSION="+es.version, "ES_URL=http://"+es.serverName+"."+es.namespace+".svc:9200")
+		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace, "ES_VERSION="+es.Version, "ES_URL=http://"+es.ServerName+"."+es.Namespace+".svc:9200")
 
 		// sleep 3 minutes for logs to be collected
 		time.Sleep(3 * time.Minute)
-		es.waitForIndexAppear(oc, "audit")
+		es.WaitForIndexAppear(oc, "audit")
 
 		compat_otp.By("check data in logs stores")
-		count, err := es.getDocCount(oc, "audit", `{"query": {"term": {"stage": "RequestReceived"}}}`)
+		count, err := es.GetDocCount(oc, "audit", `{"query": {"term": {"stage": "RequestReceived"}}}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(count).Should(o.BeZero())
-		count, err = es.getDocCount(oc, "audit", `{"query": {"bool": {"must": [{"term": {"objectRef.resource": "pods"}},{"match": {"level": "RequestResponse"}}]}}}`)
+		count, err = es.GetDocCount(oc, "audit", `{"query": {"bool": {"must": [{"term": {"objectRef.resource": "pods"}},{"match": {"level": "RequestResponse"}}]}}}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(count).Should(o.BeNumerically(">", 0))
-		count, err = es.getDocCount(oc, "audit", `{"query": {"bool": {"must": [{"term": {"objectRef.resource": "pods"}}, {"terms": {"objectRef.subresource": ["status", "binding"]}}, {"match": {"level": "Request"}}]}}}`)
+		count, err = es.GetDocCount(oc, "audit", `{"query": {"bool": {"must": [{"term": {"objectRef.resource": "pods"}}, {"terms": {"objectRef.subresource": ["status", "binding"]}}, {"match": {"level": "Request"}}]}}}`)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		o.Expect(count).Should(o.BeZero())
 
@@ -3402,7 +3403,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 		appProj := oc.Namespace()
 		bearerToken, err := oc.Run("whoami").Args("-t").Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
+		oc.AsAdmin().WithoutNamespace().Run("label").Args("Namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
 		err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", loglabeltemplate).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -3414,7 +3415,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 
 		ls.waitForLokiStackToBeReady(oc)
 
-		g.By("Validate that user cannot access logs and rules of owned namespace without RBAC - 403 Auth exception")
+		g.By("Validate that user cannot access logs and rules of owned Namespace without RBAC - 403 Auth exception")
 		route := "https://" + getRouteAddress(oc, ls.namespace, ls.name)
 		lc := newLokiClient(route).withToken(bearerToken).retry(5)
 		_, err = lc.searchByNamespace("application", appProj)
@@ -3426,7 +3427,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Loki Fine grai
 		err = oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "add-role-to-user", "cluster-logging-application-view", userName, "-n", appProj).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		g.By("Validate user can access logs and rules of owned namespace after RBAC is created - Success flow")
+		g.By("Validate user can access logs and rules of owned Namespace after RBAC is created - Success flow")
 		lc.waitForLogsAppearByProject("application", appProj)
 		appRules, err := lc.queryRules("application", appProj)
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -4296,7 +4297,7 @@ resource_attributes:
   attributes_config:
     - action: index_label
       attributes:
-        - k8s.namespace.name
+        - k8s.Namespace.name
         - kubernetes.namespace_name
         - log_source
         - log_type
@@ -4506,7 +4507,7 @@ resource_attributes:
         - k8s.pod.uid
     - action: index_label
       attributes:
-        - k8s.namespace.name
+        - k8s.Namespace.name
         - kubernetes.namespace_name
         - log_source
         - log_type
@@ -4540,7 +4541,7 @@ resource_attributes:
       regex: k8s\.pod\.label\..+
     - action: index_label
       attributes:
-        - k8s.namespace.name
+        - k8s.Namespace.name
         - k8s.pod.name
         - kubernetes.namespace_name
         - log_source
@@ -4580,7 +4581,7 @@ resource_attributes:
     - action: index_label
       attributes:
         - k8s.container.name
-        - k8s.namespace.name
+        - k8s.Namespace.name
         - kubernetes.namespace_name
         - log_source
         - log_type
@@ -4613,7 +4614,7 @@ resource_attributes:
       regex: openshift\.label\..+
     - action: index_label
       attributes:
-        - k8s.namespace.name
+        - k8s.Namespace.name
         - kubernetes.namespace_name
         - log_source
         - log_type
@@ -4826,11 +4827,11 @@ resource_attributes:
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:kbharti-High-82010-Verify Loki AlertingRule creation with Otel attribute k8s_namespace_name for namespace matcher[Serial][LokiOperator]", func() {
+	g.It("Author:kbharti-High-82010-Verify Loki AlertingRule creation with Otel attribute k8s_namespace_name for Namespace matcher[Serial][LokiOperator]", func() {
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		oc.SetupProject()
 		appProj := oc.Namespace()
-		oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
+		oc.AsAdmin().WithoutNamespace().Run("label").Args("Namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
 		err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -4894,7 +4895,7 @@ resource_attributes:
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		oc.SetupProject()
 		appProj := oc.Namespace()
-		oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
+		oc.AsAdmin().WithoutNamespace().Run("label").Args("Namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
 		err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -4980,7 +4981,7 @@ resource_attributes:
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		oc.SetupProject()
 		appProj := oc.Namespace()
-		oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
+		oc.AsAdmin().WithoutNamespace().Run("label").Args("Namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
 		err := oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
@@ -5174,7 +5175,7 @@ apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: "%s"
-  namespace: "%s"
+  Namespace: "%s"
 spec:
   host: "%s"
   to:

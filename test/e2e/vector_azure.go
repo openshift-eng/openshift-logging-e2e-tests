@@ -31,7 +31,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			Subscription:  subTemplate,
 			OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-og.yaml"),
 		}
-		g.By("deploy CLO")
+		g.By("Deploy CLO")
 		CLO.SubscribeOperator(oc)
 		oc.SetupProject()
 	})

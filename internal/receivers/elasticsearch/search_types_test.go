@@ -1,4 +1,4 @@
-package logging
+package elasticsearch
 
 import (
 	"encoding/json"

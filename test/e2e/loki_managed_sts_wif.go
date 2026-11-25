@@ -50,7 +50,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease loki-operator 
 			OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-og.yaml"),
 		}
 
-		g.By("deploy CLO and Loki Operator")
+		g.By("Deploy CLO and Loki Operator")
 		CLO.SubscribeOperator(oc)
 		LO.SubscribeOperator(oc)
 	})
@@ -228,10 +228,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease loki-operator 
 		err := ls.prepareResourcesForLokiStack(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 
-		// Patch to remove region from Loki Operator subscription (default case)
+		// Patch to Remove region from Loki Operator subscription (default case)
 		removeRegion := `[
 				{
-				  "op": "remove",
+				  "op": "Remove",
 				  "path": "/spec/config/env/3"
 				}
 		]`

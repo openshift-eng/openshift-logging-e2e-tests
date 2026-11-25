@@ -31,7 +31,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Otlp output te
 			Subscription:  filepath.Join(loggingBaseDir, "subscription", "sub-template.yaml"),
 			OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-og.yaml"),
 		}
-		compat_otp.By("deploy CLO")
+		compat_otp.By("Deploy CLO")
 		CLO.SubscribeOperator(oc)
 		oc.SetupProject()
 	})
@@ -98,8 +98,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Otlp output te
 		}
 		defer clf.delete(oc)
 		clf.create(oc, "URL="+svc)
-		// exclude logs from  project otel.namespace because the OTEL collector writes received logs to stdout
-		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"excludes": [{"namespace":"` + otel.namespace + `"}]}}]},{"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app", "infrastructure", "audit"]}]`
+		// exclude logs from  project otel.Namespace because the OTEL collector writes received logs to stdout
+		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"excludes": [{"Namespace":"` + otel.namespace + `"}]}}]},{"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app", "infrastructure", "audit"]}]`
 		clf.update(oc, "", patch, "--type=json")
 		clf.waitForCollectorPodsReady(oc)
 
@@ -149,7 +149,7 @@ type = "opentelemetry"`,
 			Subscription:  filepath.Join(loggingBaseDir, "subscription", "sub-template.yaml"),
 			OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-og.yaml"),
 		}
-		compat_otp.By("deploy Loki Operator")
+		compat_otp.By("Deploy Loki Operator")
 		LO.SubscribeOperator(oc)
 
 		multilineLogs := []string{
@@ -233,7 +233,7 @@ type = "opentelemetry"`,
 			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("project", ns, "--wait=false").Execute()
 			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("ns", ns).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ns, "deploy/multiline-log", "cm/multiline-log").Execute()
+			defer oc.AsAdmin().WithoutNamespace().Run("delete").Args("-n", ns, "Deploy/multiline-log", "cm/multiline-log").Execute()
 			err = oc.AsAdmin().WithoutNamespace().Run("new-app").Args("-n", ns, "-f", multilineLogFile, "-p", "OUT_STREAM="+ioStream, "-p", "RATE=60.00").Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
 		}
@@ -280,8 +280,8 @@ type = "opentelemetry"`,
 		defer clf.delete(oc)
 		clf.create(oc, "URL=http://fake-otel-collector."+clf.namespace+".svc:4318")
 
-		compat_otp.By("remove the tech-preview annotation from CLF")
-		patch := `[{"op": "remove", "path": "/metadata/annotations"}]`
+		compat_otp.By("Remove the tech-preview annotation from CLF")
+		patch := `[{"op": "Remove", "path": "/metadata/annotations"}]`
 		clf.update(oc, "", patch, "--type=json")
 		checkResource(oc, true, false, `output "otlp" requires a valid tech-preview annotation`, []string{"clusterlogforwarder.observability.openshift.io", clf.name, "-n", clf.namespace, "-ojsonpath={.status.outputConditions[*].message}"})
 

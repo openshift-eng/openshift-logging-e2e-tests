@@ -18,6 +18,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/receivers/elasticsearch"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -88,7 +90,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Longduration-Critical-53407-Upgrade with Vector as collector - minor version.[Serial][Slow][CLO][LokiOperator]", func() {
+	g.It("Author:qitang-Longduration-Critical-53407-Upgrade with Vector as collector - minor Version.[Serial][Slow][CLO][LokiOperator]", func() {
 		if targetChannel == "" {
 			g.Skip("LOGGING_TEST_VERSION env var is not set, skipping upgrade test")
 		}
@@ -164,7 +166,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 		defer clf.delete(oc)
 		clf.create(oc, "LOKISTACK_NAME="+ls.name, "LOKISTACK_NAMESPACE="+ls.namespace)
 
-		compat_otp.By("deploy logfilesmetricexporter")
+		compat_otp.By("Deploy logfilesmetricexporter")
 		lfme := logFileMetricExporter{
 			name:          "instance",
 			namespace:     loggingNS,
@@ -174,7 +176,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 		defer lfme.delete(oc)
 		lfme.create(oc)
 
-		// get current csv version
+		// get current csv Version
 		preCloCSV := preCLO.getInstalledCSV(oc)
 		preLoCSV := preLO.getInstalledCSV(oc)
 
@@ -244,7 +246,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 
 	// author: qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Longduration-Critical-53404-Upgrade with Vector as collector - major version LokiStack [Serial][Slow][CLO][LokiOperator]", func() {
+	g.It("Author:qitang-Longduration-Critical-53404-Upgrade with Vector as collector - major Version LokiStack [Serial][Slow][CLO][LokiOperator]", func() {
 		if upgradeFromChannel == "" {
 			g.Skip("LOGGING_UPGRADE_FROM_VERSION env var is not set, skipping operator deployment")
 		}
@@ -298,7 +300,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease vector-loki Up
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
 
-		compat_otp.By("deploy logfilesmetricexporter")
+		compat_otp.By("Deploy logfilesmetricexporter")
 		lfme := logFileMetricExporter{
 			name:          "instance",
 			namespace:     loggingNS,
@@ -427,7 +429,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease OperatorDeploy
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:anli-Low-65518-deploy cluster-logging-operator after Datadog-Agent is deployed [Serial][CLO]", func() {
+	g.It("Author:anli-Low-65518-Deploy cluster-logging-operator after Datadog-Agent is deployed [Serial][CLO]", func() {
 		// skip the case when operator is installed by operator-sdk
 
 		channel, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("sub", "--all-namespaces", `-ojsonpath={.items[?(@.spec.name=="cluster-logging")].spec.channel}`).Output()
@@ -476,7 +478,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease OperatorDeploy
 		}
 		subCLO.uninstallOperator(oc)
 
-		g.By("deploy cluster-logging operator")
+		g.By("Deploy cluster-logging operator")
 		subCLO.SubscribeOperator(oc)
 	})
 })
@@ -505,7 +507,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			Subscription:  subTemplate,
 			OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-og.yaml"),
 		}
-		g.By("deploy CLO and LO")
+		g.By("Deploy CLO and LO")
 		CLO.SubscribeOperator(oc)
 		LO.SubscribeOperator(oc)
 		oc.SetupProject()
@@ -592,7 +594,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		err = lfmeInvalidName.applyFromTemplate(oc, "-f", template, "-p", "NAME="+lfmeInvalidName.name, "-p", "NAMESPACE="+lfmeInvalidName.namespace)
 		o.Expect(strings.Contains(err.Error(), "metadata.name: Unsupported value: \""+lfmeInvalidName.name+"\": supported values: \"instance\"")).Should(o.BeTrue())
 
-		g.By("Create LFME with invalid namespace")
+		g.By("Create LFME with invalid Namespace")
 		lfmeInvalidNamespace := logFileMetricExporter{
 			name:      "instance",
 			namespace: oc.Namespace(),
@@ -600,7 +602,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		}
 		defer lfmeInvalidNamespace.delete(oc)
 		lfmeInvalidNamespace.create(oc)
-		checkResource(oc, true, false, "validation failed: Invalid namespace name \""+lfmeInvalidNamespace.namespace+"\", instance must be in \"openshift-logging\" namespace", []string{"lfme/" + lfmeInvalidNamespace.name, "-n", lfmeInvalidNamespace.namespace, "-ojsonpath={.status.conditions[*].message}"})
+		checkResource(oc, true, false, "validation failed: Invalid Namespace name \""+lfmeInvalidNamespace.namespace+"\", instance must be in \"openshift-logging\" Namespace", []string{"lfme/" + lfmeInvalidNamespace.name, "-n", lfmeInvalidNamespace.namespace, "-ojsonpath={.status.conditions[*].message}"})
 	})
 
 	// author qitang@redhat.com
@@ -608,14 +610,14 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 	g.It("Author:qitang-Medium-65407-ClusterLogForwarder validation for the serviceaccount[Slow][CLO]", func() {
 		clfNS := oc.Namespace()
 		compat_otp.By("Deploy ES server")
-		ees := externalES{
-			namespace:  clfNS,
-			version:    "8",
-			serverName: "elasticsearch-server",
-			loggingNS:  clfNS,
+		ees := elasticsearch.ExternalES{
+			Namespace:  clfNS,
+			Version:    "8",
+			ServerName: "elasticsearch-server",
+			LoggingNS:  clfNS,
 		}
-		defer ees.remove(oc)
-		ees.deploy(oc)
+		defer ees.Remove(oc)
+		ees.Deploy(oc)
 
 		logFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		compat_otp.By("create pod to generate logs")
@@ -631,7 +633,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 			templateFile: filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "elasticsearch.yaml"),
 		}
 		defer clf.delete(oc)
-		clf.create(oc, "ES_URL=http://"+ees.serverName+"."+ees.namespace+".svc:9200", "ES_VERSION="+ees.version, "SERVICE_ACCOUNT_NAME=logcollector", "INPUT_REFS=[\"application\"]")
+		clf.create(oc, "ES_URL=http://"+ees.ServerName+"."+ees.Namespace+".svc:9200", "ES_VERSION="+ees.Version, "SERVICE_ACCOUNT_NAME=logcollector", "INPUT_REFS=[\"application\"]")
 		checkResource(oc, true, false, `ServiceAccount "logcollector" not found`, []string{"clf/" + clf.name, "-n", clf.namespace, "-ojsonpath={.status.conditions[*].message}"})
 
 		ds := resource{
@@ -651,7 +653,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		defer sa.clear(oc)
 		err = createServiceAccount(oc, sa.namespace, sa.name)
 		o.Expect(err).NotTo(o.HaveOccurred(), "get error when creating serviceaccount "+sa.name)
-		defer oc.AsAdmin().WithoutNamespace().Run("policy").Args("remove-role-from-user", "collect-application-logs", fmt.Sprintf("system:serviceaccount:%s:%s", sa.namespace, sa.name), "-n", sa.namespace).Execute()
+		defer oc.AsAdmin().WithoutNamespace().Run("policy").Args("Remove-role-from-user", "collect-application-logs", fmt.Sprintf("system:serviceaccount:%s:%s", sa.namespace, sa.name), "-n", sa.namespace).Execute()
 		err = oc.AsAdmin().WithoutNamespace().Run("policy").Args("add-role-to-user", "collect-application-logs", fmt.Sprintf("system:serviceaccount:%s:%s", sa.namespace, sa.name), "-n", sa.namespace).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 		// wait for 2 minutes for CLO to update the status in CLF
@@ -668,7 +670,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		checkResource(oc, true, false, "True", []string{"clf/" + clf.name, "-n", clf.namespace, "-ojsonpath={.status.conditions[?(@.reason == \"ValidationSuccess\")].status}"})
 		compat_otp.By("Collector pods should be deployed and logs can be forwarded to external log store")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
-		ees.waitForIndexAppear(oc, "app")
+		ees.WaitForIndexAppear(oc, "app")
 
 		compat_otp.By("Delete the serviceaccount, the collector pods should be removed")
 		err = sa.clear(oc)
@@ -684,7 +686,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease multi-mode tes
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 
 		compat_otp.By("Remove spec.serviceAccount from CLF")
-		msg, err := clf.patch(oc, `[{"op": "remove", "path": "/spec/serviceAccount"}]`)
+		msg, err := clf.patch(oc, `[{"op": "Remove", "path": "/spec/serviceAccount"}]`)
 		o.Expect(err).To(o.HaveOccurred())
 		o.Expect(strings.Contains(msg, "spec.serviceAccount: Required value")).To(o.BeTrue())
 	})
@@ -898,7 +900,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 			},
 			OperatorPodLabel: "app.kubernetes.io/name=observability-operator",
 		}
-		compat_otp.By("deploy CLO, LO and COO")
+		compat_otp.By("Deploy CLO, LO and COO")
 		CLO.SubscribeOperator(oc)
 		LO.SubscribeOperator(oc)
 		COO.SubscribeOperator(oc)
@@ -912,26 +914,26 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 
 		compat_otp.By("Create external Elasticsearch")
 		esProj := oc.Namespace()
-		ees := externalES{
-			namespace:  esProj,
-			version:    "7",
-			serverName: "elasticsearch-server",
-			httpSSL:    true,
-			userAuth:   true,
-			username:   "user1",
-			password:   getRandomString(),
-			secretName: "ees-75632",
-			loggingNS:  clfNS,
+		ees := elasticsearch.ExternalES{
+			Namespace:  esProj,
+			Version:    "7",
+			ServerName: "elasticsearch-server",
+			HttpSSL:    true,
+			UserAuth:   true,
+			Username:   "user1",
+			Password:   getRandomString(),
+			SecretName: "ees-75632",
+			LoggingNS:  clfNS,
 		}
-		defer ees.remove(oc)
-		ees.deploy(oc)
+		defer ees.Remove(oc)
+		ees.Deploy(oc)
 
 		compat_otp.By("Create CLF to forward to ES")
 		clfES := clusterlogforwarder{
 			name:                      "clf-75632-es",
 			namespace:                 clfNS,
 			templateFile:              filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "elasticsearch-userauth-https.yaml"),
-			secretName:                ees.secretName,
+			secretName:                ees.SecretName,
 			waitForPodReady:           false,
 			collectApplicationLogs:    true,
 			collectAuditLogs:          true,
@@ -939,9 +941,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
 		defer clfES.delete(oc)
-		clfES.create(oc, "ES_URL=https://"+ees.serverName+"."+esProj+".svc:9200", "ES_VERSION="+ees.version)
+		clfES.create(oc, "ES_URL=https://"+ees.ServerName+"."+esProj+".svc:9200", "ES_VERSION="+ees.Version)
 
-		compat_otp.By("deploy lokistack")
+		compat_otp.By("Deploy lokistack")
 		lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
 		ls := lokiStack{
 			name:          "loki-75632",
@@ -962,7 +964,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease must-gather", 
 		//ls.waitForLokiStackToBeReady(oc)
 		resource{"configmap", ls.name + "-gateway-ca-bundle", ls.namespace}.WaitForResourceToAppear(oc)
 
-		compat_otp.By("deploy logfilesmetricexporter")
+		compat_otp.By("Deploy logfilesmetricexporter")
 		lfme := logFileMetricExporter{
 			name:          "instance",
 			namespace:     loggingNS,
@@ -1037,7 +1039,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-og.yaml"),
 		}
 
-		g.By("deploy CLO")
+		g.By("Deploy CLO")
 		CLO.SubscribeOperator(oc)
 		oc.SetupProject()
 	})
@@ -1144,9 +1146,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
 		g.By("check metrics exposed by collector")
 		for _, job := range []string{clf.name, "logfilesmetricexporter"} {
-			checkMetric(oc, promToken, "{job=\""+job+"\", namespace=\""+loggingNS+"\"}", 3)
+			checkMetric(oc, promToken, "{job=\""+job+"\", Namespace=\""+loggingNS+"\"}", 3)
 		}
-		for _, metric := range []string{`vector_component_received_events_total{job="` + clf.name + `", namespace="` + clf.namespace + `"}`, `log_logged_bytes_total{job="logfilesmetricexporter", namespace="` + lfme.namespace + `"}`} {
+		for _, metric := range []string{`vector_component_received_events_total{job="` + clf.name + `", Namespace="` + clf.namespace + `"}`, `log_logged_bytes_total{job="logfilesmetricexporter", Namespace="` + lfme.namespace + `"}`} {
 			checkMetric(oc, promToken, metric, 3)
 		}
 
@@ -1233,8 +1235,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		}
 		defer clf.delete(oc)
 		clf.create(oc, "URL="+svc, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
-		// exclude logs from  project otel.namespace because the OTEL collector writes received logs to stdout
-		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"excludes": [{"namespace":"` + otel.namespace + `"}]}}]},{"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app", "infrastructure", "audit"]}]`
+		// exclude logs from  project otel.Namespace because the OTEL collector writes received logs to stdout
+		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"excludes": [{"Namespace":"` + otel.namespace + `"}]}}]},{"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app", "infrastructure", "audit"]}]`
 		clf.update(oc, "", patch, "--type=json")
 		clf.waitForCollectorPodsReady(oc)
 		clf.checkNetworkPolicy(oc)
@@ -1250,8 +1252,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 		g.By("check metrics exposed by collector")
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
-		checkMetric(oc, promToken, "{job=\""+clf.name+"\", namespace=\""+clf.namespace+"\"}", 3)
-		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
+		checkMetric(oc, promToken, "{job=\""+clf.name+"\", Namespace=\""+clf.namespace+"\"}", 3)
+		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", Namespace="`+clf.namespace+`"}`, 3)
 
 		g.By("update network policy to AllowAllIngressEgress")
 		clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
@@ -1272,21 +1274,21 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		if platform != "aws" {
 			g.Skip("Skip for the platform is not AWS.")
 		}
-		g.By("init Cloudwatch test spec")
+		g.By("Init Cloudwatch test spec")
 		clfNS := oc.Namespace()
-		cw := cloudwatchSpec{
-			collectorSAName: "cloudwatch-" + getRandomString(),
-			secretNamespace: clfNS,
-			secretName:      "logging-85456-" + getRandomString(),
-			groupName:       "logging-85456-" + getInfrastructureName(oc) + `.{.log_type||"none-typed-logs"}`,
-			logTypes:        []string{"infrastructure", "audit"},
+		cw := aws.CloudwatchSpec{
+			CollectorSAName: "cloudwatch-" + getRandomString(),
+			SecretNamespace: clfNS,
+			SecretName:      "logging-85456-" + getRandomString(),
+			GroupName:       "logging-85456-" + getInfrastructureName(oc) + `.{.log_type||"none-typed-logs"}`,
+			LogTypes:        []string{"infrastructure", "audit"},
 		}
-		defer cw.deleteResources(oc)
-		cw.init(oc)
+		defer cw.DeleteResources(oc)
+		cw.Init(oc)
 
 		g.By("Create clusterlogforwarder")
 		var template string
-		if cw.stsEnabled {
+		if cw.StsEnabled {
 			template = filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "cloudwatch-iamRole.yaml")
 		} else {
 			template = filepath.Join(loggingBaseDir, "observability.openshift.io_clusterlogforwarder", "cloudwatch-accessKey.yaml")
@@ -1296,24 +1298,24 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			name:                      "clf-85456",
 			namespace:                 clfNS,
 			templateFile:              template,
-			secretName:                cw.secretName,
+			secretName:                cw.SecretName,
 			waitForPodReady:           true,
 			collectApplicationLogs:    true,
 			collectAuditLogs:          true,
 			collectInfrastructureLogs: true,
-			serviceAccountName:        cw.collectorSAName,
+			serviceAccountName:        cw.CollectorSAName,
 			enableMonitoring:          true,
 		}
 		defer clf.delete(oc)
 		clf.createServiceAccount(oc)
-		cw.createClfSecret(oc)
-		clf.create(oc, "REGION="+cw.awsRegion, "GROUP_NAME="+cw.groupName)
+		cw.CreateClfSecret(oc)
+		clf.create(oc, "REGION="+cw.AwsRegion, "GROUP_NAME="+cw.GroupName)
 		nodes, err := clf.getCollectorNodeNames(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
-		cw.nodes = append(cw.nodes, nodes...)
+		cw.Nodes = append(cw.Nodes, nodes...)
 
 		g.By("Check logs in Cloudwatch")
-		o.Expect(cw.logsFound()).To(o.BeTrue())
+		o.Expect(cw.LogsFound()).To(o.BeTrue())
 
 		g.By("check network policy, no network policy should be created")
 		np, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", clf.namespace, "-oname").Output()
@@ -1332,15 +1334,15 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		cw.selAppNamespaces = append(cw.selAppNamespaces, appProj)
+		cw.SelAppNamespaces = append(cw.SelAppNamespaces, appProj)
 
 		g.By("check metrics exposed by collector")
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
-		checkMetric(oc, promToken, "{job=\""+clf.name+"\", namespace=\""+clf.namespace+"\"}", 3)
-		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
+		checkMetric(oc, promToken, "{job=\""+clf.name+"\", Namespace=\""+clf.namespace+"\"}", 3)
+		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", Namespace="`+clf.namespace+`"}`, 3)
 
 		g.By("ensure vector still can send logs to cloudwatch")
-		o.Expect(cw.logsFound()).To(o.BeTrue())
+		o.Expect(cw.LogsFound()).To(o.BeTrue())
 
 		g.By("update network policy to AllowAllIngressEgress")
 		clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
@@ -1361,9 +1363,9 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		if platform != "aws" {
 			g.Skip("Skip for the platform is not AWS.")
 		}
-		g.By("init S3 bucket test spec")
+		g.By("Init S3 bucket test spec")
 		clfNS := oc.Namespace()
-		s3 := S3Output{
+		s3 := aws.S3Output{
 			BucketName:              "logging-s3-85744-" + getInfrastructureName(oc),
 			KeyPrefix:               `logging-s3-output-{.log_type||"none-typed-logs"}-`,
 			SecretName:              "s3-output",
@@ -1398,7 +1400,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		clf.create(oc, "REGION="+s3.Region, "KEY_PREFIX="+s3.KeyPrefix, "BUCKET_NAME="+s3.BucketName)
 
 		g.By("Check logs in S3 Bucket")
-		validatesIfLogsArePushedToS3Bucket(s3.Client, s3.BucketName, []string{"application", "infrastructure", "audit"})
+		aws.ValidatesIfLogsArePushedToS3Bucket(s3.Client, s3.BucketName, []string{"application", "infrastructure", "audit"})
 
 		g.By("check network policy, no network policy should be created")
 		np, _ := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", clf.namespace, "-oname").Output()
@@ -1420,11 +1422,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 		g.By("check metrics exposed by collector")
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
-		checkMetric(oc, promToken, "{job=\""+clf.name+"\", namespace=\""+clf.namespace+"\"}", 3)
-		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
+		checkMetric(oc, promToken, "{job=\""+clf.name+"\", Namespace=\""+clf.namespace+"\"}", 3)
+		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", Namespace="`+clf.namespace+`"}`, 3)
 
 		g.By("ensure vector still can send logs to S3 bucket")
-		validatesIfLogsArePushedToS3Bucket(s3.Client, s3.BucketName, []string{"application"})
+		aws.ValidatesIfLogsArePushedToS3Bucket(s3.Client, s3.BucketName, []string{"application"})
 
 		g.By("update network policy to AllowAllIngressEgress")
 		clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
@@ -1496,8 +1498,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 		g.By("check metrics exposed by collector")
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
-		checkMetric(oc, promToken, "{job=\""+clf.name+"\", namespace=\""+clf.namespace+"\"}", 3)
-		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
+		checkMetric(oc, promToken, "{job=\""+clf.name+"\", Namespace=\""+clf.namespace+"\"}", 3)
+		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", Namespace="`+clf.namespace+`"}`, 3)
 
 		g.By("update network policy to AllowAllIngressEgress")
 		clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
@@ -1516,17 +1518,17 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 	g.It("Author:qitang-High-85411-NetworkPolicy for ClusterLogForwarder elasticsearch output.[CLO]", func() {
 		compat_otp.By("Create external Elasticsearch instance")
 		esProj := oc.Namespace()
-		ees := externalES{
-			namespace:  esProj,
-			version:    "8",
-			serverName: "elasticsearch-server",
-			httpSSL:    false,
-			loggingNS:  esProj,
+		ees := elasticsearch.ExternalES{
+			Namespace:  esProj,
+			Version:    "8",
+			ServerName: "elasticsearch-server",
+			HttpSSL:    false,
+			LoggingNS:  esProj,
 		}
-		defer ees.remove(oc)
-		ees.deploy(oc)
+		defer ees.Remove(oc)
+		ees.Deploy(oc)
 
-		compat_otp.By("Create project for app logs and deploy the log generator app")
+		compat_otp.By("Create project for app logs and Deploy the log generator app")
 		oc.SetupProject()
 		appProj := oc.Namespace()
 		loglabeltemplate := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
@@ -1546,19 +1548,19 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			enableMonitoring:          true,
 		}
 		defer clf.delete(oc)
-		clf.create(oc, "ES_URL=http://"+getRouteAddress(oc, ees.namespace, ees.serverName), "ES_VERSION="+ees.version, "INDEX=logging-85411.{.log_type||\"none-typed-logs\"}-write", `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
+		clf.create(oc, "ES_URL=http://"+getRouteAddress(oc, ees.Namespace, ees.ServerName), "ES_VERSION="+ees.Version, "INDEX=logging-85411.{.log_type||\"none-typed-logs\"}-write", `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		clf.checkNetworkPolicy(oc)
 		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "80", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		compat_otp.By("Check logs in ES")
-		ees.waitForIndexAppear(oc, "logging-85411.application-write")
-		ees.waitForIndexAppear(oc, "logging-85411.infrastructure-write")
-		ees.waitForIndexAppear(oc, "logging-85411.audit-write")
+		ees.WaitForIndexAppear(oc, "logging-85411.application-write")
+		ees.WaitForIndexAppear(oc, "logging-85411.infrastructure-write")
+		ees.WaitForIndexAppear(oc, "logging-85411.audit-write")
 
 		g.By("check metrics exposed by collector")
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
-		checkMetric(oc, promToken, "{job=\""+clf.name+"\", namespace=\""+clf.namespace+"\"}", 3)
-		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
+		checkMetric(oc, promToken, "{job=\""+clf.name+"\", Namespace=\""+clf.namespace+"\"}", 3)
+		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", Namespace="`+clf.namespace+`"}`, 3)
 
 		g.By("update network policy to AllowAllIngressEgress")
 		clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
@@ -1644,8 +1646,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
 		for _, clf := range []clusterlogforwarder{clfHttpserverToSplunk, httpCLF} {
 			g.By("check metrics exposed by collector")
-			checkMetric(oc, promToken, "{job=\""+clf.name+"\", namespace=\""+clf.namespace+"\"}", 3)
-			checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
+			checkMetric(oc, promToken, "{job=\""+clf.name+"\", Namespace=\""+clf.namespace+"\"}", 3)
+			checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", Namespace="`+clf.namespace+`"}`, 3)
 
 			g.By("update network policy to AllowAllIngressEgress")
 			clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
@@ -1760,8 +1762,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
 		for _, clf := range []clusterlogforwarder{lsCLF, sysCLF} {
 			g.By("check metrics exposed by collector")
-			checkMetric(oc, promToken, "{job=\""+clf.name+"\", namespace=\""+clf.namespace+"\"}", 3)
-			checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
+			checkMetric(oc, promToken, "{job=\""+clf.name+"\", Namespace=\""+clf.namespace+"\"}", 3)
+			checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", Namespace="`+clf.namespace+`"}`, 3)
 
 			g.By("update network policy to AllowAllIngressEgress")
 			clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
@@ -1839,8 +1841,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 		g.By("check metrics exposed by collector")
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
-		checkMetric(oc, promToken, "{job=\""+clf.name+"\", namespace=\""+clf.namespace+"\"}", 3)
-		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
+		checkMetric(oc, promToken, "{job=\""+clf.name+"\", Namespace=\""+clf.namespace+"\"}", 3)
+		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", Namespace="`+clf.namespace+`"}`, 3)
 
 		g.By("update network policy to AllowAllIngressEgress")
 		clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")
@@ -1896,7 +1898,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		defer clf.delete(oc)
 		clf.create(oc, "URL="+kafkaEndpoint, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		// Remove tls configuration from CLF as it is not required for this case
-		patch := `[{"op": "remove", "path": "/spec/outputs/0/tls"}]`
+		patch := `[{"op": "Remove", "path": "/spec/outputs/0/tls"}]`
 		clf.update(oc, "", patch, "--type=json")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 
@@ -1917,8 +1919,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 		g.By("check metrics exposed by collector")
 		promToken := getSAToken(oc, "prometheus-k8s", "openshift-monitoring")
-		checkMetric(oc, promToken, "{job=\""+clf.name+"\", namespace=\""+clf.namespace+"\"}", 3)
-		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", namespace="`+clf.namespace+`"}`, 3)
+		checkMetric(oc, promToken, "{job=\""+clf.name+"\", Namespace=\""+clf.namespace+"\"}", 3)
+		checkMetric(oc, promToken, `vector_component_received_events_total{job="`+clf.name+`", Namespace="`+clf.namespace+`"}`, 3)
 
 		g.By("update network policy to AllowAllIngressEgress")
 		clf.updateNetworkPolicyRuleSet(oc, "AllowAllIngressEgress")

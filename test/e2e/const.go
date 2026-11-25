@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	// the namespace where legacy clusterlogging and clusterlogforwarder are in
+	// the Namespace where legacy clusterlogging and clusterlogforwarder are in
 	loggingNS = "openshift-logging"
-	// the namespace where cluster-logging-operator is in
+	// the Namespace where cluster-logging-operator is in
 	cloNS = observability.NamespaceClusterLoggingOperator
-	// the namespace where loki-operator is in
+	// the Namespace where loki-operator is in
 	loNS = observability.NamespaceLokiOperator
 
 	// how often a Loki query poll is retried
