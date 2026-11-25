@@ -50,7 +50,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			SkipCaseWhenFailed: true,
 		}
 
-		g.By("deploy CLO")
+		g.By("Deploy CLO")
 		CLO.SubscribeOperator(oc)
 		oc.SetupProject()
 	})
@@ -58,7 +58,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 	// author qitang@redhat.com
 	// port=no - 64.8% pass rate (253 runs last 60 days)
 	g.It("Author:qitang-Critical-74397-[InterOps] Forward logs to LokiStack.[Slow][Serial][PreMerge][CLO][LokiOperator]", func() {
-		g.By("deploy LO")
+		g.By("Deploy LO")
 		LO.SubscribeOperator(oc)
 		s := getStorageType(oc)
 		sc, err := getStorageClassName(oc)
@@ -76,7 +76,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			defer deleteLinuxAuditPolicyFromNode(oc, nodeName)
 		}
 
-		g.By("deploy loki stack")
+		g.By("Deploy loki stack")
 		lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
 		ls := lokiStack{
 			name:          "loki-74397",
@@ -96,7 +96,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		o.Expect(err).NotTo(o.HaveOccurred())
 		ls.waitForLokiStackToBeReady(oc)
 
-		compat_otp.By("deploy logfilesmetricexporter")
+		compat_otp.By("Deploy logfilesmetricexporter")
 		lfme := logFileMetricExporter{
 			name:          "instance",
 			namespace:     loggingNS,
@@ -189,7 +189,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 				checkMetric(oc, promToken, "{job=\""+svc.Name+"\"}", 3)
 			}
 		}
-		for _, metric := range []string{"loki_boltdb_shipper_compactor_running", "loki_distributor_bytes_received_total", "loki_inflight_requests", "workqueue_work_duration_seconds_bucket{namespace=\"" + loNS + "\", job=\"loki-operator-controller-manager-metrics-service\"}", "loki_build_info", "loki_ingester_streams_created_total"} {
+		for _, metric := range []string{"loki_boltdb_shipper_compactor_running", "loki_distributor_bytes_received_total", "loki_inflight_requests", "workqueue_work_duration_seconds_bucket{Namespace=\"" + loNS + "\", job=\"loki-operator-controller-manager-metrics-service\"}", "loki_build_info", "loki_ingester_streams_created_total"} {
 			checkMetric(oc, promToken, metric, 3)
 		}
 		compat_otp.By("Validate log streams are pushed to external storage bucket/container")
@@ -405,16 +405,16 @@ retry_max_duration_secs = 20`,
 			g.Skip("This test only runs on aws, azure, or gcp platforms due to open bugs against Swift, ODF, and minIO backend storage")
 		}
 
-		compat_otp.By("deploy LokiOperator")
+		compat_otp.By("Deploy LokiOperator")
 		LO.SubscribeOperator(oc)
 		s := getStorageType(oc)
 		sc, err := getStorageClassName(oc)
 		if err != nil || len(sc) == 0 {
 			g.Skip("can't get storageclass from cluster, skip this case")
 		}
-		compat_otp.By("Create an application project and deploy a log generator")
+		compat_otp.By("Create an application project and Deploy a log generator")
 		appProj := oc.Namespace()
-		oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
+		oc.AsAdmin().WithoutNamespace().Run("label").Args("Namespace", appProj, "openshift.io/cluster-monitoring=true").Execute()
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		err = oc.WithoutNamespace().Run("new-app").Args("-n", appProj, "-f", jsonLogFile).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
@@ -424,7 +424,7 @@ retry_max_duration_secs = 20`,
 			defer deleteLinuxAuditPolicyFromNode(oc, nodeName)
 		}
 
-		compat_otp.By("deploy loki stack with network policies enabled.")
+		compat_otp.By("Deploy loki stack with network policies enabled.")
 		lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
 		ls := lokiStack{
 			name:          "loki-85642",
@@ -458,7 +458,7 @@ retry_max_duration_secs = 20`,
 		o.Expect(policiesExist).Should(o.BeTrue(), "Network policies should exist when ruleSet is RestrictIngressEgress")
 		ls.verifyLokiStackNetworkPolicies(oc)
 
-		compat_otp.By("deploy logfilesmetricexporter")
+		compat_otp.By("Deploy logfilesmetricexporter")
 		lfme := logFileMetricExporter{
 			name:          "instance",
 			namespace:     loggingNS,
@@ -525,7 +525,7 @@ retry_max_duration_secs = 20`,
 				checkMetric(oc, promToken, "{job=\""+svc.Name+"\"}", 3)
 			}
 		}
-		for _, metric := range []string{"loki_boltdb_shipper_compactor_running", "loki_distributor_bytes_received_total", "loki_inflight_requests", "workqueue_work_duration_seconds_bucket{namespace=\"" + loNS + "\", job=\"loki-operator-controller-manager-metrics-service\"}", "loki_build_info", "loki_ingester_streams_created_total"} {
+		for _, metric := range []string{"loki_boltdb_shipper_compactor_running", "loki_distributor_bytes_received_total", "loki_inflight_requests", "workqueue_work_duration_seconds_bucket{Namespace=\"" + loNS + "\", job=\"loki-operator-controller-manager-metrics-service\"}", "loki_build_info", "loki_ingester_streams_created_total"} {
 			checkMetric(oc, promToken, metric, 3)
 		}
 		e2e.Logf("Metrics are successfully exposed by LokiStack")

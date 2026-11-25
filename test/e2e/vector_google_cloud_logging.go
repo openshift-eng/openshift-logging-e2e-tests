@@ -26,7 +26,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 	g.BeforeEach(func() {
 		loggingBaseDir = testdata.FixturePath("logging")
 
-		g.By("deploy CLO")
+		g.By("Deploy CLO")
 		subTemplate := filepath.Join(loggingBaseDir, "subscription", "sub-template.yaml")
 		CLO := SubscriptionObjects{
 			OperatorName:  "cluster-logging-operator",
@@ -129,7 +129,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease Forward to GCL
 		clf.update(oc, "", patch, "--type=json")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 
-		compat_otp.By("Create project for app logs and deploy the log generator")
+		compat_otp.By("Create project for app logs and Deploy the log generator")
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		var namespaces []string
 		for i := range 4 {
@@ -297,7 +297,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 
 	// author qitang@redhat.com
 	// port=unknown - no data in BigQuery last 60 days
-	g.It("Author:qitang-Medium-71777-Include or exclude logs by combining namespace and container selectors.[Slow][CLO]", func() {
+	g.It("Author:qitang-Medium-71777-Include or exclude logs by combining Namespace and container selectors.[Slow][CLO]", func() {
 		platform := compat_otp.CheckPlatform(oc)
 		if platform != "gcp" {
 			g.Skip("Skip for the platform is not GCP.")
@@ -327,12 +327,12 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		defer clf.delete(oc)
 
 		clf.create(oc, "ID_TYPE=project", "ID_VALUE="+gcl.projectID, "LOG_ID="+gcl.logName, "INPUT_REFS=[\"application\"]")
-		compat_otp.By("exclude logs from specific container in specific namespace")
-		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app","type": "application" ,"application": {"excludes": [{"namespace": "logging-log-71777", "container": "exclude-log-71777"}]}}]}, {"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app"]}]`
+		compat_otp.By("exclude logs from specific container in specific Namespace")
+		patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app","type": "application" ,"application": {"excludes": [{"Namespace": "logging-log-71777", "container": "exclude-log-71777"}]}}]}, {"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app"]}]`
 		clf.update(oc, "", patch, "--type=json")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 
-		compat_otp.By("Create project for app logs and deploy the log generator")
+		compat_otp.By("Create project for app logs and Deploy the log generator")
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		namespaces := []string{"logging-log-71777", "logging-data-71777", "e2e-test-log-71777"}
 		containerNames := []string{"log-71777-include", "exclude-log-71777"}
@@ -366,7 +366,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		o.Expect(appLogs).Should(o.BeEmpty(), "find logs from container/exclude-log-71777 in project/logging-log-71777, this is not expected")
 
 		compat_otp.By("exclude logs from specific containers in all namespaces")
-		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/excludes", "value": [{"namespace": "*", "container": "exclude-log-71777"}]}]`
+		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/excludes", "value": [{"Namespace": "*", "container": "exclude-log-71777"}]}]`
 		clf.update(oc, "", patch, "--type=json")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 		// sleep 10 seconds for collector pods to send the cached records
@@ -384,7 +384,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		o.Expect(logs).Should(o.BeEmpty(), "find logs from container exclude-log-71777, this is not expected")
 
 		compat_otp.By("exclude logs from all containers in specific namespaces")
-		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/excludes", "value": [{"namespace": "e2e-test-log-71777", "container": "*"}]}]`
+		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/excludes", "value": [{"Namespace": "e2e-test-log-71777", "container": "*"}]}]`
 		clf.update(oc, "", patch, "--type=json")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 		// sleep 10 seconds for collector pods to send the cached records
@@ -405,7 +405,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		o.Expect(logs).Should(o.BeEmpty(), "find logs from project e2e-test-log-71777, this is not expected")
 
 		compat_otp.By("Update CLF to collect logs from specific containers in specific namespaces")
-		patch = `[{"op": "remove", "path": "/spec/inputs/0/application/excludes"}, {"op": "add", "path": "/spec/inputs/0/application", "value": {"includes": [{"namespace": "logging-log-71777", "container": "log-71777-include"}]}}]`
+		patch = `[{"op": "Remove", "path": "/spec/inputs/0/application/excludes"}, {"op": "add", "path": "/spec/inputs/0/application", "value": {"includes": [{"Namespace": "logging-log-71777", "container": "log-71777-include"}]}}]`
 		clf.update(oc, "", patch, "--type=json")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 		// sleep 10 seconds for collector pods to send the cached records
@@ -422,7 +422,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		o.Expect(excludeLogs).Should(o.BeEmpty(), "find logs from other containers, this is not expected")
 
 		compat_otp.By("collect logs from specific containers in all namespaces")
-		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/includes", "value": [{"namespace": "*", "container": "log-71777-include"}]}]`
+		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/includes", "value": [{"Namespace": "*", "container": "log-71777-include"}]}]`
 		clf.update(oc, "", patch, "--type=json")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 		// sleep 10 seconds for collector pods to send the cached records
@@ -441,7 +441,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		// no logs from openshift* projects
 
 		compat_otp.By("collect logs from all containers in specific namespaces")
-		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/includes", "value": [{"namespace": "logging-data-71777", "container": "*"}]}]`
+		patch = `[{"op": "replace", "path": "/spec/inputs/0/application/includes", "value": [{"Namespace": "logging-data-71777", "container": "*"}]}]`
 		clf.update(oc, "", patch, "--type=json")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 		// sleep 10 seconds for collector pods to send the cached records
@@ -458,7 +458,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		o.Expect(logs).ShouldNot(o.BeEmpty(), "can't find logs from project logging-data-71777, this is not expected")
 
 		compat_otp.By("combine includes and excludes")
-		patch = `[{"op": "replace", "path": "/spec/inputs/0/application", "value": {"includes": [{"namespace": "*log*", "container": "log-71777*"}], "excludes": [{"namespace": "logging*71777", "container": "log-71777-include"}]}}]`
+		patch = `[{"op": "replace", "path": "/spec/inputs/0/application", "value": {"includes": [{"Namespace": "*log*", "container": "log-71777*"}], "excludes": [{"Namespace": "logging*71777", "container": "log-71777-include"}]}}]`
 		clf.update(oc, "", patch, "--type=json")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 		// sleep 10 seconds for collector pods to send the cached records
@@ -515,7 +515,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 		clf.update(oc, "", patch, "--type=json")
 		WaitForDaemonsetPodsToBeReady(oc, clf.namespace, clf.name)
 
-		compat_otp.By("Create project for app logs and deploy the log generator")
+		compat_otp.By("Create project for app logs and Deploy the log generator")
 		jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 		oc.SetupProject()
 		ns := oc.Namespace()

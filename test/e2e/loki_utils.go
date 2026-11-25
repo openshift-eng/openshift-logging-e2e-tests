@@ -767,7 +767,7 @@ func (l lokiStack) waitForLokiStackToBeReady(oc *exutil.CLI) {
 func (l lokiStack) update(oc *exutil.CLI, template string, patches ...string) {
 	var err error
 	if template != "" {
-		parameters := []string{"-f", template, "-p", "NAME=" + l.name, "NAMESPACE=" + l.namespace}
+		parameters := []string{"-f", template, "-p", "NAME=" + l.name, "NAMESPACE=" + l.Namespace}
 		if len(patches) > 0 {
 			parameters = append(parameters, patches...)
 		}
@@ -776,9 +776,9 @@ func (l lokiStack) update(oc *exutil.CLI, template string, patches ...string) {
 		if processErr != nil {
 			e2e.Failf("error processing file: %v", processErr)
 		}
-		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", file, "-n", l.namespace).Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("apply").Args("-f", file, "-n", l.Namespace).Execute()
 	} else {
-		parameters := []string{"lokistack/" + l.name, "-n", l.namespace, "-p"}
+		parameters := []string{"lokistack/" + l.name, "-n", l.Namespace, "-p"}
 		parameters = append(parameters, patches...)
 		err = oc.AsAdmin().WithoutNamespace().Run("patch").Args(parameters...).Execute()
 	}
@@ -1016,7 +1016,7 @@ func (lc *lokiClient) getHTTPRequestHeader() (http.Header, error) {
 	}
 
 	if (lc.username != "" || lc.password != "") && (len(lc.bearerToken) > 0 || len(lc.bearerTokenFile) > 0) {
-		return nil, fmt.Errorf("at most one of HTTP basic auth (username/password), bearer-token & bearer-token-file is allowed to be configured")
+		return nil, fmt.Errorf("at most one of HTTP basic auth (Username/Password), bearer-token & bearer-token-file is allowed to be configured")
 	}
 
 	if len(lc.bearerToken) > 0 && len(lc.bearerTokenFile) > 0 {
@@ -1415,10 +1415,10 @@ func (l externalLoki) remove(oc *exutil.CLI) {
 }
 
 func deployMinIO(oc *exutil.CLI) {
-	// create namespace
+	// create Namespace
 	_, err := oc.AdminKubeClient().CoreV1().Namespaces().Get(context.Background(), minioNS, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("namespace", minioNS).Execute()
+		err = oc.AsAdmin().WithoutNamespace().Run("create").Args("Namespace", minioNS).Execute()
 		o.Expect(err).NotTo(o.HaveOccurred())
 	}
 	// create secret
@@ -1723,16 +1723,16 @@ func validatesIfLogsArePushedToMinIOBucket(oc *exutil.CLI, bucketName string, te
 // verifyIfLokiStackNetworkPoliciesExist checks if network policies exist for the LokiStack.
 // Returns 'false' if no network policies found (disabled), 'true' if network policies are found
 func (l lokiStack) verifyIfLokiStackNetworkPoliciesExist(oc *exutil.CLI) bool {
-	e2e.Logf("Checking if network policies exist for lokistack: %s in namespace: %s", l.name, l.namespace)
+	e2e.Logf("Checking if network policies exist for lokistack: %s in Namespace: %s", l.name, l.namespace)
 	output, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("networkpolicy", "-n", l.namespace, "-l", "app.kubernetes.io/instance="+l.name, "-o", "name").Output()
 	if err != nil {
 		e2e.Logf("Error getting network policies: %v", err)
 	}
 	if len(output) > 0 {
-		e2e.Logf("Network policies found for lokistack %s in namespace %s", l.name, l.namespace)
+		e2e.Logf("Network policies found for lokistack %s in Namespace %s", l.name, l.namespace)
 		return true
 	}
-	e2e.Logf("No network policies found for lokistack %s in namespace %s", l.name, l.namespace)
+	e2e.Logf("No network policies found for lokistack %s in Namespace %s", l.name, l.namespace)
 	return false
 }
 
@@ -1751,7 +1751,7 @@ func (l lokiStack) verifyLokiStackNetworkPolicies(oc *exutil.CLI) {
 		{Name: l.name + "-ruler-allow-alert-egress", PolicyTypes: []string{"Egress"}},
 	}
 
-	e2e.Logf("Verifying %d network policies for lokistack: %s in namespace: %s", len(expectedPolicies), l.name, l.namespace)
+	e2e.Logf("Verifying %d network policies for lokistack: %s in Namespace: %s", len(expectedPolicies), l.name, l.namespace)
 
 	for _, expected := range expectedPolicies {
 		// Get network policy with full content for validation
@@ -1883,7 +1883,7 @@ func (l lokiStack) validateLokiStackNetworkPolicyContent(oc *exutil.CLI, policyN
 			return fmt.Errorf("gateway-allow-metrics policy should allow prometheus pods")
 		}
 		if !hasNamespaceCheck {
-			return fmt.Errorf("gateway-allow-metrics policy should allow from openshift-monitoring namespace")
+			return fmt.Errorf("gateway-allow-metrics policy should allow from openshift-monitoring Namespace")
 		}
 		if !hasPort8081 {
 			return fmt.Errorf("gateway-allow-metrics policy missing port 8081")
@@ -2011,7 +2011,7 @@ func (l lokiStack) validateLokiStackNetworkPolicyContent(oc *exutil.CLI, policyN
 			return fmt.Errorf("loki-allow-metrics policy should allow prometheus pods")
 		}
 		if !hasNamespaceCheck {
-			return fmt.Errorf("loki-allow-metrics policy should allow from openshift-monitoring namespace")
+			return fmt.Errorf("loki-allow-metrics policy should allow from openshift-monitoring Namespace")
 		}
 		if !hasPort3100 {
 			return fmt.Errorf("loki-allow-metrics policy should have port 3100")

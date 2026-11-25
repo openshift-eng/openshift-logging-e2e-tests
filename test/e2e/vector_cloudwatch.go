@@ -35,7 +35,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 				OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-og.yaml"),
 			}
 
-			g.By("deploy CLO")
+			g.By("Deploy CLO")
 			CLO.SubscribeOperator(oc)
 			oc.SetupProject()
 			infraName = getInfrastructureName(oc)
@@ -239,7 +239,7 @@ ciphersuites = "ECDHE-ECDSA-CHACHA20-POLY1305,ECDHE-RSA-CHACHA20-POLY1305,ECDHE-
 			o.Expect(cw.LogsFound()).To(o.BeTrue())
 			filteredLogs, err := cw.GetLogRecordsByNamespace(30, logGroupName, appProj1)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(filteredLogs).ShouldNot(o.BeEmpty(), "Couldn't filter logs by namespace")
+			o.Expect(filteredLogs).ShouldNot(o.BeEmpty(), "Couldn't filter logs by Namespace")
 
 			compat_otp.By("Set Intermediate tlsSecurityProfile for the Cloudwatch output.")
 			patch := `[{"op": "add", "path": "/spec/outputs/0/tls", "value": {"securityProfile": {"type": "Intermediate"}}}]`
@@ -272,7 +272,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			o.Expect(cw.LogsFound()).To(o.BeTrue())
 			filteredLogs, err = cw.GetLogRecordsByNamespace(30, logGroupName, appProj2)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			o.Expect(filteredLogs).ShouldNot(o.BeEmpty(), "Couldn't filter logs by namespace")
+			o.Expect(filteredLogs).ShouldNot(o.BeEmpty(), "Couldn't filter logs by Namespace")
 		})
 
 		// author qitang@redhat.com
@@ -294,7 +294,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			defer cw.DeleteResources(oc)
 			cw.Init(oc)
 
-			compat_otp.By("Create projects for app logs and deploy the log generators")
+			compat_otp.By("Create projects for app logs and Deploy the log generators")
 			jsonLogFile := filepath.Join(loggingBaseDir, "generatelog", "container_json_log_template.json")
 			oc.SetupProject()
 			appNS1 := oc.Namespace()
@@ -342,8 +342,8 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			cw.DisAppNamespaces = []string{namespaces[2]}
 			o.Expect(cw.LogsFound()).To(o.BeTrue())
 
-			compat_otp.By("Update CLF to combine label selector and namespace selector")
-			patch = `[{"op": "add", "path": "/spec/inputs/0/application/includes", "value": [{"namespace": "*71778*"}]}, {"op": "add", "path": "/spec/inputs/0/application/excludes", "value": [{"namespace": "` + namespaces[1] + `"}]}]`
+			compat_otp.By("Update CLF to combine label selector and Namespace selector")
+			patch = `[{"op": "add", "path": "/spec/inputs/0/application/includes", "value": [{"Namespace": "*71778*"}]}, {"op": "add", "path": "/spec/inputs/0/application/excludes", "value": [{"Namespace": "` + namespaces[1] + `"}]}]`
 			clf.update(oc, "", patch, "--type=json")
 			clf.waitForCollectorPodsReady(oc)
 			// sleep 10 seconds to wait for the caches in collectors to be cleared
@@ -396,7 +396,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			clf.create(oc, "REGION="+cw.AwsRegion, "GROUP_NAME="+cw.GroupName, "INPUT_REFS=[\"application\"]")
 
 			compat_otp.By("Update CLF to add infra projects to application logs")
-			patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"includes": [{"namespace": "openshift*"}]}}]}, {"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app"]}]`
+			patch := `[{"op": "add", "path": "/spec/inputs", "value": [{"name": "new-app", "type": "application", "application": {"includes": [{"Namespace": "openshift*"}]}}]}, {"op": "replace", "path": "/spec/pipelines/0/inputRefs", "value": ["new-app"]}]`
 			clf.update(oc, "", patch, "--type=json")
 			compat_otp.By("CLF should be rejected as the serviceaccount doesn't have sufficient permissions")
 			checkResource(oc, true, false, `insufficient permissions on service account, not authorized to collect ["infrastructure"] logs`, []string{"clusterlogforwarder.observability.openshift.io", clf.name, "-n", clf.namespace, "-ojsonpath={.status.conditions[*].message}"})
@@ -467,7 +467,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			clf.create(oc, "REGION="+cw.AwsRegion, "GROUP_NAME="+cw.GroupName, "INPUT_REFS=[\"application\"]")
 
 			compat_otp.By("add one output to the CLF with same same secret")
-			patch := `[{"op": "add", "path": "/spec/outputs/-", "value": {"name": "new-cloudwatch-2", "type": "cloudwatch", "cloudwatch": {"authentication": {"type": "awsAccessKey", "awsAccessKey": {"keyId": {"key": "aws_access_key_id", "secretName": "` + cw.SecretName + `"}, "keySecret": {"key": "aws_secret_access_key", "secretName": "` + cw.SecretName + `"}}}, "groupName": "` + fakeCW.GroupName + `", "region": "` + fakeCW.AwsRegion + `"}}},{"op": "add", "path": "/spec/pipelines/0/outputRefs/-", "value": "new-cloudwatch-2"}]`
+			patch := `[{"op": "add", "path": "/spec/outputs/-", "value": {"name": "new-cloudwatch-2", "type": "cloudwatch", "cloudwatch": {"authentication": {"type": "awsAccessKey", "awsAccessKey": {"keyId": {"key": "aws_access_key_id", "SecretName": "` + cw.SecretName + `"}, "keySecret": {"key": "aws_secret_access_key", "SecretName": "` + cw.SecretName + `"}}}, "groupName": "` + fakeCW.GroupName + `", "region": "` + fakeCW.AwsRegion + `"}}},{"op": "add", "path": "/spec/pipelines/0/outputRefs/-", "value": "new-cloudwatch-2"}]`
 			clf.update(oc, "", patch, "--type=json")
 			clf.waitForCollectorPodsReady(oc)
 
@@ -483,7 +483,7 @@ ciphersuites = "TLS_AES_128_GCM_SHA256,TLS_AES_256_GCM_SHA384,TLS_CHACHA20_POLY1
 			// since we can't get another aws key pair, here add a secret with fake aws_access_key_id and aws_secret_access_key
 			err = oc.AsAdmin().WithoutNamespace().Run("create").Args("secret", "generic", "-n", clf.namespace, fakeCW.SecretName, "--from-literal=aws_access_key_id="+getRandomString(), "--from-literal=aws_secret_access_key="+getRandomString()).Execute()
 			o.Expect(err).NotTo(o.HaveOccurred())
-			patch = `[{"op": "replace", "path": "/spec/outputs/0/cloudwatch/authentication/awsAccessKey/keyId/secretName", "value": "` + fakeCW.SecretName + `"}, {"op": "replace", "path": "/spec/outputs/0/cloudwatch/authentication/awsAccessKey/keySecret/secretName", "value": "` + fakeCW.SecretName + `"}]`
+			patch = `[{"op": "replace", "path": "/spec/outputs/0/cloudwatch/authentication/awsAccessKey/keyId/SecretName", "value": "` + fakeCW.SecretName + `"}, {"op": "replace", "path": "/spec/outputs/0/cloudwatch/authentication/awsAccessKey/keySecret/SecretName", "value": "` + fakeCW.SecretName + `"}]`
 			clf.update(oc, "", patch, "--type=json")
 			// sleep 10 seconds for collector pods to load new credentials
 			time.Sleep(10 * time.Second)

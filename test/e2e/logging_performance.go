@@ -63,7 +63,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease - LokiStack Pe
 			Subscription:  subTemplate,
 			OperatorGroup: filepath.Join(loggingBaseDir, "subscription", "allnamespace-og.yaml"),
 		}
-		compat_otp.By("deploy CLO and LO")
+		compat_otp.By("Deploy CLO and LO")
 		CLO.SubscribeOperator(oc)
 		LO.SubscribeOperator(oc)
 	})

@@ -33,7 +33,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 
 			loggingBaseDir = testdata.FixturePath("logging")
-			g.By("deploy CLO")
+			g.By("Deploy CLO")
 			CLO := SubscriptionObjects{
 				OperatorName:  "cluster-logging-operator",
 				Namespace:     cloNS,
@@ -136,8 +136,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			o.Expect(err).NotTo(o.HaveOccurred())
 			err = os.Rename(keysPath+"/ca.crt", clfSecret.caFile)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			cert := certsConf{sp.serviceName, sp.namespace, sp.passphrase}
-			cert.generateCerts(oc, keysPath)
+			cert := CertsConf{ServerName: sp.serviceName, Namespace: sp.namespace, PassPhrase: sp.passphrase}
+			cert.Generate(oc, keysPath)
 
 			g.By("Deploy splunk")
 			defer sp.destroy(oc)
@@ -202,8 +202,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer exec.Command("rm", "-r", keysPath).Output()
 			err := os.MkdirAll(keysPath, 0o755)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			cert := certsConf{sp.serviceName, sp.namespace, sp.passphrase}
-			cert.generateCerts(oc, keysPath)
+			cert := CertsConf{ServerName: sp.serviceName, Namespace: sp.namespace, PassPhrase: sp.passphrase}
+			cert.Generate(oc, keysPath)
 
 			g.By("Deploy splunk")
 			defer sp.destroy(oc)
@@ -278,8 +278,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer exec.Command("rm", "-r", keysPath).Output()
 			err := os.MkdirAll(keysPath, 0o755)
 			o.Expect(err).NotTo(o.HaveOccurred())
-			cert := certsConf{sp.serviceName, sp.namespace, sp.passphrase}
-			cert.generateCerts(oc, keysPath)
+			cert := CertsConf{ServerName: sp.serviceName, Namespace: sp.namespace, PassPhrase: sp.passphrase}
+			cert.Generate(oc, keysPath)
 
 			g.By("Deploy splunk")
 			defer sp.destroy(oc)
@@ -344,8 +344,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			err := os.MkdirAll(keysPath, 0o755)
 			o.Expect(err).NotTo(o.HaveOccurred())
 
-			cert := certsConf{sp.serviceURL, sp.namespace, ""}
-			cert.generateCerts(oc, keysPath)
+			cert := CertsConf{ServerName: sp.serviceURL, Namespace: sp.namespace, PassPhrase: ""}
+			cert.Generate(oc, keysPath)
 
 			g.By("Deploy splunk")
 			defer sp.destroy(oc)
@@ -376,7 +376,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			}
 
 			loggingBaseDir = testdata.FixturePath("logging")
-			compat_otp.By("deploy CLO")
+			compat_otp.By("Deploy CLO")
 			CLO := SubscriptionObjects{
 				OperatorName:  "cluster-logging-operator",
 				Namespace:     cloNS,
@@ -500,8 +500,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			compat_otp.By("check logs in splunk")
 			// not all of the projects in cluster have container logs, so here only check some of the projects
-			// container logs should only be stored in the index named as it's namespace name
-			for _, index := range []string{appProj, "openshift-cluster-version", "openshift-dns", "openshift-ingress", "openshift-monitoring"} {
+			// container logs should only be stored in the index named as it's Namespace name
+			for _, index := range []string{appProj, "openshift-cluster-Version", "openshift-dns", "openshift-ingress", "openshift-monitoring"} {
 				o.Expect(sp.checkLogs("index=\""+index+"\"")).To(o.BeTrue(), "can't find logs in "+index+" index")
 				r, e := sp.searchLogs("index=\"" + index + "\" kubernetes.namespace_name!=\"" + index + "\"")
 				o.Expect(e).NotTo(o.HaveOccurred())
@@ -813,8 +813,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer clf.delete(oc)
 			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX={.kubernetes.non_existing.key||\"\"}")
 
-			compat_otp.By("update CLF to set invalid glob for namespace")
-			patch := `[{"op":"add","path":"/spec/inputs","value":[{"name":"new-app","type":"application","application":{"excludes":[{"namespace":"invalid-name@"}],"includes":[{"namespace":"tes*t"}]}}]},{"op":"replace","path":"/spec/pipelines/0/inputRefs","value":["new-app"]}]`
+			compat_otp.By("update CLF to set invalid glob for Namespace")
+			patch := `[{"op":"add","path":"/spec/inputs","value":[{"name":"new-app","type":"application","application":{"excludes":[{"Namespace":"invalid-name@"}],"includes":[{"Namespace":"tes*t"}]}}]},{"op":"replace","path":"/spec/pipelines/0/inputRefs","value":["new-app"]}]`
 			clf.update(oc, "", patch, "--type=json")
 			checkResource(oc, true, false, "globs must match", []string{"clusterlogforwarder.observability.openshift.io", clf.name, "-n", clf.namespace, "-ojsonpath={.status.inputConditions[0].message}"})
 

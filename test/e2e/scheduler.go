@@ -178,7 +178,7 @@ use_apiserver_cache = true
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
 		defer clf.delete(oc)
-		clf.create(oc, "URL=udp://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:514", "NAMESPACE_PATTERN="+appProj, "INPUT_REFS=[\"app-input-namespace\"]")
+		clf.create(oc, "URL=udp://"+rsyslog.serverName+"."+rsyslog.namespace+".svc:514", "NAMESPACE_PATTERN="+appProj, "INPUT_REFS=[\"app-input-Namespace\"]")
 		clfAffinity := `{"nodeAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"preference":{"matchExpressions":[{"key":"label-1","operator":"Exists"}]},"weight":1},{"preference":{"matchExpressions":[{"key":"label-2","operator":"In","values":["key-2"]}]},"weight":50}],"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/os","operator":"In","values":["linux"]}]},{"matchExpressions":[{"key":"node-role.kubernetes.io/worker","operator":"Exists"}]}]}},"podAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"podAffinityTerm":{"labelSelector":{"matchExpressions":[{"key":"qe-test","operator":"In","values":["value1"]}]},"topologyKey":"kubernetes.io/hostname"},"weight":50}],"requiredDuringSchedulingIgnoredDuringExecution":[{"labelSelector":{"matchExpressions":[{"key":"run","operator":"In","values":["centos-logtest"]}]},"namespaceSelector":{},"topologyKey":"kubernetes.io/hostname"}]},"podAntiAffinity":{"preferredDuringSchedulingIgnoredDuringExecution":[{"podAffinityTerm":{"labelSelector":{"matchExpressions":[{"key":"security","operator":"In","values":["S2"]}]},"topologyKey":"topology.kubernetes.io/zone"},"weight":100}]}}`
 
 		g.By("Check app-container.log in rsyslog server")

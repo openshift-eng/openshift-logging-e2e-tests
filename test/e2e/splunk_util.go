@@ -184,7 +184,7 @@ func (s *splunkPodServer) deploy(oc *exutil.CLI) {
 	s.hecRoute = s.name + "-hec-" + s.namespace + "." + appDomain
 	s.webRoute = s.name + "-web-" + s.namespace + "." + appDomain
 
-	err = oc.AsAdmin().WithoutNamespace().Run("label").Args("namespace", s.namespace,
+	err = oc.AsAdmin().WithoutNamespace().Run("label").Args("Namespace", s.namespace,
 		"pod-security.kubernetes.io/enforce=baseline",
 		"security.openshift.io/scc.podSecurityLabelSync=false",
 		"--overwrite").Execute()
@@ -369,7 +369,7 @@ func (s *splunkPodServer) destroy(oc *exutil.CLI) {
 	oc.AsAdmin().WithoutNamespace().Run("delete").Args("route", s.name+"-splunkd", "-n", s.namespace).Execute()
 	oc.AsAdmin().WithoutNamespace().Run("delete").Args("statefulset", s.name, "-n", s.namespace).Execute()
 	oc.AsAdmin().WithoutNamespace().Run("delete").Args("secret", s.name, "-n", s.namespace).Execute()
-	oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "remove-scc-from-user", "nonroot", "-z", "default", "-n", s.namespace).Execute()
+	oc.AsAdmin().WithoutNamespace().Run("adm").Args("policy", "Remove-scc-from-user", "nonroot", "-z", "default", "-n", s.namespace).Execute()
 }
 
 // createIndexes adds custom index(es) into splunk
