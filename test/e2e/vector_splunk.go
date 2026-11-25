@@ -563,9 +563,10 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer clfSecret.delete(oc)
 			clfSecret.create(oc)
 			defer clf.delete(oc)
-			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX={.openshift.labels.test||\"\"}")
-			patch := `[{"op": "add", "path": "/spec/filters", "value": [{"name": "labels", "type": "openshiftLabels", "openshiftLabels": {"test": "` + index + `"}}]}, {"op": "add", "path": "/spec/pipelines/0/filterRefs", "value": ["labels"]}]`
-			clf.update(oc, "", patch, "--type=json")
+			// The filter must be in the initial spec. Patching it in after create lets the first
+			// collector rollout forward unlabeled logs, which land in the default index.
+			filters := `[{"name": "labels", "type": "openshiftLabels", "openshiftLabels": {"test": "` + index + `"}}]`
+			clf.create(oc, "URL=http://"+sp.serviceURL+":8088", "SECRET_NAME="+clfSecret.name, "INDEX={.openshift.labels.test||\"\"}", "FILTERS="+filters, `FILTER_REFS=["labels"]`)
 			clf.waitForCollectorPodsReady(oc)
 
 			// sleep 10 seconds for collector pods to send logs to splunk
