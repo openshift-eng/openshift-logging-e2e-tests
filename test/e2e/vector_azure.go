@@ -10,6 +10,7 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/azure"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -43,7 +44,7 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			g.Skip("Skip on the workload identity enabled cluster!")
 		}
 
-		cloudName := getAzureCloudName(oc)
+		cloudName := azure.CloudName(oc)
 		if cloudName != "azurepubliccloud" {
 			g.Skip("Skip as the cluster is not on Azure Public!")
 		}
@@ -58,13 +59,13 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 		resourceGroupName, err := compat_otp.GetAzureCredentialFromCluster(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		workSpaceName := getInfrastructureName(oc) + "case71770"
-		azLog, err := newAzureLog(oc, "", resourceGroupName, workSpaceName, "case71770")
+		azLog, err := azure.NewAzureLog(oc, "", resourceGroupName, workSpaceName, "case71770")
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Deploy CLF to send logs to Log Analytics")
 		azureSecret := resource{"secret", "azure-secret-71770", clfNS}
 		defer azureSecret.clear(oc)
-		err = azLog.createSecret(oc, azureSecret.name, azureSecret.namespace)
+		err = azLog.CreateSecret(oc, azureSecret.name, azureSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clf := clusterlogforwarder{
 			name:                      "clf-71770",
@@ -78,12 +79,12 @@ var _ = g.Describe("[sig-openshift-logging] LOGGING Logging", func() {
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
 		defer clf.delete(oc)
-		defer azLog.deleteWorkspace()
-		clf.create(oc, "PREFIX_OR_NAME="+azLog.tPrefixOrName, "CUSTOMER_ID="+azLog.customerID)
+		defer azLog.DeleteWorkspace()
+		clf.create(oc, "PREFIX_OR_NAME="+azLog.TPrefixOrName, "CUSTOMER_ID="+azLog.CustomerID)
 
 		g.By("Verify the test result")
-		for _, tableName := range []string{azLog.tPrefixOrName + "infra_log_CL", azLog.tPrefixOrName + "audit_log_CL", azLog.tPrefixOrName + "app_log_CL"} {
-			_, err := azLog.getLogByTable(tableName)
+		for _, tableName := range []string{azLog.TPrefixOrName + "infra_log_CL", azLog.TPrefixOrName + "audit_log_CL", azLog.TPrefixOrName + "app_log_CL"} {
+			_, err := azLog.GetLogByTable(tableName)
 			compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("logs are not found in %s in AzureLogWorkspace", tableName))
 		}
 	})

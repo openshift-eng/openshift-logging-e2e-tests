@@ -18,6 +18,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/azure"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -338,22 +339,22 @@ retry_max_duration_secs = 20`,
 		)
 		infraName := getInfrastructureName(oc)
 		if platform != "azure" {
-			if !readAzureCredentials() {
+			if !azure.ReadAzureCredentials() {
 				g.Skip("Skip for the platform is not Azure and can't get credentials from env vars.")
 			}
 			resourceGroupName = infraName + "-logging-71772-rg"
 			azureSubscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
-			cred := createNewDefaultAzureCredential()
+			cred := azure.NewDefaultAzureCredential()
 			location = "westus" // TODO: define default location
 
-			_, err := createAzureResourceGroup(resourceGroupName, azureSubscriptionID, location, cred)
-			defer deleteAzureResourceGroup(resourceGroupName, azureSubscriptionID, cred)
+			_, err := azure.CreateResourceGroup(resourceGroupName, azureSubscriptionID, location, cred)
+			defer azure.DeleteResourceGroup(resourceGroupName, azureSubscriptionID, cred)
 			if err != nil {
 				g.Skip("Failed to create azure resource group: " + err.Error() + ", skip the case.")
 			}
 			e2e.Logf("Successfully created resource group %s", resourceGroupName)
 		} else {
-			cloudName := getAzureCloudName(oc)
+			cloudName := azure.CloudName(oc)
 			if cloudName != "azurepubliccloud" && cloudName != "azureusgovernmentcloud" {
 				g.Skip("The case can only be running on Azure Public and Azure US Government now!")
 			}
@@ -362,8 +363,8 @@ retry_max_duration_secs = 20`,
 
 		g.By("Prepre Azure Log Storage Env")
 		workSpaceName := infraName + "case71772"
-		azLog, err := newAzureLog(oc, location, resourceGroupName, workSpaceName, "case71772")
-		defer azLog.deleteWorkspace()
+		azLog, err := azure.NewAzureLog(oc, location, resourceGroupName, workSpaceName, "case71772")
+		defer azLog.DeleteWorkspace()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Create log producer")
@@ -375,7 +376,7 @@ retry_max_duration_secs = 20`,
 		g.By("Deploy CLF to send logs to Log Analytics")
 		azureSecret := resource{"secret", "azure-secret-71772", clfNS}
 		defer azureSecret.clear(oc)
-		err = azLog.createSecret(oc, azureSecret.name, azureSecret.namespace)
+		err = azLog.CreateSecret(oc, azureSecret.name, azureSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clf := clusterlogforwarder{
 			name:                      "clf-71772",
@@ -389,11 +390,11 @@ retry_max_duration_secs = 20`,
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
 		defer clf.delete(oc)
-		clf.create(oc, "PREFIX_OR_NAME="+azLog.tPrefixOrName, "CUSTOMER_ID="+azLog.customerID, "RESOURCE_ID="+azLog.workspaceID, "AZURE_HOST="+azLog.host)
+		clf.create(oc, "PREFIX_OR_NAME="+azLog.TPrefixOrName, "CUSTOMER_ID="+azLog.CustomerID, "RESOURCE_ID="+azLog.WorkspaceID, "AZURE_HOST="+azLog.Host)
 
 		g.By("Verify the test result")
-		for _, tableName := range []string{azLog.tPrefixOrName + "infra_log_CL", azLog.tPrefixOrName + "audit_log_CL", azLog.tPrefixOrName + "app_log_CL"} {
-			_, err := azLog.getLogByTable(tableName)
+		for _, tableName := range []string{azLog.TPrefixOrName + "infra_log_CL", azLog.TPrefixOrName + "audit_log_CL", azLog.TPrefixOrName + "app_log_CL"} {
+			_, err := azLog.GetLogByTable(tableName)
 			compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("can't find logs from %s in AzureLogWorkspace", tableName))
 		}
 	})

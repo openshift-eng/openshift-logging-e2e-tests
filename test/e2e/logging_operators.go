@@ -19,6 +19,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/azure"
 	"github.com/openshift/openshift-logging-e2e-tests/internal/receivers/elasticsearch"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
@@ -1793,7 +1794,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			location          string
 		)
 		infraName := getInfrastructureName(oc)
-		cloudName := getAzureCloudName(oc)
+		cloudName := azure.CloudName(oc)
 		if cloudName != "azurepubliccloud" && cloudName != "azureusgovernmentcloud" {
 			g.Skip("The case can only be running on Azure Public and Azure US Government now!")
 		}
@@ -1801,8 +1802,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 
 		g.By("Preprare Azure Log Storage environment")
 		workSpaceName := infraName + "case85496"
-		azLog, err := newAzureLog(oc, location, resourceGroupName, workSpaceName, "case85496")
-		defer azLog.deleteWorkspace()
+		azLog, err := azure.NewAzureLog(oc, location, resourceGroupName, workSpaceName, "case85496")
+		defer azLog.DeleteWorkspace()
 		o.Expect(err).NotTo(o.HaveOccurred())
 
 		g.By("Create log producer")
@@ -1814,7 +1815,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 		g.By("Deploy CLF to send logs to Log Analytics")
 		azureSecret := resource{"secret", "azure-secret-85496", clfNS}
 		defer azureSecret.clear(oc)
-		err = azLog.createSecret(oc, azureSecret.name, azureSecret.namespace)
+		err = azLog.CreateSecret(oc, azureSecret.name, azureSecret.namespace)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		clf := clusterlogforwarder{
 			name:                      "clf-85496",
@@ -1829,13 +1830,13 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease NetworkPolicy"
 			serviceAccountName:        "test-clf-" + getRandomString(),
 		}
 		defer clf.delete(oc)
-		clf.create(oc, "PREFIX_OR_NAME="+azLog.tPrefixOrName, "CUSTOMER_ID="+azLog.customerID, "RESOURCE_ID="+azLog.workspaceID, "AZURE_HOST="+azLog.host, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
+		clf.create(oc, "PREFIX_OR_NAME="+azLog.TPrefixOrName, "CUSTOMER_ID="+azLog.CustomerID, "RESOURCE_ID="+azLog.WorkspaceID, "AZURE_HOST="+azLog.Host, `COLLECTOR={"networkPolicy": {"ruleSet": "RestrictIngressEgress"}}`)
 		clf.checkNetworkPolicy(oc)
 		o.Expect(clf.validateNetworkPolicy(oc, "RestrictIngressEgress", []Port{{Port: "443", Protocol: "TCP"}}, nil)).NotTo(o.HaveOccurred())
 
 		g.By("Ensure vector can send logs to azure monitor when the RestrictIngressEgress network policy is enabled")
-		for _, tableName := range []string{azLog.tPrefixOrName + "infra_log_CL", azLog.tPrefixOrName + "audit_log_CL", azLog.tPrefixOrName + "app_log_CL"} {
-			_, err := azLog.getLogByTable(tableName)
+		for _, tableName := range []string{azLog.TPrefixOrName + "infra_log_CL", azLog.TPrefixOrName + "audit_log_CL", azLog.TPrefixOrName + "app_log_CL"} {
+			_, err := azLog.GetLogByTable(tableName)
 			compat_otp.AssertWaitPollNoErr(err, fmt.Sprintf("can't find logs from %s in AzureLogWorkspace", tableName))
 		}
 

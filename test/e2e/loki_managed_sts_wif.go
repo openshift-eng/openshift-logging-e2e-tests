@@ -9,6 +9,7 @@ import (
 	exutil "github.com/openshift/origin/test/extended/util"
 	compat_otp "github.com/openshift/origin/test/extended/util/compat_otp"
 
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/azure"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -160,7 +161,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease loki-operator 
 		ls.waitForLokiStackToBeReady(oc)
 
 		// Validate that credentials request created by LO has same region as the cluster (non-default scenario)
-		clusterRegion, err := getAzureClusterRegion(oc)
+		clusterRegion, err := azure.ClusterRegion(oc)
 		o.Expect(err).NotTo(o.HaveOccurred())
 		credentialsRequestRegion, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("CredentialsRequest", ls.name, "-n", ls.namespace, `-o=jsonpath={.spec.providerSpec.azureRegion}`).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())

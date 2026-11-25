@@ -31,6 +31,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	clientsaws "github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/aws"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/lib/clients/azure"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -598,10 +599,10 @@ func (l lokiStack) prepareResourcesForLokiStack(oc *exutil.CLI) error {
 	case "azure":
 		{
 			if compat_otp.IsWorkloadIdentityCluster(oc) {
-				if !readAzureCredentials() {
+				if !azure.ReadAzureCredentials() {
 					g.Skip("Azure Credentials not found. Skip case!")
 				} else {
-					performManagedIdentityAndSecretSetupForAzureWIF(oc, l.name, l.namespace, l.bucketName, l.storageSecret)
+					azure.PerformManagedIdentityAndSecretSetupForWIF(oc, l.name, l.namespace, l.bucketName, l.storageSecret)
 				}
 			} else {
 				accountName, accountKey, err1 := compat_otp.GetAzureStorageAccountFromCluster(oc)
@@ -847,12 +848,12 @@ func (l lokiStack) removeObjectStorage(oc *exutil.CLI) {
 	case "azure":
 		{
 			if compat_otp.IsWorkloadIdentityCluster(oc) {
-				resourceGroup, err := getAzureResourceGroupFromCluster(oc)
+				resourceGroup, err := azure.ClusterResourceGroup(oc)
 				o.Expect(err).NotTo(o.HaveOccurred())
 				azureSubscriptionID := os.Getenv("AZURE_SUBSCRIPTION_ID")
-				cred := createNewDefaultAzureCredential()
-				deleteManagedIdentityOnAzure(cred, azureSubscriptionID, resourceGroup, l.name)
-				deleteAzureStorageAccount(cred, azureSubscriptionID, resourceGroup, os.Getenv("LOKI_OBJECT_STORAGE_STORAGE_ACCOUNT"))
+				cred := azure.NewDefaultAzureCredential()
+				azure.DeleteManagedIdentity(cred, azureSubscriptionID, resourceGroup, l.name)
+				azure.DeleteStorageAccount(cred, azureSubscriptionID, resourceGroup, os.Getenv("LOKI_OBJECT_STORAGE_STORAGE_ACCOUNT"))
 				os.Unsetenv("LOKI_OBJECT_STORAGE_STORAGE_ACCOUNT")
 			} else {
 				accountName, accountKey, err1 := compat_otp.GetAzureStorageAccountFromCluster(oc)
@@ -1594,7 +1595,7 @@ func (l lokiStack) validateExternalObjectStorageForLogs(oc *exutil.CLI, tenants 
 			// For Azure Container Storage
 			var accountName string
 			var err error
-			_, storageAccountURISuffix := getStorageAccountURISuffixAndEnvForAzure(oc)
+			_, storageAccountURISuffix := azure.StorageAccountEnvAndDomain(oc)
 			if compat_otp.IsSTSCluster(oc) {
 				accountName = os.Getenv("LOKI_OBJECT_STORAGE_STORAGE_ACCOUNT")
 			} else {
@@ -1603,7 +1604,7 @@ func (l lokiStack) validateExternalObjectStorageForLogs(oc *exutil.CLI, tenants 
 				accountName, _, err = compat_otp.GetAzureStorageAccountFromCluster(oc)
 				o.Expect(err).NotTo(o.HaveOccurred())
 			}
-			validatesIfLogsArePushedToAzureContainer(storageAccountURISuffix, accountName, l.bucketName, tenants)
+			azure.ValidatesIfLogsArePushedToAzureContainer(storageAccountURISuffix, accountName, l.bucketName, tenants)
 		}
 	case "gcs":
 		{
