@@ -10,6 +10,7 @@ objects:
     namespace: ${NAMESPACE}
   spec:
     collector: ${{COLLECTOR}}
+    filters: ${{FILTERS}}
     managementState: Managed
     outputs:
     - name: splunk-aosqe
@@ -25,6 +26,7 @@ objects:
     pipelines:
     - name: forward-log-splunk
       inputRefs: ${{INPUT_REFS}}
+      filterRefs: ${{FILTER_REFS}}
       outputRefs:
       - splunk-aosqe
     serviceAccount:
@@ -49,3 +51,7 @@ parameters:
   value: "{}"
 - name: COLLECTOR
   value: "{}"
+- name: FILTERS
+  value: "[]"
+- name: FILTER_REFS
+  value: "[]"

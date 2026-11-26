@@ -21,6 +21,7 @@ import (
 	e2e "k8s.io/kubernetes/test/e2e/framework"
 
 	"github.com/openshift/openshift-logging-e2e-tests/internal/labels"
+	"github.com/openshift/openshift-logging-e2e-tests/internal/test/helpers"
 	"github.com/openshift/openshift-logging-e2e-tests/test/e2e/testdata"
 )
 
@@ -3690,9 +3691,9 @@ spec:
 
 	// port=unknown - no data in BigQuery last 60 days
 	g.It("Author:kbharti-High-70714-Show warning to user for upgrading to LokStack TSDBv3 store and v13 schema[Serial][LokiOperator]", g.Label(labels.ComponentLokiOperator, labels.ExecSerial), func() {
-		// The Alert will be only be shown on a tshirt size of 1x.extra-small and greater
-		if !validateInfraAndResourcesForLoki(oc, "35Gi", "16") {
-			g.Skip("Current platform not supported/resources not available for this test!")
+		// From 6.7 the operator rejects v11/v12 schemas, see the test for the Degraded LokiStack below.
+		if helpers.LoggingVersionAtLeast(labels.ReleaseLogging67) {
+			g.Skip("v11/v12 schemas are rejected from 6.7, the LokiStack never becomes ready (see LOG-9750 test)")
 		}
 
 		g.By("Deploy Loki stack with v12 schema and bolt-db shipper")
@@ -3701,7 +3702,7 @@ spec:
 		ls := lokiStack{
 			name:          "lokistack-70714",
 			namespace:     loggingNS,
-			tSize:         "1x.extra-small",
+			tSize:         "1x.demo",
 			storageType:   s,
 			storageSecret: "storage-secret-70714",
 			storageClass:  sc,
@@ -3724,6 +3725,44 @@ spec:
 
 		queryAlertManagerForActiveAlerts(oc, token, false, "LokistackSchemaUpgradesRequired", 5)
 		e2e.Logf("Alert LokistackSchemaUpgradesRequired is firing...")
+	})
+
+	// From 6.7 v11/v12 schemas are deprecated: the LokiStack can be created but is Degraded and never becomes ready.
+	g.It("Author:jmarcal-High-LOG-9750-Verify a LokiStack with a deprecated v12 schema is Degraded and not reconciled from 6.7[Serial][LokiOperator]", g.Label(labels.ComponentLokiOperator, labels.ExecSerial, labels.ReleaseLogging67, labels.Jira("LOG-9750")), func() {
+		helpers.SkipIfLoggingVersionLessThan(labels.ReleaseLogging67)
+
+		g.By("Deploy Loki stack with v12 schema")
+		lokiStackTemplate := filepath.Join(loggingBaseDir, "lokistack", "lokistack-simple.yaml")
+
+		// Nothing is deployed for a rejected LokiStack, so the smallest size is enough.
+		ls := lokiStack{
+			name:          "lokistack-deprecated-schema",
+			namespace:     loggingNS,
+			tSize:         "1x.demo",
+			storageType:   s,
+			storageSecret: "storage-secret-deprecated-schema",
+			storageClass:  sc,
+			bucketName:    "logging-loki-deprecated-schema-" + getInfrastructureName(oc),
+			template:      lokiStackTemplate,
+		}
+
+		defer ls.removeObjectStorage(oc)
+		err := ls.prepareResourcesForLokiStack(oc)
+		o.Expect(err).NotTo(o.HaveOccurred())
+		defer ls.removeLokiStack(oc)
+		err = ls.deployLokiStack(oc, "-p", "STORAGE_SCHEMA_VERSION=v12")
+		o.Expect(err).NotTo(o.HaveOccurred())
+
+		g.By("Verify the LokiStack is Degraded because of the deprecated schema")
+		checkResource(oc, true, false, "deprecated schema versions", []string{"lokistack/" + ls.name, "-n", ls.namespace, `-ojsonpath={.status.conditions[?(@.type=="Degraded")].message}`})
+
+		g.By("Verify the LokiStack is not ready and no workloads are created")
+		ready, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("lokistack", ls.name, "-n", ls.namespace, `-ojsonpath={.status.conditions[?(@.type=="Ready")].status}`).Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(ready).NotTo(o.Equal("True"), "a LokiStack with a deprecated schema must not become ready")
+		workloads, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("deployment,statefulset", "-n", ls.namespace, "-l", "app.kubernetes.io/instance="+ls.name, "-o", "name").Output()
+		o.Expect(err).NotTo(o.HaveOccurred())
+		o.Expect(strings.TrimSpace(workloads)).To(o.BeEmpty(), "unexpected workloads for a rejected LokiStack")
 	})
 
 	// port=unknown - no data in BigQuery last 60 days
