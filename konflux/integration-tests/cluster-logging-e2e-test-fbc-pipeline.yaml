@@ -33,12 +33,22 @@ spec:
       default: "main"
     - name: test_suite
       description: Name of the suite of the test extension to run
-      default: "openshift-logging-e2e-tests/cluster-logging-operator"
+      default: "openshift-logging-e2e-tests/cluster-logging-operator/all"
+    - name: include_tests
+      description: >-
+        Case-insensitive extended regular expression. When it is not empty, only the tests of the suite whose name
+        matches it are run (before skip_tests is applied). Empty runs the whole suite. The default is the core set:
+        the PreMerge tests of the Cluster Logging Operator plus the forwarding tests that passed on a hosted cluster
+        (Elasticsearch, HTTP, syslog, Splunk, LokiStack). A scenario with the extended set (the scheduler,
+        validation, filter and NetworkPolicy tests) passes its own list, so that each run fits the two hours a
+        cluster lives.
+      default: "-(68961|74398|74397|65408|65685|84892|85402|71749|71049|76727|47760|60926|60933|60936|75431|75317|81512|60699|61477|46882|74927|55200|86567|75334|54980|54976|71028)-"
     - name: skip_tests
       description: >-
         Case-insensitive extended regular expression. The tests of the suite whose name matches it are not run. The
-        default skips the tests that need credentials of AWS CloudWatch or S3.
-      default: "CloudWatch|s3 output"
+        default skips the tests that need credentials of AWS CloudWatch or S3, and the two tests (78380, 75841)
+        that need the audit logs of the Kubernetes API server, which a hosted cluster does not have.
+      default: "CloudWatch|s3 output|High-78380|Critical-75841"
     - name: test_timeout
       description: Maximum duration of a single test
       default: "60m"
@@ -434,6 +444,8 @@ spec:
           value: $(params.tests_revision)
         - name: TEST_SUITE
           value: $(params.test_suite)
+        - name: INCLUDE_TESTS
+          value: $(params.include_tests)
         - name: SKIP_TESTS
           value: $(params.skip_tests)
         - name: TEST_TIMEOUT
@@ -449,6 +461,8 @@ spec:
           - name: TESTS_REVISION
             type: string
           - name: TEST_SUITE
+            type: string
+          - name: INCLUDE_TESTS
             type: string
           - name: SKIP_TESTS
             type: string
@@ -467,7 +481,7 @@ spec:
         steps:
           - name: build-tests
             image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:aa2c97da9bb73a4e8d1c6b41950f8d902b74461be0e042debe89277fdc4ebe49
-            computeResources:
+            resources:
               requests:
                 cpu: "2"
                 memory: 4Gi
@@ -499,6 +513,13 @@ spec:
               GOFLAGS=-mod=readonly GOTOOLCHAIN=auto go build -o /work/logging-tests-ext ./cmd
           - name: run-tests
             image: quay.io/konflux-ci/konflux-test:v1.4.52@sha256:aa2c97da9bb73a4e8d1c6b41950f8d902b74461be0e042debe89277fdc4ebe49
+            # The namespace default (2Gi) killed the first test (exit 137) after a few seconds.
+            resources:
+              requests:
+                cpu: "1"
+                memory: 2Gi
+              limits:
+                memory: 8Gi
             volumeMounts:
               - name: credentials
                 mountPath: /credentials
@@ -511,6 +532,8 @@ spec:
                 value: /work/home
               - name: TEST_SUITE
                 value: $(params.TEST_SUITE)
+              - name: INCLUDE_TESTS
+                value: $(params.INCLUDE_TESTS)
               - name: SKIP_TESTS
                 value: $(params.SKIP_TESTS)
               - name: TEST_TIMEOUT
@@ -527,9 +550,9 @@ spec:
               set -uo pipefail
 
               ext=/work/logging-tests-ext
-              names=$("${ext}" list tests --suite "${TEST_SUITE}" -o names | grep '^\[' | grep -Eiv -- "${SKIP_TESTS:-^$}" || true)
+              names=$("${ext}" list tests --suite "${TEST_SUITE}" -o names | grep '^\[' | grep -Ei -- "${INCLUDE_TESTS:-.}" | grep -Eiv -- "${SKIP_TESTS:-^$}" || true)
               if [ -z "${names}" ]; then
-                echo "ERROR: no tests in the suite ${TEST_SUITE} after skipping '${SKIP_TESTS}'"
+                echo "ERROR: no tests in the suite ${TEST_SUITE} after including '${INCLUDE_TESTS}' and skipping '${SKIP_TESTS}'"
                 exit 1
               fi
               echo "Tests to run, logging ${LOGGING_TEST_VERSION}:"
@@ -541,12 +564,19 @@ spec:
               : > "${results}"
               while IFS= read -r name; do
                 echo "=== ${name}"
-                "${ext}" run-test --timeout "${TEST_TIMEOUT}" -o jsonl "${name}" | grep '^{' >> "${results}"
+                # </dev/null: run-test also reads test names from stdin, so without it the first call took the
+                # rest of the list from the here-string and ran all the tests at once on the same cluster.
+                "${ext}" run-test --timeout "${TEST_TIMEOUT}" -o jsonl "${name}" </dev/null | grep '^{' >> "${results}"
               done <<<"${names}"
 
               echo
               echo "Results"
               jq -r '(if .result == "passed" then "PASSED " elif .result == "skipped" then "SKIPPED" else "FAILED " end) + " " + .name' "${results}"
+              # Why the tests failed, so the reason is in the log of the task: the error of the spec and the end of
+              # its output.
+              echo
+              echo "Failed tests"
+              jq -r 'select(.result != "passed" and .result != "skipped") | "---- " + .name + "\nERROR: " + ((.error // "") | .[0:1500]) + "\nFAILURE LINES:\n" + ((.output // "") | split("\n") | map(select(test("Error response from server|error sending request|\\[FAILED\\]")) | .[0:300]) | .[-20:] | join("\n")) + "\nLAST STEPS:\n" + ((.output // "") | split("\n") | map(select(test("STEP:")) | .[0:300]) | .[-10:] | join("\n")) + "\nEND OF OUTPUT:\n" + ((.output // "") | .[-1500:])' "${results}"
               expected=$(grep -c . <<<"${names}")
               recorded=$(jq -s 'length' "${results}")
               if [ "${recorded}" -ne "${expected}" ]; then

@@ -43,10 +43,30 @@ and the OCP version from the FBC at run time.
 | Parameter | Default | |
 |---|---|---|
 | `ocp_version` | `5.0` | The OCP version of the scenario. |
-| `test_suite` | `openshift-logging-e2e-tests/cluster-logging-operator` | Suite of the extension. |
-| `skip_tests` | `CloudWatch\|s3 output` | Case-insensitive regular expression of test names that are not run: the tests that need credentials of AWS CloudWatch or S3. |
+| `test_suite` | `openshift-logging-e2e-tests/cluster-logging-operator/all` | Suite of the extension (all non-disruptive Cluster Logging Operator tests; the Loki Operator tests are not part of it). |
+| `include_tests` | the core set (27 tests, see below) | Case-insensitive regular expression of test names. Only the tests of the suite that match it are run, before `skip_tests` is applied. Empty runs the whole suite (112 tests, several hours). |
+| `skip_tests` | `CloudWatch\|s3 output\|High-78380\|Critical-75841` | Case-insensitive regular expression of test names that are not run: the tests that need credentials of AWS CloudWatch or S3, and tests 78380 and 75841, which look for the audit logs of the Kubernetes API server that a hosted cluster does not have. |
 | `tests_repo`, `tests_revision` | this repository, `main` | Where the tests are built from. |
 | `test_timeout` | `60m` | Timeout of a single test. |
+
+## Test sets
+
+A cluster lives two hours, about 15 minutes of which go to provisioning, so the tests of one scenario must fit in about
+1h45. The tests are selected by their Polarion ID (`-<id>-` in the test name) and were measured on a hosted cluster
+(6.7, OCP 5.0, MinIO). Two scenarios per release and OCP version, each on its own cluster:
+
+| Set | Tests | Time | `include_tests` |
+|---|---|---|---|
+| core (default) | 27: the 10 PreMerge tests of the Cluster Logging Operator, Elasticsearch (46882, 55200, 74927, 86567), HTTP (60926, 60933, 60936, 47760), syslog (60699, 61477, 75317, 75431, 81512), Splunk (54976, 54980, 71028) and LokiStack label keys (75334) | 52 min of tests, 1h13 for the whole run | the default |
+| extended | 16: scheduler (81398), multi-mode (64147, 65407), NetworkPolicy (85411, 85466, 85469), filters and inputs (71000, 71001, 74945, 74947, 75386, 75390), metrics and alerts (55396, 74322), Splunk (75234, 81855) | about 1h05 of tests, 1h22 for the whole run | `-(81398\|64147\|65407\|85411\|85466\|85469\|74947\|55396\|71000\|74322\|71001\|74945\|75386\|75390\|75234\|81855)-` |
+
+Not in a set yet: 81397 (collector deployment affinity). It failed once in the pipeline (no running collector pod on the node of
+the log producer) and passed 11 of 11 times on a hand-run hosted cluster, also straight after 81398, so the cause is not known; the
+assertion now prints the pods when it fails. 75234 and 81855 failed on a hosted cluster until the tests were fixed: the namespace
+`openshift-operator-lifecycle-manager` has no pods there, and the `kubeAPI` and `openshiftAPI` log sources need audit logs of the API servers.
+
+Not possible on a hosted cluster or in the ART tenant: the CloudWatch, S3 and Google Cloud Logging tests, 75298 (needs `GLOKIUSER` and `GLOKIPWD`), the Kafka
+tests (need the AMQ operator), 78380 and 75841 (API server audit logs). 71749 failed twice and passed once in the pipeline (`vector_loki.go:949`) and passed 3 of 3 times on a hand-run cluster, so it is flaky; it stays in the core set as one of the PreMerge tests.
 
 ## Secrets in the tenant
 
@@ -67,10 +87,8 @@ Maintainers of the tenant can manage ITS and patch Snapshots, but cannot create 
 
 ## Not verified yet
 
-- The pipeline has not run in the ART tenant yet. Needed first: `art-logging-tenant` as an owner of the `aws-konflux-prod` cluster
-  profile in `openshift/release` (https://github.com/openshift/release/pull/88988).
-- Whether the PipelineRun of an ITS may run as long as the tests need (the task timeout is 4 hours). The OpenTelemetry e2e
-  scenario ran for 67 minutes in `art-rhosdt-tenant` and passed, so more than an hour is possible; the limit is not known. A cluster
-  of the OCP version of the scenario can be provisioned only when the `stable` channel has it (`stable-5.0` has 5.0.0 and 5.0.1).
-- How the stage credentials reach the nodes of a HyperShift hosted cluster (see `add-stage-credentials`).
-- Which tests of the suite pass on a hosted cluster: the default `skip_tests` is a starting point.
+- Whether the PipelineRun of an ITS may run as long as the tests need (the task timeout is 4 hours). The core and extended sets
+  ran for 1h13 and 1h22 in `art-logging-tenant` and passed, so that is possible; a longer limit is not known. A cluster of the OCP
+  version of the scenario can be provisioned only when the `stable` channel has it (`stable-5.0` has 5.0.0 and 5.0.1).
+- Runs on the FBC of a release other than 6.7: the sets were run on `fbc-logging-6-7` and OCP 5.0 only. The Cluster Logging
+  Operator tests that are gated by `LOGGING_TEST_VERSION` have not run with the older releases.
