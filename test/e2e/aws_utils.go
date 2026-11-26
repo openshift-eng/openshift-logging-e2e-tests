@@ -227,12 +227,12 @@ func createS3Bucket(client *s3.Client, bucketName, region string) error {
 	// if not, create the bucket
 	exist := false
 	// The route of a MinIO that was just deployed can answer 503 (the HTML page of the router) for a while after
-	// its pod is ready, so the first calls are retried.
+	// its pod is ready, so the first calls are retried. Other storage is not warming up, so its error is final.
 	var buckets *s3.ListBucketsOutput
 	var err error
 	for i := 1; i <= 18; i++ {
 		buckets, err = client.ListBuckets(context.TODO(), &s3.ListBucketsInput{})
-		if err == nil {
+		if err == nil || !minioStorageRequested() {
 			break
 		}
 		e2e.Logf("ListBuckets failed (try %d/18): %v", i, err)
