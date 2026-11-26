@@ -576,7 +576,7 @@ spec:
               # its output.
               echo
               echo "Failed tests"
-              jq -r 'select(.result != "passed" and .result != "skipped") | "---- " + .name + "\nERROR: " + ((.error // "") | .[0:1500]) + "\nKEY LINES:\n" + ((.output // "") | split("\n") | map(select(test("Error response from server|error sending request|\\[FAILED\\]|STEP:")) | .[0:300]) | .[-30:] | join("\n")) + "\nEND OF OUTPUT:\n" + ((.output // "") | .[-1500:])' "${results}"
+              jq -r 'select(.result != "passed" and .result != "skipped") | "---- " + .name + "\nERROR: " + ((.error // "") | .[0:1500]) + "\nFAILURE LINES:\n" + ((.output // "") | split("\n") | map(select(test("Error response from server|error sending request|\\[FAILED\\]")) | .[0:300]) | .[-20:] | join("\n")) + "\nLAST STEPS:\n" + ((.output // "") | split("\n") | map(select(test("STEP:")) | .[0:300]) | .[-10:] | join("\n")) + "\nEND OF OUTPUT:\n" + ((.output // "") | .[-1500:])' "${results}"
               expected=$(grep -c . <<<"${names}")
               recorded=$(jq -s 'length' "${results}")
               if [ "${recorded}" -ne "${expected}" ]; then
