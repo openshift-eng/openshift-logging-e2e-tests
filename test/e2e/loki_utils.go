@@ -506,7 +506,7 @@ func useMinIOStorage(oc *exutil.CLI) string {
 // return the storage type per different platform, or MinIO when LOGGING_TEST_STORAGE=minio.
 // MinIO lets a test run on a cloud cluster without credentials for the cloud object storage.
 func getStorageType(oc *exutil.CLI) string {
-	if os.Getenv("LOGGING_TEST_STORAGE") == "minio" {
+	if minioStorageRequested() {
 		return useMinIOStorage(oc)
 	}
 	platform := compat_otp.CheckPlatform(oc)
@@ -732,9 +732,18 @@ func (l lokiStack) deployLokiStack(oc *exutil.CLI, optionalParameters ...string)
 	return err
 }
 
+// minioStorageRequested reports whether LOGGING_TEST_STORAGE=minio asks for the MinIO of the cluster as the
+// object storage, whatever the platform is.
+func minioStorageRequested() bool {
+	return os.Getenv("LOGGING_TEST_STORAGE") == "minio"
+}
+
 func (l lokiStack) waitForLokiStackToBeReady(oc *exutil.CLI) {
+	// With MinIO the LokiStack uses a static secret, so the operator creates no CredentialsRequest and
+	// the LOG-8579 wait is not needed, even when the cluster itself uses workload identity.
+	workloadIdentity := !minioStorageRequested() && compat_otp.IsWorkloadIdentityCluster(oc)
 	// below wait is temp fix for LOG-8579. Remove it once the bug is fixed.
-	if compat_otp.IsWorkloadIdentityCluster(oc) {
+	if workloadIdentity {
 		currentPlatform := compat_otp.CheckPlatform(oc)
 		switch currentPlatform {
 		case "aws", "azure", "gcp":
@@ -747,7 +756,7 @@ func (l lokiStack) waitForLokiStackToBeReady(oc *exutil.CLI) {
 	for _, ss := range []string{l.name + "-index-gateway", l.name + "-compactor", l.name + "-ruler", l.name + "-ingester"} {
 		waitForStatefulsetReady(oc, l.namespace, ss)
 	}
-	if compat_otp.IsWorkloadIdentityCluster(oc) {
+	if workloadIdentity {
 		currentPlatform := compat_otp.CheckPlatform(oc)
 		switch currentPlatform {
 		case "aws", "azure", "gcp":

@@ -672,7 +672,8 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			defer sp.destroy(oc)
 			sp.deploy(oc)
 			o.Expect(sp.createIndexes(oc, appProj)).NotTo(o.HaveOccurred())
-			o.Expect(sp.createIndexes(oc, "openshift-operator-lifecycle-manager")).NotTo(o.HaveOccurred())
+			// openshift-monitoring has pods on every cluster. The OLM namespace has none on a hosted cluster, where OLM runs in the control plane.
+			o.Expect(sp.createIndexes(oc, "openshift-monitoring")).NotTo(o.HaveOccurred())
 
 			clfSecret := toSplunkSecret{
 				name:      "splunk-secret-71322",
@@ -698,7 +699,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 
 			compat_otp.By("verify logs can are found in namespace_name index")
 			allFound := true
-			for _, logIndex := range []string{appProj, "openshift-operator-lifecycle-manager"} {
+			for _, logIndex := range []string{appProj, "openshift-monitoring"} {
 				if sp.checkLogs("index=" + logIndex) {
 					e2e.Logf("found logs in index %s", logIndex)
 				} else {
@@ -976,8 +977,11 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			o.Expect(sp.checkLogs("source IN (ovs-vswitchd,kubenswrapper,crio,system)")).To(o.BeTrue())
 			// For container Logs:  source=projectName+podName+ContainerName
 			o.Expect(sp.checkLogs("source=" + appProj + "*")).To(o.BeTrue())
-			o.Expect(sp.checkLogs("source=kubeAPI")).To(o.BeTrue())
-			o.Expect(sp.checkLogs("source=openshiftAPI")).To(o.BeTrue())
+			// A hosted cluster has no audit logs of the API servers on its nodes.
+			if !compat_otp.IsHypershiftHostedCluster(oc) {
+				o.Expect(sp.checkLogs("source=kubeAPI")).To(o.BeTrue())
+				o.Expect(sp.checkLogs("source=openshiftAPI")).To(o.BeTrue())
+			}
 			o.Expect(sp.checkLogs("source=auditd")).To(o.BeTrue())
 
 			patch := `[{"op": "add", "path": "/spec/outputs/0/splunk/source", "value": "{.log_type||\"logcollector\"}"}]`

@@ -2,6 +2,7 @@ package logging
 
 import (
 	"context"
+	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
@@ -268,7 +269,17 @@ use_apiserver_cache = true
 		o.Expect(err).NotTo(o.HaveOccurred())
 		collectorRunNodeIPs, err := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", clf.namespace, "pod", "-l app.kubernetes.io/instance="+clf.name, `-ojsonpath={.items[?(@.status.phase=="Running")].status.hostIP}}`).Output()
 		o.Expect(err).NotTo(o.HaveOccurred())
-		o.Expect(strings.Contains(collectorRunNodeIPs, loggenNodeIP)).Should(o.BeTrue())
+		// The collector affinity matches run=centos-logtest pods of all namespaces, so print the pods when the check fails.
+		// A failed query is printed in place of the pods: it shows that the cluster API may be degraded.
+		allLoggen, queryErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("pods", "-A", "-l", "run=centos-logtest", "-o", "wide").Output()
+		if queryErr != nil {
+			allLoggen = fmt.Sprintf("(query failed: %v)", queryErr)
+		}
+		allCollectors, queryErr := oc.AsAdmin().WithoutNamespace().Run("get").Args("-n", clf.namespace, "pods", "-l", "app.kubernetes.io/instance="+clf.name, "-o", "wide").Output()
+		if queryErr != nil {
+			allCollectors = fmt.Sprintf("(query failed: %v)", queryErr)
+		}
+		o.Expect(strings.Contains(collectorRunNodeIPs, loggenNodeIP)).Should(o.BeTrue(), "running collector pods are on the nodes %q, the log producer is on %q\nlog producers in all namespaces:\n%s\ncollector pods:\n%s", collectorRunNodeIPs, loggenNodeIP, allLoggen, allCollectors)
 
 		g.By("Verify record from https are send as audit logs")
 		o.Expect(postDataToHttpserver(oc, "https://"+clf.name+"-collector-receiver."+clf.namespace+".svc:8443", `{"data":"record1"}`)).To(o.BeTrue())
