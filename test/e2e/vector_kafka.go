@@ -368,7 +368,7 @@ var _ = g.Describe("[sig-openshift-logging] Logging NonPreRelease", func() {
 			compat_otp.By("Check if the cluster has amd64 nodes")
 			nodes, err := oc.AdminKubeClient().CoreV1().Nodes().List(context.Background(), metav1.ListOptions{LabelSelector: "kubernetes.io/os=linux,kubernetes.io/arch=amd64"})
 			if err != nil || len(nodes.Items) == 0 {
-				g.Skip("Cluster doesn't have amd64 nodes, skipping the test...")
+				g.Skip("Cluster doesn't have amd64 Nodes, skipping the test...")
 			}
 			compat_otp.By("Check if the current tlsSecurityProfile is the expected one")
 			if !compareExpectedTLSConfigWithCurrent(oc, `{"custom":{"ciphers":["ECDHE-ECDSA-CHACHA20-POLY1305","ECDHE-RSA-CHACHA20-POLY1305","ECDHE-RSA-AES128-GCM-SHA256","ECDHE-ECDSA-AES128-GCM-SHA256"],"minTLSVersion":"VersionTLS12"},"type":"Custom"}`) {
